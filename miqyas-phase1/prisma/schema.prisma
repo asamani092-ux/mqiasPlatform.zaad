@@ -1,0 +1,428 @@
+// ═══════════════════════════════════════════════════════════════
+//  منصة مِقياس — نموذج البيانات
+//  جمعية الزاد · Next.js + PostgreSQL
+// ═══════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── المستخدمون والصلاحيات ────────────────────────────────────────
+enum Role {
+  SYSTEM_ADMIN // مشرف النظام (مكتب الأداء / إدارة المشاريع)
+  EXECUTIVE    // الإدارة العليا
+  DEPT_MANAGER // مدير إدارة
+  SECTION_HEAD // رئيس قسم
+  EMPLOYEE     // موظف
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         Role       @default(EMPLOYEE)
+  status       UserStatus @default(ACTIVE)
+  departmentId Int?
+  sectionId    Int?
+  lastLogin    DateTime?
+  createdAt    DateTime   @default(now())
+
+  department      Department?        @relation(fields: [departmentId], references: [id])
+  section         Section?           @relation(fields: [sectionId], references: [id])
+  ownedKpis       Kpi[]              @relation("KpiOwner")
+  entries         KpiEntry[]         @relation("EnteredBy")
+  approvals       KpiEntry[]         @relation("ApprovedBy")
+  evidences       Evidence[]
+  notifications   Notification[]
+  actions         CorrectiveAction[] @relation("ActionResponsible")
+  deviationCards  DeviationCard[]    @relation("CardCreator")
+  auditLogs       AuditLog[]
+  loginAttempts   LoginAttempt[]
+}
+
+// ── الهيكل التنظيمي ─────────────────────────────────────────────
+model Department {
+  id       Int    @id @default(autoincrement())
+  deptNo   Int    @unique
+  name     String
+  color    String @default("#8b1a2a")
+
+  sections         Section[]
+  users            User[]
+  operationalGoals OperationalGoal[]
+  kpis             Kpi[]
+  knowledgeAssets  KnowledgeAsset[]
+}
+
+model Section {
+  id           Int    @id @default(autoincrement())
+  sectionNo    Int
+  name         String
+  code         String @unique // مثال: "1/1"
+  departmentId Int
+
+  department       Department        @relation(fields: [departmentId], references: [id])
+  users            User[]
+  operationalGoals OperationalGoal[]
+  kpis             Kpi[]
+
+  @@unique([departmentId, sectionNo])
+}
+
+// ── الأهداف ─────────────────────────────────────────────────────
+model StrategicGoal {
+  id          Int     @id @default(autoincrement())
+  code        String  @unique
+  title       String
+  description String?
+  sortOrder   Int     @default(0)
+
+  kpis             Kpi[]
+  operationalGoals OperationalGoal[]
+}
+
+model OperationalGoal {
+  id              Int    @id @default(autoincrement())
+  code            String @unique
+  title           String
+  departmentId    Int
+  sectionId       Int?
+  strategicGoalId Int? // الربط بالمسار الاستراتيجي عند وجوده
+
+  department    Department     @relation(fields: [departmentId], references: [id])
+  section       Section?       @relation(fields: [sectionId], references: [id])
+  strategicGoal StrategicGoal? @relation(fields: [strategicGoalId], references: [id])
+  kpis          Kpi[]
+}
+
+// ── المؤشرات ────────────────────────────────────────────────────
+enum KpiType {
+  STRATEGIC
+  OPERATIONAL
+}
+
+enum Frequency {
+  QUARTERLY
+  SEMI_ANNUAL
+  ANNUAL
+}
+
+enum Polarity {
+  HIGHER_BETTER // زيادة القيمة أفضل
+  LOWER_BETTER  // نقص القيمة أفضل (مثل معدل الدوران)
+}
+
+model Kpi {
+  id                Int       @id @default(autoincrement())
+  code              String    @unique
+  name              String
+  type              KpiType
+  unit              String    @default("%")
+  baseline          Float? // خط الأساس المعتمد
+  annualTarget      Float? // المستهدف السنوي
+  frequency         Frequency @default(QUARTERLY)
+  polarity          Polarity  @default(HIGHER_BETTER)
+  measureFormula    String? // آلية الاحتساب
+  departmentId      Int?
+  sectionId         Int?
+  ownerId           Int? // الموظف المسؤول عن الإدخال
+  strategicGoalId   Int?
+  operationalGoalId Int?
+  active            Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+
+  department      Department?      @relation(fields: [departmentId], references: [id])
+  section         Section?         @relation(fields: [sectionId], references: [id])
+  owner           User?            @relation("KpiOwner", fields: [ownerId], references: [id])
+  strategicGoal   StrategicGoal?   @relation(fields: [strategicGoalId], references: [id])
+  operationalGoal OperationalGoal? @relation(fields: [operationalGoalId], references: [id])
+  targets         KpiTarget[]
+  entries         KpiEntry[]
+  alerts          EarlyWarningAlert[]
+  deviationCards  DeviationCard[]
+}
+
+// الفترة: Q1..Q4 / H1,H2 / Y
+enum Period {
+  Q1
+  Q2
+  Q3
+  Q4
+  H1
+  H2
+  Y
+}
+
+model KpiTarget {
+  id          Int    @id @default(autoincrement())
+  kpiId       Int
+  year        Int
+  period      Period
+  targetValue Float
+
+  kpi Kpi @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+
+  @@unique([kpiId, year, period])
+}
+
+// ── إدخالات القيم (واجهة الموظف + الاعتماد) ─────────────────────
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum KpiStatus {
+  ACHIEVED // ≥ 100%
+  ON_TRACK // ≥ 80%
+  AT_RISK  // ≥ 60%
+  CRITICAL // < 60%
+  NO_DATA
+}
+
+model KpiEntry {
+  id             Int            @id @default(autoincrement())
+  kpiId          Int
+  year           Int
+  period         Period
+  actualValue    Float
+  achievementPct Float? // نسبة التحقق المحسوبة
+  status         KpiStatus      @default(NO_DATA)
+  note           String?
+  enteredById    Int
+  approvalStatus ApprovalStatus @default(PENDING)
+  approvedById   Int?
+  approvedAt     DateTime?
+  rejectReason   String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  kpi        Kpi        @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  enteredBy  User       @relation("EnteredBy", fields: [enteredById], references: [id])
+  approvedBy User?      @relation("ApprovedBy", fields: [approvedById], references: [id])
+  evidences  Evidence[]
+
+  @@unique([kpiId, year, period])
+}
+
+// الشواهد المرفوعة
+model Evidence {
+  id           Int      @id @default(autoincrement())
+  kpiEntryId   Int
+  fileName     String
+  storedName   String
+  mimeType     String
+  sizeBytes    Int
+  uploadedById Int
+  createdAt    DateTime @default(now())
+
+  entry      KpiEntry @relation(fields: [kpiEntryId], references: [id], onDelete: Cascade)
+  uploadedBy User     @relation(fields: [uploadedById], references: [id])
+}
+
+// ── الإنذار المبكر ──────────────────────────────────────────────
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model EarlyWarningAlert {
+  id             Int       @id @default(autoincrement())
+  kpiId          Int
+  year           Int
+  period         Period
+  expectedToDate Float // المستهدف المتوقع حتى تاريخ القراءة
+  actualToDate   Float // المتحقق الفعلي
+  gapPct         Float
+  riskLevel      RiskLevel
+  message        String
+  recipients     String // بريد المستلمين (مدير الإدارة، رئيس القسم)
+  emailSent      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+
+  kpi Kpi @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+
+  @@index([year, period])
+}
+
+// ── بطاقات انحراف المؤشرات ──────────────────────────────────────
+enum CardStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+model DeviationCard {
+  id           Int        @id @default(autoincrement())
+  kpiId        Int
+  year         Int
+  period       Period
+  targetValue  Float
+  actualValue  Float
+  deviationPct Float
+  reasons      String // أسباب الانحراف
+  status       CardStatus @default(OPEN)
+  createdById  Int
+  createdAt    DateTime   @default(now())
+  closedAt     DateTime?
+
+  kpi       Kpi                @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  createdBy User               @relation("CardCreator", fields: [createdById], references: [id])
+  actions   CorrectiveAction[]
+
+  @@unique([kpiId, year, period])
+}
+
+enum ActionStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  LATE
+}
+
+model CorrectiveAction {
+  id              Int          @id @default(autoincrement())
+  deviationCardId Int
+  description     String
+  responsibleId   Int? // المسؤول عن التنفيذ
+  responsibleName String? // أو اسم حر للجهة
+  dueDate         DateTime // الإطار الزمني للمعالجة
+  status          ActionStatus @default(PENDING)
+  completedAt     DateTime?
+  escalatedAt     DateTime? // تاريخ التصعيد للمشرف
+  createdAt       DateTime     @default(now())
+
+  card        DeviationCard @relation(fields: [deviationCardId], references: [id], onDelete: Cascade)
+  responsible User?         @relation("ActionResponsible", fields: [responsibleId], references: [id])
+}
+
+// ── الحوكمة ─────────────────────────────────────────────────────
+enum ComplianceStatus {
+  APPLIED
+  NOT_APPLIED
+}
+
+model GovernanceRequirement {
+  id        Int              @id @default(autoincrement())
+  title     String
+  category  String?
+  year      Int
+  status    ComplianceStatus @default(NOT_APPLIED)
+  notes     String?
+  updatedAt DateTime         @updatedAt
+}
+
+enum ObservationStatus {
+  OPEN
+  CLOSED
+}
+
+model GovernanceObservation {
+  id            Int               @id @default(autoincrement())
+  title         String
+  status        ObservationStatus @default(OPEN)
+  openedYear    Int
+  openedPeriod  Period
+  closedYear    Int?
+  closedPeriod  Period?
+  createdAt     DateTime          @default(now())
+  closedAt      DateTime?
+}
+
+// ── المعرفة المؤسسية ────────────────────────────────────────────
+enum AssetStatus {
+  DRAFT
+  APPROVED
+}
+
+model KnowledgeAsset {
+  id           Int         @id @default(autoincrement())
+  title        String
+  assetType    String? // دليل، سياسة، درس مستفاد...
+  departmentId Int?
+  status       AssetStatus @default(DRAFT)
+  isUsed       Boolean     @default(false)
+  year         Int
+  period       Period
+  createdAt    DateTime    @default(now())
+
+  department Department? @relation(fields: [departmentId], references: [id])
+}
+
+// ── الإشعارات ───────────────────────────────────────────────────
+enum NotificationType {
+  EARLY_WARNING
+  DEVIATION
+  APPROVAL_REQUEST
+  APPROVAL_RESULT
+  ACTION_LATE
+  SYSTEM
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int
+  type      NotificationType
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model EmailLog {
+  id        Int      @id @default(autoincrement())
+  toEmail   String
+  subject   String
+  status    String // SENT / FAILED
+  error     String?
+  createdAt DateTime @default(now())
+}
+
+// ── إعدادات النظام وسجل التدقيق ─────────────────────────────────
+model SystemSetting {
+  key   String @id
+  value String
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  action    String // LOGIN / CREATE_KPI / APPROVE_ENTRY ...
+  entity    String?
+  entityId  Int?
+  meta      Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+model LoginAttempt {
+  id        Int      @id @default(autoincrement())
+  email     String
+  ip        String?
+  success   Boolean
+  userId    Int?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([email, createdAt])
+}
