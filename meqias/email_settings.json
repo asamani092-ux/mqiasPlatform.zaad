@@ -1,0 +1,15 @@
+{
+    "smtp_provider": "gmail",
+    "alert_enabled": false,
+    "alert_on_entry": false,
+    "alert_on_excel": false,
+    "alert_recipients": [],
+    "weekly_recipients": [],
+    "smtp_from": "",
+    "smtp_pass": "",
+    "smtp_name": "منصة مِقياس | جمعية الزاد",
+    "recipients": [],
+    "alert_threshold": 11,
+    "weekly_day": 0,
+    "last_sent": null
+}
