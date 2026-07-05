@@ -45,11 +45,11 @@ npx prisma migrate deploy || npx prisma db push
 echo "==> seed"
 npm run seed
 
-echo "==> تنظيف build"
+echo "==> تنظيف build (يمنع CSS 404 من cache تالف)"
 rm -rf .next
 
 echo ""
-echo "✅ جاهز. شغّل: npm run dev"
+echo "✅ جاهز. شغّل: npm run dev  (منفذ 3000 فقط — لا تشغّل نسختين)"
 echo "   الدخول: http://localhost:3000/login"
 echo "   admin@zad.org.sa / Admin@123456"
 echo "   الحوكمة: http://localhost:3000/governance"
