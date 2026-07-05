@@ -1,8 +1,16 @@
 // بذرة قاعدة البيانات — الهيكل التنظيمي والأهداف الاستراتيجية (منقولة من المنصة القديمة)
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import bcrypt from "bcryptjs";
 
-const db = new PrismaClient();
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) throw new Error("يجب ضبط DATABASE_URL في ملف .env قبل تشغيل البذرة");
+
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const db = new PrismaClient({ adapter });
 
 const DEPARTMENTS: [number, string, string, [number, string, string][]][] = [
   [1, "الرعاية والتمكين", "#00c9a7", [[1, "إسناد ونمو", "1/1"], [2, "التمكين", "1/2"], [3, "الرعاية", "1/3"], [4, "البحث الاجتماعي", "1/4"]]],
@@ -33,29 +41,30 @@ const STRATEGIC_GOALS: [string, string, string][] = [
 ];
 
 async function main() {
-  // الهيكل التنظيمي
   for (const [deptNo, name, color, sections] of DEPARTMENTS) {
     const dept = await db.department.upsert({
-      where: { deptNo }, update: { name, color }, create: { deptNo, name, color },
+      where: { deptNo },
+      update: { name, color },
+      create: { deptNo, name, color },
     });
     for (const [sectionNo, sName, code] of sections) {
       await db.section.upsert({
-        where: { code }, update: { name: sName },
+        where: { code },
+        update: { name: sName },
         create: { sectionNo, name: sName, code, departmentId: dept.id },
       });
     }
   }
 
-  // الأهداف الاستراتيجية
   let i = 0;
   for (const [code, title, axis] of STRATEGIC_GOALS) {
     await db.strategicGoal.upsert({
-      where: { code }, update: { title, description: axis },
+      where: { code },
+      update: { title, description: axis },
       create: { code, title, description: axis, sortOrder: i++ },
     });
   }
 
-  // مشرف النظام — كلمة المرور من البيئة حصراً
   const adminEmail = process.env.ADMIN_EMAIL || "admin@zad.org.sa";
   const adminPass = process.env.ADMIN_PASSWORD;
   if (!adminPass) throw new Error("يجب ضبط ADMIN_PASSWORD في ملف .env قبل تشغيل البذرة");
@@ -70,12 +79,10 @@ async function main() {
     },
   });
 
-  // الإعدادات الافتراضية
   const settings: [string, string][] = [
     ["section_head_can_approve", "0"],
     ["early_warning_gap_pct", "20"],
     ["action_escalation_days", "0"],
-    ["current_year", String(new Date().getFullYear())],
   ];
   for (const [key, value] of settings) {
     await db.systemSetting.upsert({ where: { key }, update: {}, create: { key, value } });
@@ -84,4 +91,8 @@ async function main() {
   console.log("✅ اكتملت البذرة: 6 إدارات، 18 قسمًا، 16 هدفًا استراتيجيًا، حساب المشرف");
 }
 
-main().finally(() => db.$disconnect());
+main()
+  .finally(async () => {
+    await db.$disconnect();
+    await pool.end();
+  });
