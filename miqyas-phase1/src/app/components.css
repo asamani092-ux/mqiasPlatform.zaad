@@ -14,6 +14,12 @@
   -webkit-font-smoothing: antialiased;
 }
 
+.tmkeen-root *,
+.tmkeen-root *::before,
+.tmkeen-root *::after {
+  box-sizing: border-box;
+}
+
 /* ── Buttons ── */
 .btn-primary {
   display: inline-flex;
@@ -124,7 +130,9 @@
 
 /* ── Forms ── */
 .input-field {
+  display: block;
   width: 100%;
+  max-width: 100%;
   border-radius: var(--tmkeen-radius-lg);
   border: 1px solid var(--tmkeen-surface-border);
   background: var(--tmkeen-surface);
