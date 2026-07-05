@@ -19,12 +19,12 @@ export default function PeriodSelector({ year, period }: { year: number; period:
 
   return (
     <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
-      <select className="inp" style={{ width: "auto" }} value={year} onChange={(e) => update(+e.target.value, period)}>
+      <select className="input-field" style={{ width: "auto" }} value={year} onChange={(e) => update(+e.target.value, period)}>
         {[year - 1, year, year + 1].map((y) => (
           <option key={y} value={y}>{y}</option>
         ))}
       </select>
-      <select className="inp" style={{ width: "auto" }} value={period} onChange={(e) => update(year, e.target.value as Period)}>
+      <select className="input-field" style={{ width: "auto" }} value={period} onChange={(e) => update(year, e.target.value as Period)}>
         {periods.map((p) => (
           <option key={p} value={p}>{PERIOD_LABEL[p]}</option>
         ))}

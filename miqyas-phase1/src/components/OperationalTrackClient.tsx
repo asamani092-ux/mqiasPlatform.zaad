@@ -31,7 +31,7 @@ export default function OperationalTrackClient({
       <div className="topbar">
         <div>
           <h1>المسار التشغيلي</h1>
-          <div className="sub">مؤشرات الأداء التشغيلي — قيم معتمدة فقط</div>
+          <div className="text-muted">مؤشرات الأداء التشغيلي — قيم معتمدة فقط</div>
         </div>
         <PeriodSelector year={year} period={period} />
       </div>
@@ -39,7 +39,7 @@ export default function OperationalTrackClient({
       {Array.from(groups.entries()).map(([dept, items]) => (
         <div key={dept} className="card" style={{ marginBottom: "1rem" }}>
           <h3 style={{ marginBottom: ".75rem" }}>{dept}</h3>
-          <table className="tbl">
+          <table className="tmkeen-table">
             <thead>
               <tr>
                 <th>الهدف التشغيلي</th><th>المؤشر</th><th>خط الأساس</th><th>المستهدف</th>

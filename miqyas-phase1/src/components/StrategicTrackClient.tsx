@@ -31,15 +31,15 @@ export default function StrategicTrackClient({
       <div className="topbar">
         <div>
           <h1>المسار الاستراتيجي</h1>
-          <div className="sub">مؤشرات الأداء الاستراتيجي — قيم معتمدة فقط</div>
+          <div className="text-muted">مؤشرات الأداء الاستراتيجي — قيم معتمدة فقط</div>
         </div>
         <PeriodSelector year={year} period={period} />
       </div>
       <TrackStatCards counts={counts} />
       {Array.from(groups.entries()).map(([goal, items]) => (
         <div key={goal} className="card" style={{ marginBottom: "1rem" }}>
-          <h3 style={{ marginBottom: ".75rem", color: "var(--maroon)" }}>{goal}</h3>
-          <table className="tbl">
+          <h3 style={{ marginBottom: ".75rem", color: "var(--tmkeen-primary)" }}>{goal}</h3>
+          <table className="tmkeen-table">
             <thead>
               <tr>
                 <th>رمز</th><th>المؤشر</th><th>خط الأساس</th><th>المستهدف السنوي</th>
@@ -63,7 +63,7 @@ export default function StrategicTrackClient({
           </table>
         </div>
       ))}
-      {rows.length === 0 && <div className="card"><p className="sub">لا توجد مؤشرات في نطاق صلاحياتك.</p></div>}
+      {rows.length === 0 && <div className="card"><p className="text-muted">لا توجد مؤشرات في نطاق صلاحياتك.</p></div>}
       <KpiDetailDrawer kpiId={drawerId} year={year} period={period} onClose={() => setDrawerId(null)} />
     </>
   );

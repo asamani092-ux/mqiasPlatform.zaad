@@ -166,15 +166,15 @@ export default function MyKpisClient({
       <div className="topbar">
         <div>
           <h1>مهامي ومؤشراتي</h1>
-          <div className="sub">إدخال المتحقق الفعلي والشواهد للفترة المحددة</div>
+          <div className="text-muted">إدخال المتحقق الفعلي والشواهد للفترة المحددة</div>
         </div>
         <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
-          <select className="inp" style={{ width: "auto" }} value={year} onChange={(e) => setYear(+e.target.value)}>
+          <select className="input-field" style={{ width: "auto" }} value={year} onChange={(e) => setYear(+e.target.value)}>
             {[year - 1, year, year + 1].map((y) => (
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
-          <select className="inp" style={{ width: "auto" }} value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
+          <select className="input-field" style={{ width: "auto" }} value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
             {allPeriods.map((p) => (
               <option key={p} value={p}>{PERIOD_LABEL[p]}</option>
             ))}
@@ -189,12 +189,12 @@ export default function MyKpisClient({
       )}
 
       {loading ? (
-        <p className="sub">جاري التحميل...</p>
+        <p className="text-muted">جاري التحميل...</p>
       ) : items.length === 0 ? (
-        <div className="card"><p className="sub">لا توجد مؤشرات مسندة لك لهذه الفترة.</p></div>
+        <div className="card"><p className="text-muted">لا توجد مؤشرات مسندة لك لهذه الفترة.</p></div>
       ) : (
         <div className="card" style={{ overflowX: "auto" }}>
-          <table className="tbl">
+          <table className="tmkeen-table">
             <thead>
               <tr>
                 <th>رمز</th>
@@ -228,7 +228,7 @@ export default function MyKpisClient({
                       <td>{item.target ? `${item.target.targetValue} ${item.kpi.unit}` : "—"}</td>
                       <td>
                         <input
-                          className="inp"
+                          className="input-field"
                           style={{ width: 80 }}
                           type="number"
                           step="any"
@@ -241,15 +241,15 @@ export default function MyKpisClient({
                       </td>
                       <td>{livePct != null ? `${livePct}%` : "—"}</td>
                       <td>
-                        <span className={`badge ${STATUS_BADGE[liveStatus]}`}>{STATUS_LABEL[liveStatus]}</span>
+                        <span className={STATUS_BADGE[liveStatus]}>{STATUS_LABEL[liveStatus]}</span>
                       </td>
                       <td>
                         {item.entry ? (
-                          <span className={`badge ${APPROVAL_BADGE[item.entry.approvalStatus]}`}>
+                          <span className={APPROVAL_BADGE[item.entry.approvalStatus]}>
                             {APPROVAL_LABEL[item.entry.approvalStatus]}
                           </span>
                         ) : (
-                          <span className="badge nodata">جديد</span>
+                          <span className="badge-neutral">جديد</span>
                         )}
                       </td>
                       <td>
@@ -257,7 +257,7 @@ export default function MyKpisClient({
                           <>
                             {item.entry.evidences.length}
                             {item.entry.approvalStatus !== "APPROVED" && (
-                              <label className="btn-sm btn-ghost" style={{ marginRight: ".3rem", cursor: "pointer" }}>
+                              <label className="btn-secondary btn-sm" style={{ marginRight: ".3rem", cursor: "pointer" }}>
                                 +
                                 <input
                                   type="file"
@@ -276,7 +276,7 @@ export default function MyKpisClient({
                       <td>
                         <button
                           type="button"
-                          className="btn-sm btn"
+                          className="btn-primary btn-sm"
                           disabled={saving === item.kpi.id || item.entry?.approvalStatus === "APPROVED"}
                           onClick={() => save(item.kpi.id)}
                         >
@@ -284,7 +284,7 @@ export default function MyKpisClient({
                         </button>
                         <button
                           type="button"
-                          className="btn-sm btn-ghost"
+                          className="btn-secondary btn-sm"
                           style={{ marginRight: ".3rem" }}
                           onClick={() => setExpanded(isExpanded ? null : item.kpi.id)}
                         >
@@ -294,7 +294,7 @@ export default function MyKpisClient({
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={11} style={{ background: "var(--card2)" }}>
+                        <td colSpan={11} style={{ background: "var(--tmkeen-surface-muted)" }}>
                           {item.entry?.approvalStatus === "REJECTED" && item.entry.rejectReason && (
                             <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
                               سبب الرفض: {item.entry.rejectReason}
@@ -302,9 +302,9 @@ export default function MyKpisClient({
                           )}
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: ".75rem" }}>
                             <div>
-                              <label className="lbl">ماذا حصل؟</label>
+                              <label className="label-field">ماذا حصل؟</label>
                               <textarea
-                                className="inp"
+                                className="input-field"
                                 rows={3}
                                 value={draft.what}
                                 disabled={item.entry?.approvalStatus === "APPROVED"}
@@ -314,9 +314,9 @@ export default function MyKpisClient({
                               />
                             </div>
                             <div>
-                              <label className="lbl">كيف حصل؟</label>
+                              <label className="label-field">كيف حصل؟</label>
                               <textarea
-                                className="inp"
+                                className="input-field"
                                 rows={3}
                                 value={draft.how}
                                 disabled={item.entry?.approvalStatus === "APPROVED"}
@@ -326,7 +326,7 @@ export default function MyKpisClient({
                               />
                             </div>
                           </div>
-                          <div className="sub" style={{ fontSize: ".72rem" }}>
+                          <div className="text-muted" style={{ fontSize: ".72rem" }}>
                             الاتجاه: {POLARITY_LABEL[item.kpi.polarity] || item.kpi.polarity}
                             {item.entry?.recommendation && ` · التوصية: ${item.entry.recommendation}`}
                           </div>
@@ -334,7 +334,7 @@ export default function MyKpisClient({
                             <a
                               key={ev.id}
                               href={`/api/evidence/${ev.id}`}
-                              className="badge ontrack"
+                              className="badge-primary"
                               style={{ marginLeft: ".4rem", display: "inline-block", marginTop: ".4rem" }}
                             >
                               {ev.fileName}

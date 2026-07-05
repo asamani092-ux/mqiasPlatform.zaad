@@ -80,7 +80,7 @@ export default function ApprovalsClient() {
       <div className="topbar">
         <div>
           <h1>اعتماد القياسات</h1>
-          <div className="sub">مراجعة الإدخالات المعلقة واعتمادها أو رفضها</div>
+          <div className="text-muted">مراجعة الإدخالات المعلقة واعتمادها أو رفضها</div>
         </div>
       </div>
 
@@ -91,9 +91,9 @@ export default function ApprovalsClient() {
       )}
 
       {loading ? (
-        <p className="sub">جاري التحميل...</p>
+        <p className="text-muted">جاري التحميل...</p>
       ) : entries.length === 0 ? (
-        <div className="card"><p className="sub">لا توجد قياسات بانتظار الاعتماد.</p></div>
+        <div className="card"><p className="text-muted">لا توجد قياسات بانتظار الاعتماد.</p></div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {entries.map((e) => (
@@ -101,31 +101,31 @@ export default function ApprovalsClient() {
               <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: ".5rem", marginBottom: ".75rem" }}>
                 <div>
                   <strong>{e.kpi.code}</strong> — {e.kpi.name}
-                  <div className="sub">
+                  <div className="text-muted">
                     {e.employee.name} · {PERIOD_LABEL[e.period as keyof typeof PERIOD_LABEL] || e.period} {e.year}
                   </div>
                 </div>
-                <span className={`badge ${STATUS_BADGE[e.status]}`}>{STATUS_LABEL[e.status]}</span>
+                <span className={STATUS_BADGE[e.status]}>{STATUS_LABEL[e.status]}</span>
               </div>
 
               <div className="grid grid-4" style={{ marginBottom: ".75rem", fontSize: ".82rem" }}>
-                <div><span className="sub">المتحقق:</span> <strong>{e.actualValue}</strong></div>
-                <div><span className="sub">نسبة الإنجاز:</span> <strong>{e.achievementPct ?? "—"}%</strong></div>
-                <div><span className="sub">الانحراف:</span> <strong>{e.deviationPct ?? "—"}%</strong></div>
-                <div><span className="sub">البيانات المطلوبة:</span> {e.kpi.requiredData || "—"}</div>
+                <div><span className="text-muted">المتحقق:</span> <strong>{e.actualValue}</strong></div>
+                <div><span className="text-muted">نسبة الإنجاز:</span> <strong>{e.achievementPct ?? "—"}%</strong></div>
+                <div><span className="text-muted">الانحراف:</span> <strong>{e.deviationPct ?? "—"}%</strong></div>
+                <div><span className="text-muted">البيانات المطلوبة:</span> {e.kpi.requiredData || "—"}</div>
               </div>
 
               {(e.whatHappened || e.howHappened) && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: ".75rem" }}>
                   {e.whatHappened && (
                     <div>
-                      <div className="lbl">ماذا حصل؟</div>
+                      <div className="label-field">ماذا حصل؟</div>
                       <p style={{ fontSize: ".82rem" }}>{e.whatHappened}</p>
                     </div>
                   )}
                   {e.howHappened && (
                     <div>
-                      <div className="lbl">كيف حصل؟</div>
+                      <div className="label-field">كيف حصل؟</div>
                       <p style={{ fontSize: ".82rem" }}>{e.howHappened}</p>
                     </div>
                   )}
@@ -134,12 +134,12 @@ export default function ApprovalsClient() {
 
               {e.evidences.length > 0 && (
                 <div style={{ marginBottom: ".75rem" }}>
-                  <div className="lbl">الشواهد</div>
+                  <div className="label-field">الشواهد</div>
                   {e.evidences.map((ev) => (
                     <a
                       key={ev.id}
                       href={`/api/evidence/${ev.id}`}
-                      className="badge ontrack"
+                      className="badge-primary"
                       style={{ marginLeft: ".4rem" }}
                     >
                       {ev.fileName}
@@ -150,28 +150,28 @@ export default function ApprovalsClient() {
 
               {rejectId === e.id ? (
                 <div style={{ marginBottom: ".75rem" }}>
-                  <label className="lbl">سبب الرفض</label>
+                  <label className="label-field">سبب الرفض</label>
                   <textarea
-                    className="inp"
+                    className="input-field"
                     rows={2}
                     value={rejectReason}
                     onChange={(ev) => setRejectReason(ev.target.value)}
                   />
                   <div style={{ display: "flex", gap: ".5rem", marginTop: ".5rem" }}>
-                    <button type="button" className="btn-sm btn" disabled={acting === e.id} onClick={() => act(e.id, "reject")}>
+                    <button type="button" className="btn-primary btn-sm" disabled={acting === e.id} onClick={() => act(e.id, "reject")}>
                       تأكيد الرفض
                     </button>
-                    <button type="button" className="btn-sm btn-ghost" onClick={() => { setRejectId(null); setRejectReason(""); }}>
+                    <button type="button" className="btn-secondary btn-sm" onClick={() => { setRejectId(null); setRejectReason(""); }}>
                       إلغاء
                     </button>
                   </div>
                 </div>
               ) : (
                 <div style={{ display: "flex", gap: ".5rem" }}>
-                  <button type="button" className="btn-sm btn" disabled={acting === e.id} onClick={() => act(e.id, "approve")}>
+                  <button type="button" className="btn-primary btn-sm" disabled={acting === e.id} onClick={() => act(e.id, "approve")}>
                     {acting === e.id ? "..." : "اعتماد"}
                   </button>
-                  <button type="button" className="btn-sm btn-ghost" onClick={() => setRejectId(e.id)}>
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => setRejectId(e.id)}>
                     رفض
                   </button>
                 </div>

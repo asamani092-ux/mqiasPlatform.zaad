@@ -36,18 +36,18 @@ export default function KpiDetailDrawer({
       <div className="card" style={{ width: "min(520px, 95vw)", height: "100vh", overflowY: "auto", borderRadius: 0, margin: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
           <h3>{data ? String((data.kpi as { name?: string }).name) : "..."}</h3>
-          <button type="button" className="btn-sm btn-ghost" onClick={onClose}>✕</button>
+          <button type="button" className="btn-secondary btn-sm" onClick={onClose}>✕</button>
         </div>
         {data && (
           <>
-            <p className="sub">{(data.kpi as { code?: string }).code} · {(data.kpi as { unit?: string }).unit}</p>
+            <p className="text-muted">{(data.kpi as { code?: string }).code} · {(data.kpi as { unit?: string }).unit}</p>
             <div style={{ fontSize: ".82rem", marginBottom: "1rem" }}>
               <div>خط الأساس: {(data.kpi as { baseline?: number }).baseline ?? "—"}</div>
               <div>المستهدف السنوي: {(data.kpi as { annualTarget?: number }).annualTarget ?? "—"}</div>
               <div>البيانات المطلوبة: {(data.kpi as { requiredData?: string }).requiredData || "—"}</div>
             </div>
             <h4>المستهدفات vs المتحقق — {year}</h4>
-            <table className="tbl" style={{ marginBottom: "1rem" }}>
+            <table className="tmkeen-table" style={{ marginBottom: "1rem" }}>
               <thead><tr><th>الفترة</th><th>المستهدف</th><th>المتحقق</th><th>نسبة التحقق</th></tr></thead>
               <tbody>
                 {data.targets.map((t) => (
@@ -66,7 +66,7 @@ export default function KpiDetailDrawer({
                 <p>{(t.entry as { whatHappened?: string })?.whatHappened || "—"}</p>
                 <p>{(t.entry as { howHappened?: string })?.howHappened || "—"}</p>
                 {(t.entry as { evidences?: { id: number; fileName: string }[] })?.evidences?.map((ev) => (
-                  <a key={ev.id} href={`/api/evidence/${ev.id}`} className="badge ontrack" style={{ marginLeft: ".3rem" }}>{ev.fileName}</a>
+                  <a key={ev.id} href={`/api/evidence/${ev.id}`} className="badge-primary" style={{ marginLeft: ".3rem" }}>{ev.fileName}</a>
                 ))}
               </div>
             ))}

@@ -167,9 +167,9 @@ export default function AdminKpisClient() {
       <div className="topbar">
         <div>
           <h1>إدارة المؤشرات</h1>
-          <div className="sub">تعريف المؤشرات والمستهدفات — مشرف النظام</div>
+          <div className="text-muted">تعريف المؤشرات والمستهدفات — مشرف النظام</div>
         </div>
-        <input className="inp" style={{ width: 220 }} placeholder="بحث بالرمز أو الاسم..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input className="input-field" style={{ width: 220 }} placeholder="بحث بالرمز أو الاسم..." value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       {msg && <div className="alert alert-success" style={{ marginBottom: "1rem" }}>{msg}</div>}
@@ -189,19 +189,19 @@ export default function AdminKpisClient() {
             ["recommendation", "توصيات القسم"],
           ].map(([key, label]) => (
             <div key={key}>
-              <label className="lbl">{label}</label>
-              <input className="inp" value={(form as Record<string, string>)[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
+              <label className="label-field">{label}</label>
+              <input className="input-field" value={(form as Record<string, string>)[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
             </div>
           ))}
         </div>
         <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap", marginBottom: ".75rem" }}>
-          <select className="inp" style={{ width: "auto" }} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as "STRATEGIC" })}>
+          <select className="input-field" style={{ width: "auto" }} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as "STRATEGIC" })}>
             {Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <select className="inp" style={{ width: "auto" }} value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value as "QUARTERLY" })}>
+          <select className="input-field" style={{ width: "auto" }} value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value as "QUARTERLY" })}>
             {Object.entries(FREQUENCY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <select className="inp" style={{ width: "auto" }} value={form.polarity} onChange={(e) => setForm({ ...form, polarity: e.target.value as "HIGHER_BETTER" })}>
+          <select className="input-field" style={{ width: "auto" }} value={form.polarity} onChange={(e) => setForm({ ...form, polarity: e.target.value as "HIGHER_BETTER" })}>
             {Object.entries(POLARITY_LABEL_API).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
@@ -209,17 +209,17 @@ export default function AdminKpisClient() {
         <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginBottom: ".75rem" }}>
           {periods.map((p) => (
             <div key={p}>
-              <label className="lbl">{PERIOD_LABEL[p as Period]}</label>
-              <input className="inp" style={{ width: 100 }} value={targets[p] ?? ""} onChange={(e) => setTargets({ ...targets, [p]: e.target.value })} />
+              <label className="label-field">{PERIOD_LABEL[p as Period]}</label>
+              <input className="input-field" style={{ width: 100 }} value={targets[p] ?? ""} onChange={(e) => setTargets({ ...targets, [p]: e.target.value })} />
             </div>
           ))}
         </div>
-        <button type="button" className="btn btn-sm" onClick={saveKpi}>{editId ? "تحديث" : "إنشاء"}</button>
-        {editId && <button type="button" className="btn-sm btn-ghost" style={{ marginRight: ".5rem" }} onClick={() => { setEditId(null); setForm(emptyForm); }}>إلغاء</button>}
+        <button type="button" className="btn-primary btn-sm" onClick={saveKpi}>{editId ? "تحديث" : "إنشاء"}</button>
+        {editId && <button type="button" className="btn-secondary btn-sm" style={{ marginRight: ".5rem" }} onClick={() => { setEditId(null); setForm(emptyForm); }}>إلغاء</button>}
       </div>
 
       <div className="card" style={{ overflowX: "auto" }}>
-        <table className="tbl">
+        <table className="tmkeen-table">
           <thead>
             <tr>
               <th>الرمز</th><th>الاسم</th><th>النوع</th><th>الدورية</th><th>الإدارة</th><th>نشط</th><th></th>
@@ -235,8 +235,8 @@ export default function AdminKpisClient() {
                 <td>{k.department?.name || k.ownerLabel || "—"}</td>
                 <td>{k.active ? "نعم" : "لا"}</td>
                 <td>
-                  <button type="button" className="btn-sm btn-ghost" onClick={() => startEdit(k)}>تعديل</button>
-                  {k.active && <button type="button" className="btn-sm btn-ghost" style={{ marginRight: ".3rem" }} onClick={() => softDelete(k.id)}>تعطيل</button>}
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => startEdit(k)}>تعديل</button>
+                  {k.active && <button type="button" className="btn-secondary btn-sm" style={{ marginRight: ".3rem" }} onClick={() => softDelete(k.id)}>تعطيل</button>}
                 </td>
               </tr>
             ))}

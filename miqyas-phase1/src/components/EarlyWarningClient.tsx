@@ -17,7 +17,7 @@ type AlertRow = {
   createdAt: string;
 };
 
-const RISK_BADGE: Record<string, string> = { LOW: "achieved", MEDIUM: "ontrack", HIGH: "critical" };
+const RISK_BADGE: Record<string, string> = { LOW: "badge-success", MEDIUM: "badge-primary", HIGH: "badge-danger" };
 
 export default function EarlyWarningClient({
   rows,
@@ -33,7 +33,7 @@ export default function EarlyWarningClient({
       <div className="topbar">
         <div>
           <h1>الإنذار المبكر</h1>
-          <div className="sub">تنبيهات {PERIOD_LABEL[period]} {year}</div>
+          <div className="text-muted">تنبيهات {PERIOD_LABEL[period]} {year}</div>
         </div>
         <PeriodSelector year={year} period={period} />
       </div>
@@ -41,7 +41,7 @@ export default function EarlyWarningClient({
         يُفعّل الإنذار في بداية الشهر الثالث من كل ربع عند تجاوز فجوة الأداء للنسبة المحددة في الإعدادات.
       </div>
       <div className="card" style={{ overflowX: "auto" }}>
-        <table className="tbl">
+        <table className="tmkeen-table">
           <thead>
             <tr>
               <th>المؤشر</th><th>المتحقق</th><th>المستهدف المتوقع</th><th>الفجوة %</th>
@@ -55,7 +55,7 @@ export default function EarlyWarningClient({
                 <td>{r.actualToDate}</td>
                 <td>{r.expectedToDate}</td>
                 <td>{r.gapPct}%</td>
-                <td><span className={`badge ${RISK_BADGE[r.riskLevel] || "nodata"}`}>{r.riskLabel}</span></td>
+                <td><span className={RISK_BADGE[r.riskLevel] || "badge-neutral"}>{r.riskLabel}</span></td>
                 <td style={{ fontSize: ".75rem" }}>{r.recipients}</td>
                 <td>{new Date(r.createdAt).toLocaleDateString("ar-SA")}</td>
                 <td>{r.emailSent ? "✓" : "—"}</td>
@@ -63,7 +63,7 @@ export default function EarlyWarningClient({
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <p className="sub" style={{ padding: "1rem" }}>لا توجد تنبيهات لهذه الفترة.</p>}
+        {rows.length === 0 && <p className="text-muted" style={{ padding: "1rem" }}>لا توجد تنبيهات لهذه الفترة.</p>}
       </div>
     </>
   );

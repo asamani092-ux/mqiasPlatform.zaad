@@ -27,9 +27,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <Providers>
-      <div className="app">
+      <div className="app-shell">
         <Sidebar user={{ name: user.name, role: user.role }} showApprovals={showApprovals} isAdmin={isAdmin} showExecutive={showExecutive} />
-        <main className="main">
+        <main className="app-main">
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: ".5rem" }}>
             <NotifBell />
           </div>

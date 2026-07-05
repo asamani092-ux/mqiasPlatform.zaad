@@ -1,351 +1,23 @@
-@import url("https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&display=swap");
+/**
+ * تخطيط التطبيق — يبني على Tmkeen DS (tokens.css + components.css)
+ */
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-:root {
-  --bg: #f9f9f9;
-  --card: #ffffff;
-  --card2: #f4f4f4;
-  --border: #e5e5e5;
-  --bhi: #cccccc;
-  --maroon: #8b1a2a;
-  --maroon2: #a02040;
-  --gold: #c4a246;
-  --orange: #e8700a;
-  --amber: #f5a623;
-  --red: #c0392b;
-  --green: #10b981;
-  --text: #222222;
-  --dim: #666666;
-  --slate: #888888;
-  --dark: #07111f;
-  --radius: 12px;
-  --shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-}
-
-html,
-body {
-  direction: rtl;
-  font-family: "Almarai", Tahoma, Arial, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-/* ── Layout ── */
-.app {
+.app-shell {
   display: flex;
   min-height: 100vh;
 }
 
-.main {
+.app-main {
   flex: 1;
   padding: 1.5rem 2rem;
   overflow-x: auto;
+  background: var(--tmkeen-surface-muted);
 }
 
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.25rem;
-}
-
-.topbar h1 {
-  font-size: 1.35rem;
-  font-weight: 800;
-}
-
-.sub {
-  font-size: 0.82rem;
-  color: var(--slate);
-}
-
-.grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.grid-4 {
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-}
-
-.grid-3 {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-/* ── Card ── */
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.25rem 1.5rem;
-  box-shadow: var(--shadow);
-}
-
-.card h3 {
-  font-size: 0.95rem;
-  font-weight: 800;
-  margin-bottom: 0.75rem;
-}
-
-/* ── Buttons ── */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  padding: 0.65rem 1.25rem;
-  border-radius: var(--radius);
-  font-family: "Almarai", sans-serif;
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  background: linear-gradient(135deg, #8b1a3a 0%, #a02040 50%, #c4a246 100%);
-  box-shadow: 0 4px 24px rgba(139, 26, 58, 0.35);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 32px rgba(139, 26, 58, 0.45);
-}
-
-.btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-ghost {
-  background: transparent;
-  color: var(--slate);
-  border: 1px solid var(--border);
-  box-shadow: none;
-}
-
-.btn-ghost:hover {
-  border-color: var(--maroon);
-  color: var(--maroon);
-  transform: none;
-  box-shadow: none;
-}
-
-.btn-sm {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.75rem;
-}
-
-/* ── Inputs ── */
-.inp {
-  width: 100%;
-  background: var(--card2);
-  border: 1px solid var(--border);
-  border-radius: 0.65rem;
-  padding: 0.65rem 0.9rem;
-  color: var(--text);
-  font-family: "Almarai", sans-serif;
-  font-size: 0.85rem;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.inp:focus {
-  border-color: var(--maroon);
-  box-shadow: 0 0 0 3px rgba(139, 26, 42, 0.1);
-}
-
-.inp[dir="ltr"],
-input[type="email"],
-input[type="password"] {
-  direction: ltr;
-  text-align: left;
-}
-
-.lbl {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--slate);
-  margin-bottom: 0.35rem;
-}
-
-/* ── Table ── */
-.tbl {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 0.35rem;
-  font-size: 0.82rem;
-}
-
-.tbl thead th {
-  background: var(--card2);
-  color: var(--dim);
-  font-weight: 700;
-  padding: 0.7rem 1rem;
-  text-align: right;
-}
-
-.tbl thead th:first-child {
-  border-radius: 0 0.6rem 0.6rem 0;
-}
-
-.tbl thead th:last-child {
-  border-radius: 0.6rem 0 0 0.6rem;
-}
-
-.tbl tbody tr td {
-  background: var(--card);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  padding: 0.75rem 1rem;
-}
-
-.tbl tbody tr td:first-child {
-  border-right: 1px solid var(--border);
-  border-radius: 0 0.6rem 0.6rem 0;
-}
-
-.tbl tbody tr td:last-child {
-  border-left: 1px solid var(--border);
-  border-radius: 0.6rem 0 0 0.6rem;
-}
-
-.tbl tbody tr:hover td {
-  background: var(--card2);
-}
-
-/* ── Badges ── */
-.badge {
-  display: inline-block;
-  padding: 0.2rem 0.65rem;
-  border-radius: 99px;
-  font-size: 0.68rem;
-  font-weight: 700;
-}
-
-.badge.achieved {
-  background: rgba(16, 185, 129, 0.12);
-  color: var(--green);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-}
-
-.badge.ontrack {
-  background: rgba(245, 166, 35, 0.12);
-  color: var(--amber);
-  border: 1px solid rgba(245, 166, 35, 0.25);
-}
-
-.badge.atrisk {
-  background: rgba(232, 112, 10, 0.12);
-  color: var(--orange);
-  border: 1px solid rgba(232, 112, 10, 0.25);
-}
-
-.badge.critical {
-  background: rgba(192, 57, 43, 0.12);
-  color: var(--red);
-  border: 1px solid rgba(192, 57, 43, 0.25);
-}
-
-.badge.nodata {
-  background: rgba(136, 136, 136, 0.1);
-  color: var(--slate);
-  border: 1px solid rgba(136, 136, 136, 0.2);
-}
-
-.badge.pending {
-  background: rgba(139, 26, 42, 0.12);
-  color: var(--maroon);
-  border: 1px solid rgba(139, 26, 42, 0.25);
-}
-
-/* ── Stat ── */
-.stat {
-  border-right: 4px solid var(--maroon);
-}
-
-.stat .num {
-  font-size: 2rem;
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-.stat .lbl {
-  font-size: 0.78rem;
-  color: var(--slate);
-  margin-top: 0.25rem;
-}
-
-/* ── Progress ── */
-.prog {
-  width: 100%;
-  height: 7px;
-  background: var(--card2);
-  border-radius: 99px;
-  overflow: hidden;
-}
-
-.prog-fill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 0.8s ease;
-}
-
-/* ── Alert ── */
-.alert {
-  border-radius: 0.75rem;
-  padding: 0.85rem 1.1rem;
-  font-size: 0.82rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.alert-success {
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  color: var(--green);
-}
-
-.alert-error {
-  background: rgba(192, 57, 43, 0.1);
-  border: 1px solid rgba(192, 57, 43, 0.3);
-  color: var(--red);
-}
-
-.alert-info {
-  background: rgba(196, 162, 70, 0.1);
-  border: 1px solid rgba(196, 162, 70, 0.3);
-  color: var(--gold);
-}
-
-.alert-warn {
-  background: rgba(245, 166, 35, 0.12);
-  border: 1px solid rgba(245, 166, 35, 0.35);
-  color: var(--amber);
-}
-
-/* ── Sidebar ── */
-.sidebar {
+.app-sidebar {
   width: 240px;
   flex-shrink: 0;
-  background: var(--dark);
+  background: var(--tmkeen-primary);
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -354,21 +26,18 @@ input[type="password"] {
 
 .sidebar-brand {
   padding: 1.5rem 1.25rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid color-mix(in srgb, #fff 12%, transparent);
 }
 
 .sidebar-brand h2 {
   font-size: 1.25rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #a02040, #c4a246);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #fff;
 }
 
 .sidebar-brand p {
   font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.45);
+  color: color-mix(in srgb, #fff 55%, transparent);
   margin-top: 0.2rem;
 }
 
@@ -385,32 +54,122 @@ input[type="password"] {
   align-items: center;
   gap: 0.6rem;
   padding: 0.65rem 0.85rem;
-  border-radius: 0.65rem;
+  border-radius: var(--tmkeen-radius-lg);
   font-size: 0.82rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.65);
-  transition: all 0.2s;
+  color: color-mix(in srgb, #fff 70%, transparent);
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .nav-link:hover {
   color: #fff;
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, #fff 8%, transparent);
 }
 
 .nav-link.active {
   color: #fff;
-  background: linear-gradient(135deg, #8b1a3a 0%, #a02040 50%, #c4a246 100%);
-  box-shadow: 0 4px 16px rgba(139, 26, 58, 0.35);
+  background: var(--tmkeen-primary-dark);
 }
 
 .sidebar-footer {
   padding: 1rem 1.25rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid color-mix(in srgb, #fff 12%, transparent);
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.45);
+  color: color-mix(in srgb, #fff 55%, transparent);
 }
 
-/* ── Notification dot ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.topbar h1 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--tmkeen-primary);
+}
+
+.text-muted {
+  font-size: 0.82rem;
+  color: var(--tmkeen-brand-gray);
+}
+
+.stat-card {
+  border-inline-start: 4px solid var(--tmkeen-primary);
+}
+
+.stat-num {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--tmkeen-primary);
+}
+
+.stat-lbl {
+  font-size: 0.78rem;
+  color: var(--tmkeen-brand-gray);
+  margin-top: 0.25rem;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.alert {
+  border-radius: var(--tmkeen-radius-lg);
+  padding: 0.85rem 1.1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.alert-success {
+  background: var(--tmkeen-success-bg);
+  border: 1px solid color-mix(in srgb, var(--tmkeen-success) 30%, transparent);
+  color: var(--tmkeen-success);
+}
+
+.alert-error {
+  background: var(--tmkeen-danger-bg);
+  border: 1px solid color-mix(in srgb, var(--tmkeen-danger) 30%, transparent);
+  color: var(--tmkeen-danger);
+}
+
+.alert-info {
+  background: color-mix(in srgb, var(--tmkeen-primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tmkeen-primary) 20%, transparent);
+  color: var(--tmkeen-primary);
+}
+
+.alert-warn {
+  background: var(--tmkeen-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--tmkeen-warning) 30%, transparent);
+  color: var(--tmkeen-warning);
+}
+
+.btn-sm {
+  padding: 0.35rem 0.75rem !important;
+  font-size: 0.75rem !important;
+}
+
+.card h3 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--tmkeen-primary);
+  margin-bottom: 0.75rem;
+}
+
 .notif-dot {
   position: relative;
 }
@@ -419,97 +178,21 @@ input[type="password"] {
   content: "";
   position: absolute;
   top: -2px;
-  left: -2px;
+  inset-inline-start: -2px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--red);
-  border: 2px solid var(--dark);
+  background: var(--tmkeen-danger);
+  border: 2px solid var(--tmkeen-surface);
 }
 
-/* ── Login page ── */
-.login-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--dark);
-  background-image:
-    radial-gradient(ellipse 70% 60% at 15% 0%, rgba(139, 26, 42, 0.15) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 50% at 85% 100%, rgba(196, 162, 70, 0.1) 0%, transparent 60%);
-}
-
-.login-card {
-  width: 100%;
-  max-width: 420px;
-  margin: 1.5rem;
-  background: rgba(13, 26, 45, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1.25rem;
-  padding: 2rem 2.25rem;
-  color: #fff;
-}
-
-.login-card h1 {
-  font-size: 1.5rem;
-  font-weight: 800;
-  margin-bottom: 0.35rem;
-}
-
-.login-card .sub {
-  color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 1.75rem;
-}
-
-.login-logo {
-  text-align: center;
-  margin-bottom: 1.75rem;
-}
-
-.login-logo span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, #8b1a3a, #c4a246);
-  font-size: 1.5rem;
-  font-weight: 800;
-  margin-bottom: 0.75rem;
-}
-
-.login-card .inp {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
-  color: #fff;
-}
-
-.login-card .inp:focus {
-  border-color: var(--maroon2);
-  box-shadow: 0 0 0 3px rgba(160, 32, 64, 0.2);
-}
-
-.login-card .lbl {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.login-card .btn {
-  width: 100%;
-  margin-top: 0.5rem;
-}
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar {
-  width: 5px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--bhi);
-  border-radius: 3px;
+.badge-neutral {
+  display: inline-block;
+  border-radius: 9999px;
+  background: var(--tmkeen-surface-muted);
+  padding: 0.125rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tmkeen-brand-gray);
+  border: 1px solid var(--tmkeen-surface-border);
 }

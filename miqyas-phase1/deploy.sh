@@ -17,15 +17,9 @@ npx prisma migrate deploy
 echo "==> npm run build"
 npm run build
 
-echo "==> نسخ ملفات standalone"
-mkdir -p .next/standalone/.next
-cp -r .next/static .next/standalone/.next/static
-cp -r public .next/standalone/public
-
-echo "==> مجلد الشواهد (خارج المسار العام)"
+echo "==> مجلد الشواهد"
 mkdir -p storage/evidence
-chmod 750 storage storage/evidence
-ln -sfn "$APP_DIR/storage" "$APP_DIR/.next/standalone/storage"
+chmod 750 storage storage/evidence 2>/dev/null || true
 
 echo "==> PM2 reload"
 set -a

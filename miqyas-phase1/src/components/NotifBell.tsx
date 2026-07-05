@@ -8,7 +8,7 @@ export default function NotifBell() {
   if (!session) return null;
 
   return (
-    <Link href="/dashboard" className="btn-ghost btn-sm notif-dot" title="الإشعارات">
+    <Link href="/dashboard" className="btn-secondary btn-sm notif-dot" title="الإشعارات">
       🔔
     </Link>
   );
