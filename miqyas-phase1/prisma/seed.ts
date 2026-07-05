@@ -83,6 +83,7 @@ async function main() {
     ["section_head_can_approve", "0"],
     ["early_warning_gap_pct", "20"],
     ["action_escalation_days", "0"],
+    ["current_year", String(new Date().getFullYear())],
   ];
   for (const [key, value] of settings) {
     await db.systemSetting.upsert({ where: { key }, update: {}, create: { key, value } });

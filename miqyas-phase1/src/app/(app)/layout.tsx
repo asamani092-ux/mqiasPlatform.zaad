@@ -7,8 +7,8 @@ import Providers from "@/components/Providers";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
-  const user = (session as any)?.user;
-  if (!user?.id) redirect("/login");
+  const user = session?.user;
+  if (!user?.uid) redirect("/login");
 
   return (
     <Providers>
