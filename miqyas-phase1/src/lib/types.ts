@@ -51,3 +51,18 @@ export const ROLE_LABEL: Record<string, string> = {
   SECTION_HEAD: "رئيس قسم",
   EMPLOYEE: "موظف",
 };
+
+export const ROLE_VALUES = [
+  "SYSTEM_ADMIN",
+  "EXECUTIVE",
+  "DEPT_MANAGER",
+  "SECTION_HEAD",
+  "EMPLOYEE",
+] as const;
+
+export type AppRole = (typeof ROLE_VALUES)[number];
+
+export const USER_STATUS_LABEL: Record<string, string> = {
+  ACTIVE: "نشط",
+  INACTIVE: "معطّل",
+};

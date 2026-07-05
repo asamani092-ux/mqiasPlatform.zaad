@@ -21,6 +21,7 @@ const BASE_NAV = [
 ];
 
 const ADMIN_NAV = [
+  { href: "/admin/users", label: "إدارة المستخدمين", icon: "👥" },
   { href: "/admin/kpis", label: "إدارة المؤشرات", icon: "⚙️" },
   { href: "/admin/import", label: "استيراد Excel", icon: "📥" },
   { href: "/admin/settings", label: "إعدادات النظام", icon: "🔧" },

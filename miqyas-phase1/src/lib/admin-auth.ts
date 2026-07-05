@@ -9,6 +9,12 @@ export function requireManageKpis(user: SessionUser): void {
   }
 }
 
+export function requireManageUsers(user: SessionUser): void {
+  if (!can.manageUsers(user)) {
+    throw { status: 403 as const, message: "غير مصرح — مشرف النظام فقط" };
+  }
+}
+
 export function handleForbidden(e: unknown) {
   if (e && typeof e === "object" && "status" in e && (e as ForbiddenError).status === 403) {
     return { error: (e as ForbiddenError).message, status: 403 };
