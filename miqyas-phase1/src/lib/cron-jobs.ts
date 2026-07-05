@@ -151,7 +151,7 @@ export async function runEarlyWarning(date = new Date()) {
     });
 
     if (userIds.length > 0) {
-      await notify({
+      const { emailSent } = await notify({
         userIds,
         type: "EARLY_WARNING",
         title: `إنذار مبكر — ${kpi.name}`,
@@ -161,7 +161,7 @@ export async function runEarlyWarning(date = new Date()) {
       });
       await db.earlyWarningAlert.update({
         where: { id: alert.id },
-        data: { emailSent: true },
+        data: { emailSent },
       });
     }
 

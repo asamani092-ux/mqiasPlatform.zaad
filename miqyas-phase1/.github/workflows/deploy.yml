@@ -1,0 +1,33 @@
+# ═══════════════════════════════════════════════════════════════
+# GitHub Actions — نشر تلقائي إلى VPS عند الدفع إلى main
+# ═══════════════════════════════════════════════════════════════
+#
+# الأسرار المطلوبة في GitHub (Settings → Secrets → Actions):
+#   VPS_HOST      — عنوان IP أو hostname للسيرفر
+#   VPS_USER      — مستخدم SSH (مثال: deploy)
+#   VPS_SSH_KEY   — المفتاح الخاص PEM كامل (بدون passphrase أو مع ssh-agent)
+#   VPS_APP_PATH  — مسار التطبيق على السيرفر (مثال: /var/www/miqyas/miqyas-phase1)
+#
+# البناء يتم على VPS (حيث DATABASE_URL متاح) — وليس على runner.
+
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.VPS_APP_PATH }}"
+            chmod +x deploy.sh
+            ./deploy.sh
