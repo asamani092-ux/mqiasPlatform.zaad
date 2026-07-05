@@ -70,7 +70,7 @@ async function main() {
   if (!adminPass) throw new Error("يجب ضبط ADMIN_PASSWORD في ملف .env قبل تشغيل البذرة");
   await db.user.upsert({
     where: { email: adminEmail },
-    update: {},
+    update: { passwordHash: await bcrypt.hash(adminPass, 12), status: "ACTIVE" },
     create: {
       name: "مكتب إدارة الأداء",
       email: adminEmail,
