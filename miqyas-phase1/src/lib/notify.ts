@@ -11,9 +11,11 @@ type NotifyParams = {
   email?: boolean;
 };
 
-export async function notify(params: NotifyParams): Promise<void> {
+export type NotifyResult = { emailSent: boolean };
+
+export async function notify(params: NotifyParams): Promise<NotifyResult> {
   const { userIds, type, title, body, link, email } = params;
-  if (userIds.length === 0) return;
+  if (userIds.length === 0) return { emailSent: false };
 
   const appUrl = process.env.APP_URL || "http://localhost:3000";
 
@@ -27,16 +29,18 @@ export async function notify(params: NotifyParams): Promise<void> {
     })),
   });
 
-  if (!email) return;
+  if (!email) return { emailSent: false };
 
   const users = await db.user.findMany({
     where: { id: { in: userIds }, status: "ACTIVE" },
     select: { id: true, email: true, name: true },
   });
 
+  if (users.length === 0) return { emailSent: false };
+
   const fullLink = link ? `${appUrl}${link.startsWith("/") ? link : `/${link}`}` : appUrl;
 
-  await Promise.all(
+  const results = await Promise.all(
     users.map((u) =>
       sendMail(
         u.email,
@@ -47,4 +51,6 @@ export async function notify(params: NotifyParams): Promise<void> {
       ),
     ),
   );
+
+  return { emailSent: results.some(Boolean) };
 }

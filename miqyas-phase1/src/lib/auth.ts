@@ -7,6 +7,19 @@ import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import type { SessionUser } from "@/lib/rbac";
 
+function extractClientIp(req: { headers?: Record<string, unknown> } | undefined): string | undefined {
+  if (!req?.headers) return undefined;
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) {
+    const raw = Array.isArray(forwarded) ? String(forwarded[0]) : String(forwarded);
+    const first = raw.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  const realIp = req.headers["x-real-ip"];
+  if (realIp) return Array.isArray(realIp) ? String(realIp[0]) : String(realIp);
+  return undefined;
+}
+
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt", maxAge: 8 * 60 * 60 },
   pages: { signIn: "/login" },
@@ -17,9 +30,10 @@ export const authOptions: NextAuthOptions = {
         email: { label: "البريد", type: "email" },
         password: { label: "كلمة المرور", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         const email = credentials?.email?.trim().toLowerCase();
         const password = credentials?.password;
+        const ip = extractClientIp(req);
 
         if (!email || !password) return null;
 
@@ -44,6 +58,7 @@ export const authOptions: NextAuthOptions = {
             email,
             success,
             userId: user?.id,
+            ip,
           },
         });
 
@@ -54,7 +69,7 @@ export const authOptions: NextAuthOptions = {
           data: { lastLogin: new Date() },
         });
 
-        await audit(user.id, "LOGIN", "User", user.id);
+        await audit(user.id, "LOGIN", "User", user.id, ip ? { ip } : undefined, ip);
 
         return {
           id: String(user.id),

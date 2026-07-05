@@ -46,6 +46,7 @@ export type ExecutiveSnapshot = {
   activeAlerts: { HIGH: number; MEDIUM: number; LOW: number };
   headline: {
     totalKpis: number;
+    measuredKpis: number;
     pctCritical: number;
     pctAtRisk: number;
     openCards: number;
@@ -81,7 +82,8 @@ export async function getExecutiveSnapshot(opts: {
     },
   });
 
-  const totalKpis = entries.length;
+  const totalKpis = await db.kpi.count({ where: { active: true } });
+  const measuredKpis = entries.length;
   let criticalCount = 0;
   let atRiskCount = 0;
 
@@ -182,6 +184,7 @@ export async function getExecutiveSnapshot(opts: {
     activeAlerts,
     headline: {
       totalKpis,
+      measuredKpis,
       pctCritical: totalKpis > 0 ? Math.round((criticalCount / totalKpis) * 1000) / 10 : 0,
       pctAtRisk: totalKpis > 0 ? Math.round((atRiskCount / totalKpis) * 1000) / 10 : 0,
       openCards: openDeviationCards.length,
