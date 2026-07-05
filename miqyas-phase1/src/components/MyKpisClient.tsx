@@ -60,30 +60,42 @@ function calcLiveStatus(pct: number | null): KpiStatus {
   return "CRITICAL";
 }
 
+function buildDrafts(list: KpiItem[]) {
+  const d: Record<number, { actual: string; what: string; how: string }> = {};
+  for (const item of list) {
+    d[item.kpi.id] = {
+      actual: item.entry?.actualValue?.toString() ?? "",
+      what: item.entry?.whatHappened ?? "",
+      how: item.entry?.howHappened ?? "",
+    };
+  }
+  return d;
+}
+
 export default function MyKpisClient({
   initialYear,
   initialPeriod,
-  userId,
+  initialItems,
 }: {
   initialYear: number;
   initialPeriod: Period;
-  userId: number;
+  initialItems: KpiItem[];
 }) {
   const [year, setYear] = useState(initialYear);
   const [period, setPeriod] = useState<Period>(initialPeriod);
-  const [items, setItems] = useState<KpiItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<KpiItem[]>(initialItems);
+  const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
-  const [drafts, setDrafts] = useState<Record<number, { actual: string; what: string; how: string }>>({});
+  const [drafts, setDrafts] = useState(() => buildDrafts(initialItems));
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/entries?year=${year}&period=${period}`);
+    const res = await fetch(`/api/my/entries?year=${year}&period=${period}`);
     if (res.ok) {
       const data = await res.json();
-      const owned = (data.items as KpiItem[]).filter((i) => i.kpi.ownerId === userId);
+      const owned = data.items as KpiItem[];
       setItems(owned);
       const d: Record<number, { actual: string; what: string; how: string }> = {};
       for (const item of owned) {
@@ -96,11 +108,16 @@ export default function MyKpisClient({
       setDrafts(d);
     }
     setLoading(false);
-  }, [year, period, userId]);
+  }, [year, period]);
 
   useEffect(() => {
+    if (year === initialYear && period === initialPeriod) {
+      setItems(initialItems);
+      setDrafts(buildDrafts(initialItems));
+      return;
+    }
     load();
-  }, [load]);
+  }, [year, period, initialYear, initialPeriod, initialItems, load]);
 
   async function save(kpiId: number) {
     const draft = drafts[kpiId];

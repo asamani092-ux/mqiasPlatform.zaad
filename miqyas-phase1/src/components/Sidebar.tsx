@@ -10,18 +10,26 @@ const BASE_NAV = [
   { href: "/my", label: "مهامي ومؤشراتي", icon: "📋" },
 ];
 
+const ADMIN_NAV = [
+  { href: "/admin/kpis", label: "إدارة المؤشرات", icon: "⚙️" },
+  { href: "/admin/import", label: "استيراد Excel", icon: "📥" },
+  { href: "/admin/settings", label: "إعدادات النظام", icon: "🔧" },
+];
+
 export default function Sidebar({
   user,
   showApprovals,
+  isAdmin,
 }: {
   user: { name: string; role: string };
   showApprovals: boolean;
+  isAdmin: boolean;
 }) {
   const pathname = usePathname();
 
-  const nav = showApprovals
-    ? [...BASE_NAV, { href: "/approvals", label: "اعتماد القياسات", icon: "✅" }]
-    : BASE_NAV;
+  let nav = [...BASE_NAV];
+  if (showApprovals) nav.push({ href: "/approvals", label: "اعتماد القياسات", icon: "✅" });
+  if (isAdmin) nav = [...nav, ...ADMIN_NAV];
 
   return (
     <aside className="sidebar">

@@ -137,6 +137,8 @@ model Kpi {
   departmentId      Int?
   sectionId         Int?
   ownerId           Int? // الموظف المسؤول عن الإدخال
+  ownerLabel        String? // نص الإدارة المالكة الخام عند عدم الربط
+  recommendation    String? // توصيات قسم الاستراتيجية (تعريف المؤشر)
   strategicGoalId   Int?
   operationalGoalId Int?
   active            Boolean   @default(true)
