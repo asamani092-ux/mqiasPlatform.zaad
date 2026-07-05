@@ -5,12 +5,23 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { ROLE_LABEL } from "@/lib/types";
 
-const NAV = [
+const BASE_NAV = [
   { href: "/dashboard", label: "اللوحة الرئيسية", icon: "📊" },
+  { href: "/my", label: "مهامي ومؤشراتي", icon: "📋" },
 ];
 
-export default function Sidebar({ user }: { user: { name: string; role: string } }) {
+export default function Sidebar({
+  user,
+  showApprovals,
+}: {
+  user: { name: string; role: string };
+  showApprovals: boolean;
+}) {
   const pathname = usePathname();
+
+  const nav = showApprovals
+    ? [...BASE_NAV, { href: "/approvals", label: "اعتماد القياسات", icon: "✅" }]
+    : BASE_NAV;
 
   return (
     <aside className="sidebar">
@@ -19,7 +30,7 @@ export default function Sidebar({ user }: { user: { name: string; role: string }
         <p>منصة قياس الأداء المؤسسي</p>
       </div>
       <nav className="sidebar-nav">
-        {NAV.map((item) => (
+        {nav.map((item) => (
           <Link
             key={item.href}
             href={item.href}

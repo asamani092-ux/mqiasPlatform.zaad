@@ -27,6 +27,23 @@ export const STATUS_BADGE: Record<KpiStatus, string> = {
   NO_DATA: "nodata",
 };
 
+export const APPROVAL_LABEL: Record<string, string> = {
+  PENDING: "بانتظار الاعتماد",
+  APPROVED: "معتمد",
+  REJECTED: "مرفوض",
+};
+
+export const APPROVAL_BADGE: Record<string, string> = {
+  PENDING: "pending",
+  APPROVED: "achieved",
+  REJECTED: "critical",
+};
+
+export const POLARITY_LABEL: Record<string, string> = {
+  HIGHER_BETTER: "أعلى أفضل",
+  LOWER_BETTER: "أقل أفضل",
+};
+
 export const ROLE_LABEL: Record<string, string> = {
   SYSTEM_ADMIN: "مشرف النظام",
   EXECUTIVE: "الإدارة العليا",
