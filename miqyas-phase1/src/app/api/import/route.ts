@@ -4,33 +4,24 @@ import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { requireManageKpis } from "@/lib/admin-auth";
-import { dryRunImport, type ParsedImportRow } from "@/lib/import-excel";
+import { dryRunImport } from "@/lib/import-excel";
+import { confirmImportSchema, validateImportRows } from "@/lib/import-schemas";
+import { analyzeImportCodes } from "@/lib/import-analysis";
 import { achievementPct, deviationValue, kpiStatus } from "@/lib/kpi";
 import { getSetting } from "@/lib/settings";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
+import type { ValidatedImportRow } from "@/lib/import-schemas";
 
-const previewCache = new Map<string, ParsedImportRow[]>();
+export const dynamic = "force-dynamic";
 
-const confirmSchema = z.object({ confirm: z.literal(true), year: z.number().int().optional() });
-
-async function commitImport(
-  rows: ParsedImportRow[],
-  adminUserId: number,
-  year: number,
-) {
+async function commitImport(rows: ValidatedImportRow[], adminUserId: number, year: number) {
   let created = 0;
   let updated = 0;
   let skipped = 0;
   let errors = 0;
-
   const kpiByCode = new Map<string, { id: number }>();
 
   for (const row of rows) {
-    if (row.status === "ERROR") {
-      errors++;
-      continue;
-    }
-
     try {
       let strategicGoalId: number | undefined;
       if (row.goalCode) {
@@ -39,6 +30,7 @@ async function commitImport(
         if (goal) strategicGoalId = goal.id;
       }
 
+      const existing = await db.kpi.findUnique({ where: { code: row.code }, select: { id: true } });
       const kpi = await db.kpi.upsert({
         where: { code: row.code },
         create: {
@@ -75,8 +67,8 @@ async function commitImport(
       });
 
       kpiByCode.set(row.code, { id: kpi.id });
-      if (row.status === "NEW") created++;
-      else updated++;
+      if (existing) updated++;
+      else created++;
 
       if (row.periodTarget != null) {
         await db.kpiTarget.upsert({
@@ -87,9 +79,11 @@ async function commitImport(
       }
 
       if (row.actualValue != null) {
-        const target = row.periodTarget ?? (await db.kpiTarget.findUnique({
-          where: { kpiId_year_period: { kpiId: kpi.id, year, period: row.period } },
-        }))?.targetValue;
+        const target =
+          row.periodTarget ??
+          (await db.kpiTarget.findUnique({
+            where: { kpiId_year_period: { kpiId: kpi.id, year, period: row.period } },
+          }))?.targetValue;
 
         const pct = target != null ? achievementPct(row.actualValue, target, row.polarity) : null;
         const devVal = target != null ? deviationValue(row.actualValue, target) : null;
@@ -131,7 +125,11 @@ async function commitImport(
     }
   }
 
-  return { created, updated, skipped, errors, kpiCount: kpiByCode.size };
+  const codeAnalysis = analyzeImportCodes(
+    rows.map((r) => ({ ...r, rowNum: 0, status: "UPDATE" as const })),
+  );
+
+  return { created, updated, skipped, errors, kpiCount: kpiByCode.size, codeAnalysis };
 }
 
 export async function POST(req: NextRequest) {
@@ -143,14 +141,17 @@ export async function POST(req: NextRequest) {
     const year = parseInt((await getSetting("current_year")) || "2026", 10);
 
     if (contentType.includes("application/json")) {
-      const body = confirmSchema.parse(await req.json());
-      const pending = previewCache.get(user.id);
-      if (!pending?.length) return jsonError("لا توجد معاينة — ارفع الملف أولاً", 400);
+      const body = confirmImportSchema.parse(await req.json());
+      let validated: ValidatedImportRow[];
+      try {
+        validated = validateImportRows(body.rows as Parameters<typeof validateImportRows>[0]);
+      } catch {
+        return jsonError("صفوف غير صالحة — أعد المعاينة", 400);
+      }
+      if (validated.length === 0) return jsonError("لا توجد صفوف صالحة للاستيراد", 400);
 
-      const result = await commitImport(pending, parseInt(user.id, 10), body.year ?? year);
+      const result = await commitImport(validated, parseInt(user.id, 10), body.year ?? year);
       await audit(parseInt(user.id, 10), "IMPORT_EXCEL", "Kpi", undefined, result);
-      previewCache.delete(user.id);
-
       return NextResponse.json({ ok: true, ...result });
     }
 
@@ -163,11 +164,7 @@ export async function POST(req: NextRequest) {
     const existing = await db.kpi.findMany({ select: { id: true, code: true } });
     const existingCodes = new Map(existing.map((k) => [k.code, k.id]));
 
-    const preview = await dryRunImport(buffer, departments, existingCodes, year);
-
-    previewCache.set(user.id, preview.rows);
-
-    return NextResponse.json(preview);
+    return NextResponse.json(await dryRunImport(buffer, departments, existingCodes, year));
   } catch (e) {
     if (e instanceof z.ZodError) return jsonError("بيانات غير صالحة", 400);
     return handleApiError(e);

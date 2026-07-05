@@ -5,9 +5,19 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { ROLE_LABEL } from "@/lib/types";
 
+const TRACK_NAV = [
+  { href: "/strategic", label: "المسار الاستراتيجي", icon: "🎯" },
+  { href: "/operational", label: "المسار التشغيلي", icon: "⚙️" },
+  { href: "/early-warning", label: "الإنذار المبكر", icon: "⚠️" },
+  { href: "/deviation", label: "بطاقات الانحراف", icon: "📉" },
+  { href: "/governance", label: "الحوكمة", icon: "🏛️" },
+  { href: "/knowledge", label: "المعرفة المؤسسية", icon: "📚" },
+];
+
 const BASE_NAV = [
   { href: "/dashboard", label: "اللوحة الرئيسية", icon: "📊" },
   { href: "/my", label: "مهامي ومؤشراتي", icon: "📋" },
+  ...TRACK_NAV,
 ];
 
 const ADMIN_NAV = [

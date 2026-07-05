@@ -220,6 +220,8 @@ export function parseWorkbook(
   return Array.from(byCode.values());
 }
 
+import { analyzeImportCodes } from "@/lib/import-analysis";
+
 export async function dryRunImport(
   buffer: Buffer,
   departments: { id: number; name: string }[],
@@ -227,6 +229,7 @@ export async function dryRunImport(
   year = 2026,
 ) {
   const rows = parseWorkbook(buffer, departments, existingCodes, year);
+  const codeAnalysis = analyzeImportCodes(rows);
   return {
     rows,
     summary: {
@@ -234,6 +237,8 @@ export async function dryRunImport(
       new: rows.filter((r) => r.status === "NEW").length,
       update: rows.filter((r) => r.status === "UPDATE").length,
       errors: rows.filter((r) => r.status === "ERROR").length,
+      uniqueKpiCodes: codeAnalysis.uniqueCodes.length,
     },
+    codeAnalysis,
   };
 }

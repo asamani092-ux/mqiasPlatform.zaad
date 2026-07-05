@@ -1,26 +1,26 @@
 "use client";
 
 import { useState } from "react";
-
-type PreviewRow = {
-  code: string;
-  name: string;
-  type: string;
-  period: string;
-  status: string;
-  error?: string;
-  departmentId: number | null;
-  ownerLabel: string | null;
-};
+import type { ParsedImportRow } from "@/lib/import-excel";
 
 type Preview = {
-  rows: PreviewRow[];
-  summary: { total: number; new: number; update: number; errors: number };
+  rows: ParsedImportRow[];
+  summary: {
+    total: number;
+    new: number;
+    update: number;
+    errors: number;
+    uniqueKpiCodes: number;
+  };
+  codeAnalysis: {
+    uniqueCodes: string[];
+    quarterOnlyFlags: { code: string; periods: string[]; missing: string[] }[];
+  };
 };
 
 export default function ImportClient() {
   const [preview, setPreview] = useState<Preview | null>(null);
-  const [summary, setSummary] = useState<Record<string, number> | null>(null);
+  const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -32,20 +32,17 @@ export default function ImportClient() {
     fd.append("file", file);
     const res = await fetch("/api/import", { method: "POST", body: fd });
     setLoading(false);
-    if (res.ok) {
-      setPreview(await res.json());
-    } else {
-      const err = await res.json();
-      setMsg(err.error || "فشل التحليل");
-    }
+    if (res.ok) setPreview(await res.json());
+    else setMsg((await res.json()).error || "فشل التحليل");
   }
 
   async function confirmImport() {
+    if (!preview) return;
     setLoading(true);
     const res = await fetch("/api/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ confirm: true }),
+      body: JSON.stringify({ confirm: true, rows: preview.rows }),
     });
     setLoading(false);
     if (res.ok) {
@@ -54,8 +51,7 @@ export default function ImportClient() {
       setPreview(null);
       setMsg("اكتمل الاستيراد بنجاح");
     } else {
-      const err = await res.json();
-      setMsg(err.error || "فشل الاستيراد");
+      setMsg((await res.json()).error || "فشل الاستيراد");
     }
   }
 
@@ -64,7 +60,7 @@ export default function ImportClient() {
       <div className="topbar">
         <div>
           <h1>استيراد Excel</h1>
-          <div className="sub">معاينة ثم تأكيد — ملف قياس الأداء 2026</div>
+          <div className="sub">معاينة ثم تأكيد — الصفوف تُرسل مع طلب التأكيد</div>
         </div>
       </div>
 
@@ -77,11 +73,11 @@ export default function ImportClient() {
       </div>
 
       {msg && (
-        <div className={`alert ${msg.includes("نجاح") || msg.includes("اكتمل") ? "alert-success" : "alert-error"}`} style={{ marginBottom: "1rem" }}>
+        <div className={`alert ${msg.includes("اكتمل") ? "alert-success" : "alert-error"}`} style={{ marginBottom: "1rem" }}>
           {msg}
           {summary && (
             <div style={{ marginTop: ".5rem" }}>
-              أُنشئ: {summary.created} · حُدّث: {summary.updated} · أخطاء: {summary.errors} · مؤشرات: {summary.kpiCount}
+              أُنشئ: {String(summary.created)} · حُدّث: {String(summary.updated)} · أخطاء: {String(summary.errors)} · مؤشرات: {String(summary.kpiCount)}
             </div>
           )}
         </div>
@@ -90,27 +86,52 @@ export default function ImportClient() {
       {preview && (
         <>
           <div className="card" style={{ marginBottom: "1rem" }}>
-            <p>المجموع: {preview.summary.total} · جديد: {preview.summary.new} · تحديث: {preview.summary.update} · أخطاء: {preview.summary.errors}</p>
+            <p>
+              المجموع: {preview.summary.total} · جديد: {preview.summary.new} · تحديث: {preview.summary.update} ·
+              أخطاء: {preview.summary.errors} · رموز فريدة: {preview.summary.uniqueKpiCodes}
+            </p>
             <button type="button" className="btn" style={{ marginTop: ".75rem" }} disabled={loading || preview.summary.errors === preview.summary.total} onClick={confirmImport}>
               تأكيد الاستيراد
             </button>
           </div>
+
+          <div className="card" style={{ marginBottom: "1rem" }}>
+            <h3>رموز KPI الفريدة ({preview.codeAnalysis.uniqueCodes.length})</h3>
+            <p className="sub" style={{ fontSize: ".78rem", marginBottom: ".5rem" }}>
+              {preview.codeAnalysis.uniqueCodes.join("، ")}
+            </p>
+            {preview.codeAnalysis.quarterOnlyFlags.length > 0 && (
+              <>
+                <h4 style={{ marginTop: ".75rem", color: "var(--amber)" }}>رموز ناقصة في بعض الأرباع — للمراجعة</h4>
+                <table className="tbl">
+                  <thead><tr><th>الرمز</th><th>موجود في</th><th>ناقص</th></tr></thead>
+                  <tbody>
+                    {preview.codeAnalysis.quarterOnlyFlags.map((f) => (
+                      <tr key={f.code}>
+                        <td>{f.code}</td>
+                        <td>{f.periods.join("، ")}</td>
+                        <td><span className="badge atrisk">{f.missing.join("، ")}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </div>
+
           <div className="card" style={{ overflowX: "auto", maxHeight: 400, overflowY: "auto" }}>
             <table className="tbl">
               <thead>
-                <tr>
-                  <th>الرمز</th><th>الاسم</th><th>النوع</th><th>الفترة</th><th>الحالة</th><th>ملاحظة</th>
-                </tr>
+                <tr><th>الرمز</th><th>الاسم</th><th>الفترة</th><th>الحالة</th><th>ملاحظة</th></tr>
               </thead>
               <tbody>
                 {preview.rows.map((r, i) => (
                   <tr key={`${r.code}-${r.period}-${i}`}>
                     <td>{r.code}</td>
                     <td>{r.name}</td>
-                    <td>{r.type}</td>
                     <td>{r.period}</td>
                     <td><span className={`badge ${r.status === "ERROR" ? "critical" : r.status === "NEW" ? "achieved" : "ontrack"}`}>{r.status}</span></td>
-                    <td>{r.error || (r.ownerLabel ? `ownerLabel: ${r.ownerLabel}` : "")}</td>
+                    <td>{r.error || r.ownerLabel || ""}</td>
                   </tr>
                 ))}
               </tbody>
