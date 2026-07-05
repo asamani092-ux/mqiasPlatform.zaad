@@ -46,7 +46,7 @@ export async function notify(params: NotifyParams): Promise<NotifyResult> {
         u.email,
         title,
         `<p>مرحبًا ${u.name}،</p><p>${body}</p>${
-          link ? `<p><a href="${fullLink}" style="color:#8b1a2a;font-weight:700;">عرض التفاصيل</a></p>` : ""
+          link ? `<p><a href="${fullLink}" style="color:#8B1538;font-weight:700;">عرض التفاصيل</a></p>` : ""
         }`,
       ),
     ),

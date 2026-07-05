@@ -60,16 +60,16 @@ export default function ImportClient() {
       <div className="topbar">
         <div>
           <h1>استيراد Excel</h1>
-          <div className="sub">معاينة ثم تأكيد — الصفوف تُرسل مع طلب التأكيد</div>
+          <div className="text-muted">معاينة ثم تأكيد — الصفوف تُرسل مع طلب التأكيد</div>
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: "1rem" }}>
-        <label className="btn" style={{ cursor: "pointer" }}>
+        <label className="btn-primary" style={{ cursor: "pointer" }}>
           اختيار ملف .xlsx
           <input type="file" hidden accept=".xlsx,.xls" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} />
         </label>
-        {loading && <span className="sub" style={{ marginRight: ".75rem" }}>جاري المعالجة...</span>}
+        {loading && <span className="text-muted" style={{ marginRight: ".75rem" }}>جاري المعالجة...</span>}
       </div>
 
       {msg && (
@@ -90,27 +90,27 @@ export default function ImportClient() {
               المجموع: {preview.summary.total} · جديد: {preview.summary.new} · تحديث: {preview.summary.update} ·
               أخطاء: {preview.summary.errors} · رموز فريدة: {preview.summary.uniqueKpiCodes}
             </p>
-            <button type="button" className="btn" style={{ marginTop: ".75rem" }} disabled={loading || preview.summary.errors === preview.summary.total} onClick={confirmImport}>
+            <button type="button" className="btn-primary" style={{ marginTop: ".75rem" }} disabled={loading || preview.summary.errors === preview.summary.total} onClick={confirmImport}>
               تأكيد الاستيراد
             </button>
           </div>
 
           <div className="card" style={{ marginBottom: "1rem" }}>
             <h3>رموز KPI الفريدة ({preview.codeAnalysis.uniqueCodes.length})</h3>
-            <p className="sub" style={{ fontSize: ".78rem", marginBottom: ".5rem" }}>
+            <p className="text-muted" style={{ fontSize: ".78rem", marginBottom: ".5rem" }}>
               {preview.codeAnalysis.uniqueCodes.join("، ")}
             </p>
             {preview.codeAnalysis.quarterOnlyFlags.length > 0 && (
               <>
-                <h4 style={{ marginTop: ".75rem", color: "var(--amber)" }}>رموز ناقصة في بعض الأرباع — للمراجعة</h4>
-                <table className="tbl">
+                <h4 style={{ marginTop: ".75rem", color: "var(--tmkeen-warning)" }}>رموز ناقصة في بعض الأرباع — للمراجعة</h4>
+                <table className="tmkeen-table">
                   <thead><tr><th>الرمز</th><th>موجود في</th><th>ناقص</th></tr></thead>
                   <tbody>
                     {preview.codeAnalysis.quarterOnlyFlags.map((f) => (
                       <tr key={f.code}>
                         <td>{f.code}</td>
                         <td>{f.periods.join("، ")}</td>
-                        <td><span className="badge atrisk">{f.missing.join("، ")}</span></td>
+                        <td><span className="badge-warning">{f.missing.join("، ")}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -120,7 +120,7 @@ export default function ImportClient() {
           </div>
 
           <div className="card" style={{ overflowX: "auto", maxHeight: 400, overflowY: "auto" }}>
-            <table className="tbl">
+            <table className="tmkeen-table">
               <thead>
                 <tr><th>الرمز</th><th>الاسم</th><th>الفترة</th><th>الحالة</th><th>ملاحظة</th></tr>
               </thead>
@@ -130,7 +130,7 @@ export default function ImportClient() {
                     <td>{r.code}</td>
                     <td>{r.name}</td>
                     <td>{r.period}</td>
-                    <td><span className={`badge ${r.status === "ERROR" ? "critical" : r.status === "NEW" ? "achieved" : "ontrack"}`}>{r.status}</span></td>
+                    <td><span className={r.status === "ERROR" ? "badge-danger" : r.status === "NEW" ? "badge-success" : "badge-primary"}>{r.status}</span></td>
                     <td>{r.error || r.ownerLabel || ""}</td>
                   </tr>
                 ))}

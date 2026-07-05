@@ -160,12 +160,12 @@ export default function GovernanceClient({
   }
 
   const statCards = [
-    { num: stats.totalRequirements, lbl: "المتطلبات المعتمدة", color: "var(--maroon)" },
-    { num: stats.appliedCount, lbl: "المطبقة", color: "var(--green)" },
-    { num: `${stats.compliancePct}%`, lbl: "نسبة الامتثال", color: "var(--gold)" },
-    { num: stats.notAppliedCount, lbl: "غير المكتملة", color: "var(--orange)" },
-    { num: stats.openObservations, lbl: "ملاحظات قائمة", color: "var(--red)" },
-    { num: stats.closedInPeriod, lbl: "ملاحظات مغلقة بالفترة", color: "var(--amber)" },
+    { num: stats.totalRequirements, lbl: "المتطلبات المعتمدة", color: "var(--tmkeen-primary)" },
+    { num: stats.appliedCount, lbl: "المطبقة", color: "var(--tmkeen-success)" },
+    { num: `${stats.compliancePct}%`, lbl: "نسبة الامتثال", color: "var(--tmkeen-secondary)" },
+    { num: stats.notAppliedCount, lbl: "غير المكتملة", color: "var(--tmkeen-warning)" },
+    { num: stats.openObservations, lbl: "ملاحظات قائمة", color: "var(--tmkeen-danger)" },
+    { num: stats.closedInPeriod, lbl: "ملاحظات مغلقة بالفترة", color: "var(--tmkeen-warning)" },
   ];
 
   return (
@@ -173,7 +173,7 @@ export default function GovernanceClient({
       <div className="topbar">
         <div>
           <h1>مسار الحوكمة</h1>
-          <div className="sub">متطلبات الامتثال والملاحظات</div>
+          <div className="text-muted">متطلبات الامتثال والملاحظات</div>
         </div>
         <PeriodSelector year={year} period={period} />
       </div>
@@ -182,16 +182,16 @@ export default function GovernanceClient({
 
       <div className="grid grid-3" style={{ marginBottom: "1rem" }}>
         {statCards.map((s) => (
-          <div key={s.lbl} className="card stat" style={{ borderRightColor: s.color }}>
-            <div className="num">{s.num}</div>
-            <div className="lbl">{s.lbl}</div>
+          <div key={s.lbl} className="card stat-card" style={{ borderRightColor: s.color }}>
+            <div className="stat-num">{s.num}</div>
+            <div className="stat-lbl">{s.lbl}</div>
           </div>
         ))}
       </div>
 
       <div className="card" style={{ marginBottom: "1rem" }}>
         <h3 style={{ marginBottom: ".75rem" }}>متطلبات الامتثال — {year}</h3>
-        <table className="tbl">
+        <table className="tmkeen-table">
           <thead><tr><th>المتطلب</th><th>التصنيف</th><th>الحالة</th><th>ملاحظات</th></tr></thead>
           <tbody>
             {requirements.map((r) => (
@@ -202,13 +202,13 @@ export default function GovernanceClient({
                   {canManage ? (
                     <button
                       type="button"
-                      className={`badge ${r.status === "APPLIED" ? "achieved" : "critical"}`}
+                      className={r.status === "APPLIED" ? "badge-success" : "badge-danger"}
                       onClick={() => toggleRequirement(r.id, r.status === "APPLIED" ? "NOT_APPLIED" : "APPLIED")}
                     >
                       {r.status === "APPLIED" ? "مطبّق" : "غير مطبّق"}
                     </button>
                   ) : (
-                    <span className={`badge ${r.status === "APPLIED" ? "achieved" : "critical"}`}>
+                    <span className={r.status === "APPLIED" ? "badge-success" : "badge-danger"}>
                       {r.status === "APPLIED" ? "مطبّق" : "غير مطبّق"}
                     </span>
                   )}
@@ -216,7 +216,7 @@ export default function GovernanceClient({
                 <td>
                   {canManage ? (
                     <input
-                      className="inp"
+                      className="input-field"
                       style={{ fontSize: ".78rem", minWidth: "140px" }}
                       defaultValue={r.notes || ""}
                       placeholder="أضف ملاحظة..."
@@ -235,17 +235,17 @@ export default function GovernanceClient({
         </table>
         {canManage && (
           <div style={{ display: "flex", gap: ".5rem", marginTop: ".75rem", flexWrap: "wrap" }}>
-            <input className="inp" placeholder="متطلب جديد" value={newReq.title} onChange={(e) => setNewReq({ ...newReq, title: e.target.value })} />
-            <input className="inp" placeholder="التصنيف" value={newReq.category} onChange={(e) => setNewReq({ ...newReq, category: e.target.value })} />
-            <input className="inp" placeholder="ملاحظات" value={newReq.notes} onChange={(e) => setNewReq({ ...newReq, notes: e.target.value })} />
-            <button type="button" className="btn btn-sm" onClick={addRequirement}>إضافة</button>
+            <input className="input-field" placeholder="متطلب جديد" value={newReq.title} onChange={(e) => setNewReq({ ...newReq, title: e.target.value })} />
+            <input className="input-field" placeholder="التصنيف" value={newReq.category} onChange={(e) => setNewReq({ ...newReq, category: e.target.value })} />
+            <input className="input-field" placeholder="ملاحظات" value={newReq.notes} onChange={(e) => setNewReq({ ...newReq, notes: e.target.value })} />
+            <button type="button" className="btn-primary btn-sm" onClick={addRequirement}>إضافة</button>
           </div>
         )}
       </div>
 
       <div className="card">
         <h3 style={{ marginBottom: ".75rem" }}>الملاحظات</h3>
-        <table className="tbl">
+        <table className="tmkeen-table">
           <thead><tr><th>الملاحظة</th><th>فترة الفتح</th><th>الحالة</th><th>إغلاق</th></tr></thead>
           <tbody>
             {observations.map((o) => (
@@ -253,7 +253,7 @@ export default function GovernanceClient({
                 <td>
                   {canManage ? (
                     <input
-                      className="inp"
+                      className="input-field"
                       style={{ fontSize: ".78rem", minWidth: "180px" }}
                       defaultValue={o.title}
                       onBlur={(e) => {
@@ -266,12 +266,12 @@ export default function GovernanceClient({
                   )}
                 </td>
                 <td>{o.openedYear} · {PERIOD_LABEL[o.openedPeriod as Period] || o.openedPeriod}</td>
-                <td><span className={`badge ${o.status === "OPEN" ? "atrisk" : "achieved"}`}>{o.status === "OPEN" ? "قائمة" : "مغلقة"}</span></td>
+                <td><span className={o.status === "OPEN" ? "badge-warning" : "badge-success"}>{o.status === "OPEN" ? "قائمة" : "مغلقة"}</span></td>
                 <td>
                   {canManage && (
                     <button
                       type="button"
-                      className="btn-sm btn-ghost"
+                      className="btn-secondary btn-sm"
                       onClick={() => toggleObservation(o.id, o.status === "OPEN" ? "CLOSED" : "OPEN")}
                     >
                       {o.status === "OPEN" ? "إغلاق" : "إعادة فتح"}
@@ -284,8 +284,8 @@ export default function GovernanceClient({
         </table>
         {canManage && (
           <div style={{ display: "flex", gap: ".5rem", marginTop: ".75rem" }}>
-            <input className="inp" placeholder="ملاحظة جديدة" value={newObs.title} onChange={(e) => setNewObs({ title: e.target.value })} />
-            <button type="button" className="btn btn-sm" onClick={addObservation}>إضافة</button>
+            <input className="input-field" placeholder="ملاحظة جديدة" value={newObs.title} onChange={(e) => setNewObs({ title: e.target.value })} />
+            <button type="button" className="btn-primary btn-sm" onClick={addObservation}>إضافة</button>
           </div>
         )}
       </div>

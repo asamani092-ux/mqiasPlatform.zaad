@@ -20,11 +20,11 @@ export const STATUS_LABEL: Record<KpiStatus, string> = {
 };
 
 export const STATUS_BADGE: Record<KpiStatus, string> = {
-  ACHIEVED: "achieved",
-  ON_TRACK: "ontrack",
-  AT_RISK: "atrisk",
-  CRITICAL: "critical",
-  NO_DATA: "nodata",
+  ACHIEVED: "badge-success",
+  ON_TRACK: "badge-primary",
+  AT_RISK: "badge-warning",
+  CRITICAL: "badge-danger",
+  NO_DATA: "badge-neutral",
 };
 
 export const APPROVAL_LABEL: Record<string, string> = {
@@ -34,9 +34,9 @@ export const APPROVAL_LABEL: Record<string, string> = {
 };
 
 export const APPROVAL_BADGE: Record<string, string> = {
-  PENDING: "pending",
-  APPROVED: "achieved",
-  REJECTED: "critical",
+  PENDING: "badge-warning",
+  APPROVED: "badge-success",
+  REJECTED: "badge-danger",
 };
 
 export const POLARITY_LABEL: Record<string, string> = {

@@ -45,7 +45,7 @@ export default function Sidebar({
   if (isAdmin) nav = [...nav, ...ADMIN_NAV];
 
   return (
-    <aside className="sidebar">
+    <aside className="app-sidebar">
       <div className="sidebar-brand">
         <h2>مِقياس</h2>
         <p>منصة قياس الأداء المؤسسي</p>
@@ -69,8 +69,8 @@ export default function Sidebar({
         <div>{ROLE_LABEL[user.role] || user.role}</div>
         <button
           type="button"
-          className="btn-ghost btn-sm"
-          style={{ marginTop: ".75rem", width: "100%", color: "rgba(255,255,255,0.55)", borderColor: "rgba(255,255,255,0.15)" }}
+          className="btn-secondary btn-sm"
+          style={{ marginTop: ".75rem", width: "100%", color: "rgba(255,255,255,0.85)", borderColor: "rgba(255,255,255,0.35)", background: "transparent" }}
           onClick={() => signOut({ callbackUrl: "/login" })}
         >
           تسجيل الخروج

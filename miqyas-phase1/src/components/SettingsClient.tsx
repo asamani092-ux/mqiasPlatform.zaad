@@ -35,7 +35,7 @@ export default function SettingsClient() {
       <div className="topbar">
         <div>
           <h1>إعدادات النظام</h1>
-          <div className="sub">ضبط سلوك المنصة — مشرف النظام</div>
+          <div className="text-muted">ضبط سلوك المنصة — مشرف النظام</div>
         </div>
       </div>
 
@@ -44,10 +44,10 @@ export default function SettingsClient() {
       <div className="card">
         {settings.map((s) => (
           <div key={s.key} style={{ marginBottom: "1.25rem" }}>
-            <label className="lbl">{s.label}</label>
+            <label className="label-field">{s.label}</label>
             {s.key === "section_head_can_approve" ? (
               <select
-                className="inp"
+                className="input-field"
                 style={{ maxWidth: 200 }}
                 value={s.value}
                 onChange={(e) => save(s.key, e.target.value)}
@@ -58,14 +58,14 @@ export default function SettingsClient() {
             ) : (
               <div style={{ display: "flex", gap: ".5rem" }}>
                 <input
-                  className="inp"
+                  className="input-field"
                   style={{ maxWidth: 200 }}
                   defaultValue={s.value}
                   id={`setting-${s.key}`}
                 />
                 <button
                   type="button"
-                  className="btn-sm btn"
+                  className="btn-primary btn-sm"
                   onClick={() => {
                     const el = document.getElementById(`setting-${s.key}`) as HTMLInputElement;
                     save(s.key, el.value);

@@ -29,9 +29,9 @@ type Card = {
 };
 
 const CARD_BADGE: Record<string, string> = {
-  OPEN: "pending",
-  IN_PROGRESS: "atrisk",
-  CLOSED: "achieved",
+  OPEN: "badge-warning",
+  IN_PROGRESS: "badge-warning",
+  CLOSED: "badge-success",
 };
 
 const CARD_LABEL: Record<string, string> = {
@@ -152,12 +152,12 @@ export default function DeviationClient({
       <div className="topbar">
         <div>
           <h1>بطاقات انحراف المؤشرات</h1>
-          <div className="sub">توثيق الانحرافات وإجراءات المعالجة</div>
+          <div className="text-muted">توثيق الانحرافات وإجراءات المعالجة</div>
         </div>
         <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
           <PeriodSelector year={year} period={period} />
           {isAdmin && (
-            <button type="button" className="btn btn-sm" onClick={generateCards}>
+            <button type="button" className="btn-primary btn-sm" onClick={generateCards}>
               توليد البطاقات
             </button>
           )}
@@ -169,14 +169,14 @@ export default function DeviationClient({
       <div style={{ display: "flex", gap: "1rem" }}>
         <div className="card" style={{ flex: 1 }}>
           <div style={{ display: "flex", gap: ".5rem", marginBottom: ".75rem" }}>
-            <select className="inp" style={{ width: "auto" }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <select className="input-field" style={{ width: "auto" }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="">كل الحالات</option>
               <option value="OPEN">مفتوحة</option>
               <option value="IN_PROGRESS">قيد المعالجة</option>
               <option value="CLOSED">مغلقة</option>
             </select>
           </div>
-          <table className="tbl">
+          <table className="tmkeen-table">
             <thead>
               <tr>
                 <th>المؤشر</th><th>المستهدف</th><th>المتحقق</th><th>الانحراف %</th><th>الحالة</th>
@@ -193,45 +193,45 @@ export default function DeviationClient({
                   <td>{c.targetValue}</td>
                   <td>{c.actualValue}</td>
                   <td>{c.deviationPct}%</td>
-                  <td><span className={`badge ${CARD_BADGE[c.status]}`}>{CARD_LABEL[c.status]}</span></td>
+                  <td><span className={CARD_BADGE[c.status]}>{CARD_LABEL[c.status]}</span></td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {cards.length === 0 && <p className="sub">لا توجد بطاقات لهذه الفترة.</p>}
+          {cards.length === 0 && <p className="text-muted">لا توجد بطاقات لهذه الفترة.</p>}
         </div>
 
         {selected && (
           <div className="card" style={{ flex: 1 }}>
             <h3 style={{ marginBottom: ".75rem" }}>{selected.kpi.name}</h3>
-            <p className="sub">{selected.kpi.code} · {PERIOD_LABEL[period]}</p>
+            <p className="text-muted">{selected.kpi.code} · {PERIOD_LABEL[period]}</p>
             <div style={{ fontSize: ".82rem", marginBottom: "1rem" }}>
               <div>المستهدف: {selected.targetValue} {selected.kpi.unit}</div>
               <div>المتحقق: {selected.actualValue}</div>
               <div>نسبة الانحراف: {selected.deviationPct}%</div>
-              <button type="button" className="btn-sm btn-ghost" style={{ marginTop: ".5rem" }} onClick={() => setDrawerKpiId(selected.kpiId)}>
+              <button type="button" className="btn-secondary btn-sm" style={{ marginTop: ".5rem" }} onClick={() => setDrawerKpiId(selected.kpiId)}>
                 تفاصيل المؤشر
               </button>
             </div>
-            <label className="lbl">أسباب الانحراف</label>
+            <label className="label-field">أسباب الانحراف</label>
             {canManage ? (
-              <textarea className="inp" rows={3} value={editReasons} onChange={(e) => setEditReasons(e.target.value)} />
+              <textarea className="input-field" rows={3} value={editReasons} onChange={(e) => setEditReasons(e.target.value)} />
             ) : (
               <p>{selected.reasons}</p>
             )}
             {canManage && (
               <div style={{ display: "flex", gap: ".5rem", margin: ".75rem 0" }}>
-                <button type="button" className="btn btn-sm" onClick={() => updateCard()}>حفظ الأسباب</button>
+                <button type="button" className="btn-primary btn-sm" onClick={() => updateCard()}>حفظ الأسباب</button>
                 {selected.status !== "IN_PROGRESS" && (
-                  <button type="button" className="btn-sm btn-ghost" onClick={() => updateCard("IN_PROGRESS")}>بدء المعالجة</button>
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => updateCard("IN_PROGRESS")}>بدء المعالجة</button>
                 )}
                 {selected.status !== "CLOSED" && (
-                  <button type="button" className="btn-sm btn-ghost" onClick={() => updateCard("CLOSED")}>إغلاق البطاقة</button>
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => updateCard("CLOSED")}>إغلاق البطاقة</button>
                 )}
               </div>
             )}
             <h4>الإجراءات التصحيحية</h4>
-            <table className="tbl" style={{ marginBottom: "1rem" }}>
+            <table className="tmkeen-table" style={{ marginBottom: "1rem" }}>
               <thead>
                 <tr><th>الإجراء</th><th>المسؤول</th><th>الإطار الزمني</th><th>الحالة</th></tr>
               </thead>
@@ -243,7 +243,7 @@ export default function DeviationClient({
                     <td>{new Date(a.dueDate).toLocaleDateString("ar-SA")}</td>
                     <td>
                       {canManage ? (
-                        <select className="inp" style={{ width: "auto", fontSize: ".75rem" }} value={a.status} onChange={(e) => updateAction(a.id, e.target.value)}>
+                        <select className="input-field" style={{ width: "auto", fontSize: ".75rem" }} value={a.status} onChange={(e) => updateAction(a.id, e.target.value)}>
                           {Object.entries(ACTION_LABEL).map(([k, v]) => (
                             <option key={k} value={k}>{v}</option>
                           ))}
@@ -258,10 +258,10 @@ export default function DeviationClient({
             </table>
             {canManage && (
               <div style={{ display: "grid", gap: ".5rem" }}>
-                <input className="inp" placeholder="وصف الإجراء" value={newAction.description} onChange={(e) => setNewAction({ ...newAction, description: e.target.value })} />
-                <input className="inp" placeholder="المسؤول" value={newAction.responsibleName} onChange={(e) => setNewAction({ ...newAction, responsibleName: e.target.value })} />
-                <input className="inp" type="date" value={newAction.dueDate} onChange={(e) => setNewAction({ ...newAction, dueDate: e.target.value })} />
-                <button type="button" className="btn btn-sm" onClick={addAction}>إضافة إجراء</button>
+                <input className="input-field" placeholder="وصف الإجراء" value={newAction.description} onChange={(e) => setNewAction({ ...newAction, description: e.target.value })} />
+                <input className="input-field" placeholder="المسؤول" value={newAction.responsibleName} onChange={(e) => setNewAction({ ...newAction, responsibleName: e.target.value })} />
+                <input className="input-field" type="date" value={newAction.dueDate} onChange={(e) => setNewAction({ ...newAction, dueDate: e.target.value })} />
+                <button type="button" className="btn-primary btn-sm" onClick={addAction}>إضافة إجراء</button>
               </div>
             )}
           </div>

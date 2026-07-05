@@ -5,19 +5,19 @@ function buildHtml(subject: string, body: string): string {
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f9f9f9;font-family:'Almarai',Tahoma,Arial,sans-serif;direction:rtl;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9;padding:24px 0;">
+<body style="margin:0;padding:0;background:#F5F5F5;font-family:'Tajawal',Tahoma,Arial,sans-serif;direction:rtl;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F5F5;padding:24px 0;">
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);">
         <tr>
-          <td style="background:linear-gradient(135deg,#8b1a3a 0%,#a02040 50%,#c4a246 100%);padding:20px 28px;color:#fff;">
+          <td style="background:#8B1538;padding:20px 28px;color:#fff;">
             <div style="font-size:1.25rem;font-weight:800;">منصة مِقياس</div>
             <div style="font-size:.78rem;opacity:.85;margin-top:4px;">جمعية الزاد — قياس الأداء المؤسسي</div>
           </td>
         </tr>
         <tr>
           <td style="padding:28px;color:#222;">
-            <h2 style="margin:0 0 12px;font-size:1.05rem;color:#8b1a2a;">${subject}</h2>
+            <h2 style="margin:0 0 12px;font-size:1.05rem;color:#8B1538;">${subject}</h2>
             <div style="font-size:.88rem;line-height:1.7;color:#444;">${body}</div>
           </td>
         </tr>

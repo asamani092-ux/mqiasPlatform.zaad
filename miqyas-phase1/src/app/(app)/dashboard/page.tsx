@@ -31,25 +31,25 @@ export default async function DashboardPage() {
       <div className="topbar">
         <div>
           <h1>اللوحة الرئيسية</h1>
-          <div className="sub">أهلًا {user.name} · {PERIOD_LABEL[period]} {year}</div>
+          <div className="text-muted">أهلًا {user.name} · {PERIOD_LABEL[period]} {year}</div>
         </div>
       </div>
 
       <div className="grid grid-4" style={{ marginBottom: "1rem" }}>
-        <div className="card stat"><div className="num">{kpiCount}</div><div className="lbl">إجمالي المؤشرات النشطة</div></div>
-        <div className="card stat" style={{ borderRightColor: "var(--green)" }}><div className="num">{avg}%</div><div className="lbl">متوسط التحقق للفترة</div></div>
-        <div className="card stat" style={{ borderRightColor: "var(--amber)" }}><div className="num">{alerts}</div><div className="lbl">تنبيهات الإنذار المبكر</div></div>
-        <div className="card stat" style={{ borderRightColor: "var(--red)" }}><div className="num">{openCards}</div><div className="lbl">بطاقات انحراف غير مغلقة</div></div>
+        <div className="card stat-card"><div className="stat-num">{kpiCount}</div><div className="stat-lbl">إجمالي المؤشرات النشطة</div></div>
+        <div className="card stat-card" style={{ borderRightColor: "var(--tmkeen-success)" }}><div className="stat-num">{avg}%</div><div className="stat-lbl">متوسط التحقق للفترة</div></div>
+        <div className="card stat-card" style={{ borderRightColor: "var(--tmkeen-warning)" }}><div className="stat-num">{alerts}</div><div className="stat-lbl">تنبيهات الإنذار المبكر</div></div>
+        <div className="card stat-card" style={{ borderRightColor: "var(--tmkeen-danger)" }}><div className="stat-num">{openCards}</div><div className="stat-lbl">بطاقات انحراف غير مغلقة</div></div>
       </div>
 
       <div className="card">
         <h3>توزيع حالات المؤشرات المعتمدة — {PERIOD_LABEL[period]} {year}</h3>
         {entries.length === 0 ? (
-          <p className="sub">لا توجد قياسات معتمدة لهذه الفترة بعد.</p>
+          <p className="text-muted">لا توجد قياسات معتمدة لهذه الفترة بعد.</p>
         ) : (
           <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap" }}>
             {(Object.keys(byStatus) as KpiStatus[]).map((s) => (
-              <span key={s} className={"badge " + STATUS_BADGE[s]}>
+              <span key={s} className={STATUS_BADGE[s]}>
                 {STATUS_LABEL[s]} · {byStatus[s]}
               </span>
             ))}

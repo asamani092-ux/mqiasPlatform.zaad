@@ -76,10 +76,10 @@ export default function KnowledgeClient({
   }
 
   const statCards = [
-    { num: stats.total, lbl: "عدد الأصول", color: "var(--maroon)" },
-    { num: `${stats.approvedPct}%`, lbl: "نسبة المعتمدة", color: "var(--green)" },
-    { num: `${stats.usedPct}%`, lbl: "نسبة المستخدمة", color: "var(--gold)" },
-    { num: `${stats.growthPct}%`, lbl: "نمو المعرفة", color: "var(--amber)" },
+    { num: stats.total, lbl: "عدد الأصول", color: "var(--tmkeen-primary)" },
+    { num: `${stats.approvedPct}%`, lbl: "نسبة المعتمدة", color: "var(--tmkeen-success)" },
+    { num: `${stats.usedPct}%`, lbl: "نسبة المستخدمة", color: "var(--tmkeen-secondary)" },
+    { num: `${stats.growthPct}%`, lbl: "نمو المعرفة", color: "var(--tmkeen-warning)" },
   ];
 
   return (
@@ -87,22 +87,22 @@ export default function KnowledgeClient({
       <div className="topbar">
         <div>
           <h1>مسار المعرفة المؤسسية</h1>
-          <div className="sub">أصول المعرفة والدروس المستفادة</div>
+          <div className="text-muted">أصول المعرفة والدروس المستفادة</div>
         </div>
         <PeriodSelector year={year} period={period} />
       </div>
 
       <div className="grid grid-4" style={{ marginBottom: "1rem" }}>
         {statCards.map((s) => (
-          <div key={s.lbl} className="card stat" style={{ borderRightColor: s.color }}>
-            <div className="num">{s.num}</div>
-            <div className="lbl">{s.lbl}</div>
+          <div key={s.lbl} className="card stat-card" style={{ borderRightColor: s.color }}>
+            <div className="stat-num">{s.num}</div>
+            <div className="stat-lbl">{s.lbl}</div>
           </div>
         ))}
       </div>
 
       <div className="card">
-        <table className="tbl">
+        <table className="tmkeen-table">
           <thead><tr><th>العنوان</th><th>النوع</th><th>الإدارة</th><th>الحالة</th><th>مستخدم؟</th></tr></thead>
           <tbody>
             {assets.map((a) => (
@@ -114,20 +114,20 @@ export default function KnowledgeClient({
                   {canManage ? (
                     <button
                       type="button"
-                      className={`badge ${a.status === "APPROVED" ? "achieved" : "pending"}`}
+                      className={a.status === "APPROVED" ? "badge-success" : "badge-warning"}
                       onClick={() => updateAsset(a.id, { status: a.status === "APPROVED" ? "DRAFT" : "APPROVED" })}
                     >
                       {a.status === "APPROVED" ? "معتمد" : "مسودة"}
                     </button>
                   ) : (
-                    <span className={`badge ${a.status === "APPROVED" ? "achieved" : "pending"}`}>
+                    <span className={a.status === "APPROVED" ? "badge-success" : "badge-warning"}>
                       {a.status === "APPROVED" ? "معتمد" : "مسودة"}
                     </span>
                   )}
                 </td>
                 <td>
                   {canManage ? (
-                    <button type="button" className="btn-sm btn-ghost" onClick={() => updateAsset(a.id, { isUsed: !a.isUsed })}>
+                    <button type="button" className="btn-secondary btn-sm" onClick={() => updateAsset(a.id, { isUsed: !a.isUsed })}>
                       {a.isUsed ? "نعم" : "لا"}
                     </button>
                   ) : (
@@ -138,12 +138,12 @@ export default function KnowledgeClient({
             ))}
           </tbody>
         </table>
-        {assets.length === 0 && <p className="sub">لا توجد أصول في هذه الفترة.</p>}
+        {assets.length === 0 && <p className="text-muted">لا توجد أصول في هذه الفترة.</p>}
         {canManage && (
           <div style={{ display: "flex", gap: ".5rem", marginTop: ".75rem" }}>
-            <input className="inp" placeholder="عنوان الأصل" value={newAsset.title} onChange={(e) => setNewAsset({ ...newAsset, title: e.target.value })} />
-            <input className="inp" placeholder="النوع" value={newAsset.assetType} onChange={(e) => setNewAsset({ ...newAsset, assetType: e.target.value })} />
-            <button type="button" className="btn btn-sm" onClick={addAsset}>إضافة</button>
+            <input className="input-field" placeholder="عنوان الأصل" value={newAsset.title} onChange={(e) => setNewAsset({ ...newAsset, title: e.target.value })} />
+            <input className="input-field" placeholder="النوع" value={newAsset.assetType} onChange={(e) => setNewAsset({ ...newAsset, assetType: e.target.value })} />
+            <button type="button" className="btn-primary btn-sm" onClick={addAsset}>إضافة</button>
           </div>
         )}
       </div>
