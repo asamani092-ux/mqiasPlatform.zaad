@@ -30,14 +30,17 @@ export default function Sidebar({
   user,
   showApprovals,
   isAdmin,
+  showExecutive,
 }: {
   user: { name: string; role: string };
   showApprovals: boolean;
   isAdmin: boolean;
+  showExecutive?: boolean;
 }) {
   const pathname = usePathname();
 
   let nav = [...BASE_NAV];
+  if (showExecutive) nav.unshift({ href: "/executive", label: "لوحة الإدارة العليا", icon: "👔" });
   if (showApprovals) nav.push({ href: "/approvals", label: "اعتماد القياسات", icon: "✅" });
   if (isAdmin) nav = [...nav, ...ADMIN_NAV];
 

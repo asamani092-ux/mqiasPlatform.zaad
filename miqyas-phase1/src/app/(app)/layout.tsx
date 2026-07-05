@@ -23,11 +23,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const delegationOn = (await getSetting("section_head_can_approve")) === "1";
   const showApprovals = can.approveEntries(sessionUser, delegationOn);
   const isAdmin = can.manageKpis(sessionUser);
+  const showExecutive = can.viewExecutive(sessionUser);
 
   return (
     <Providers>
       <div className="app">
-        <Sidebar user={{ name: user.name, role: user.role }} showApprovals={showApprovals} isAdmin={isAdmin} />
+        <Sidebar user={{ name: user.name, role: user.role }} showApprovals={showApprovals} isAdmin={isAdmin} showExecutive={showExecutive} />
         <main className="main">
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: ".5rem" }}>
             <NotifBell />
