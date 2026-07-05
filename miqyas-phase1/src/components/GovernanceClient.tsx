@@ -52,7 +52,7 @@ export default function GovernanceClient({
   const [requirements, setRequirements] = useState(initialRequirements);
   const [observations, setObservations] = useState(initialObservations);
   const [msg, setMsg] = useState("");
-  const [newReq, setNewReq] = useState({ title: "", category: "" });
+  const [newReq, setNewReq] = useState({ title: "", category: "", notes: "" });
   const [newObs, setNewObs] = useState({ title: "" });
 
   const load = useCallback(async () => {
@@ -82,6 +82,36 @@ export default function GovernanceClient({
     }
   }
 
+  async function updateRequirement(id: number, patch: { notes?: string | null; title?: string; category?: string | null }) {
+    const res = await fetch("/api/governance", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "requirement", id, ...patch }),
+    });
+    if (res.ok) {
+      setMsg("تم حفظ التعديل");
+      await load();
+    } else {
+      const d = await res.json();
+      setMsg(d.error || "فشل الحفظ");
+    }
+  }
+
+  async function updateObservation(id: number, title: string) {
+    const res = await fetch("/api/governance", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "observation", id, title }),
+    });
+    if (res.ok) {
+      setMsg("تم حفظ الملاحظة");
+      await load();
+    } else {
+      const d = await res.json();
+      setMsg(d.error || "فشل الحفظ");
+    }
+  }
+
   async function toggleObservation(id: number, status: string) {
     const res = await fetch("/api/governance", {
       method: "PUT",
@@ -102,10 +132,16 @@ export default function GovernanceClient({
     const res = await fetch("/api/governance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "requirement", title: newReq.title, category: newReq.category || null, year }),
+      body: JSON.stringify({
+        type: "requirement",
+        title: newReq.title,
+        category: newReq.category || null,
+        notes: newReq.notes || null,
+        year,
+      }),
     });
     if (res.ok) {
-      setNewReq({ title: "", category: "" });
+      setNewReq({ title: "", category: "", notes: "" });
       await load();
     }
   }
@@ -177,15 +213,31 @@ export default function GovernanceClient({
                     </span>
                   )}
                 </td>
-                <td>{r.notes || "—"}</td>
+                <td>
+                  {canManage ? (
+                    <input
+                      className="inp"
+                      style={{ fontSize: ".78rem", minWidth: "140px" }}
+                      defaultValue={r.notes || ""}
+                      placeholder="أضف ملاحظة..."
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v !== (r.notes || "")) updateRequirement(r.id, { notes: v || null });
+                      }}
+                    />
+                  ) : (
+                    r.notes || "—"
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
         {canManage && (
-          <div style={{ display: "flex", gap: ".5rem", marginTop: ".75rem" }}>
+          <div style={{ display: "flex", gap: ".5rem", marginTop: ".75rem", flexWrap: "wrap" }}>
             <input className="inp" placeholder="متطلب جديد" value={newReq.title} onChange={(e) => setNewReq({ ...newReq, title: e.target.value })} />
             <input className="inp" placeholder="التصنيف" value={newReq.category} onChange={(e) => setNewReq({ ...newReq, category: e.target.value })} />
+            <input className="inp" placeholder="ملاحظات" value={newReq.notes} onChange={(e) => setNewReq({ ...newReq, notes: e.target.value })} />
             <button type="button" className="btn btn-sm" onClick={addRequirement}>إضافة</button>
           </div>
         )}
@@ -198,7 +250,21 @@ export default function GovernanceClient({
           <tbody>
             {observations.map((o) => (
               <tr key={o.id}>
-                <td>{o.title}</td>
+                <td>
+                  {canManage ? (
+                    <input
+                      className="inp"
+                      style={{ fontSize: ".78rem", minWidth: "180px" }}
+                      defaultValue={o.title}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v && v !== o.title) updateObservation(o.id, v);
+                      }}
+                    />
+                  ) : (
+                    o.title
+                  )}
+                </td>
                 <td>{o.openedYear} · {PERIOD_LABEL[o.openedPeriod as Period] || o.openedPeriod}</td>
                 <td><span className={`badge ${o.status === "OPEN" ? "atrisk" : "achieved"}`}>{o.status === "OPEN" ? "قائمة" : "مغلقة"}</span></td>
                 <td>
