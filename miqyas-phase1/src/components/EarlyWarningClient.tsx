@@ -1,7 +1,9 @@
 "use client";
 
+import { Check } from "lucide-react";
 import PeriodSelector from "@/components/PeriodSelector";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
+import { ICON_PROPS } from "@/lib/icon-props";
 
 type AlertRow = {
   id: number;
@@ -58,7 +60,7 @@ export default function EarlyWarningClient({
                 <td><span className={RISK_BADGE[r.riskLevel] || "badge-neutral"}>{r.riskLabel}</span></td>
                 <td style={{ fontSize: ".75rem" }}>{r.recipients}</td>
                 <td>{new Date(r.createdAt).toLocaleDateString("ar-SA")}</td>
-                <td>{r.emailSent ? "✓" : "—"}</td>
+                <td>{r.emailSent ? <Check {...ICON_PROPS} style={{ color: "var(--tmkeen-success)" }} /> : "—"}</td>
               </tr>
             ))}
           </tbody>

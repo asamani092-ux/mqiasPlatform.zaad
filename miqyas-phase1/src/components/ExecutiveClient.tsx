@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import PeriodSelector from "@/components/PeriodSelector";
 import KpiDetailDrawer from "@/components/KpiDetailDrawer";
 import { StatusBadge } from "@/components/TrackStatCards";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
 import type { ExecutiveSnapshot } from "@/lib/executive";
+import { ICON_PROPS } from "@/lib/icon-props";
 
 const CARD_LABEL: Record<string, string> = {
   OPEN: "مفتوحة",
@@ -141,7 +143,10 @@ export default function ExecutiveClient({
           <span className="badge-danger">مرتفع: {activeAlerts.HIGH}</span>
           <span className="badge-primary">متوسط: {activeAlerts.MEDIUM}</span>
           <span className="badge-success">منخفض: {activeAlerts.LOW}</span>
-          <Link href="/early-warning" className="btn-secondary btn-sm">عرض التفاصيل ←</Link>
+          <Link href="/early-warning" className="btn-secondary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: ".35rem" }}>
+            عرض التفاصيل
+            <ArrowLeft {...ICON_PROPS} />
+          </Link>
         </div>
         {activeAlerts.HIGH + activeAlerts.MEDIUM + activeAlerts.LOW === 0 && (
           <p className="text-muted" style={{ marginTop: ".75rem" }}>لا توجد إنذارات نشطة لهذه الفترة.</p>

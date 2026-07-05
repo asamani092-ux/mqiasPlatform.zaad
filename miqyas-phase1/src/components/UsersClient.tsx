@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check } from "lucide-react";
 import { ROLE_LABEL, USER_STATUS_LABEL, ROLE_VALUES } from "@/lib/types";
+import { ICON_PROPS } from "@/lib/icon-props";
 
 type Section = { id: number; name: string; code: string; departmentId: number };
 type Department = { id: number; name: string; sections: Section[] };
@@ -342,8 +344,8 @@ export default function UsersClient({ departments }: { departments: Department[]
       </div>
 
       {msg && (
-        <div className="alert alert-success" style={{ marginBottom: "1rem" }}>
-          <span className="badge-success" style={{ marginInlineEnd: ".5rem" }}>✓</span>
+        <div className="alert alert-success" style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: ".5rem" }}>
+          <Check {...ICON_PROPS} />
           {msg}
         </div>
       )}

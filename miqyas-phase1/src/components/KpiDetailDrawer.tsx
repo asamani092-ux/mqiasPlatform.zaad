@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { PERIOD_LABEL, STATUS_LABEL, STATUS_BADGE, type Period } from "@/lib/types";
+import { ICON_PROPS } from "@/lib/icon-props";
 
 type Detail = {
   kpi: Record<string, unknown>;
@@ -36,7 +38,9 @@ export default function KpiDetailDrawer({
       <div className="card" style={{ width: "min(520px, 95vw)", height: "100vh", overflowY: "auto", borderRadius: 0, margin: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
           <h3>{data ? String((data.kpi as { name?: string }).name) : "..."}</h3>
-          <button type="button" className="btn-secondary btn-sm" onClick={onClose}>✕</button>
+          <button type="button" className="icon-btn btn-sm" onClick={onClose} aria-label="إغلاق">
+            <X {...ICON_PROPS} />
+          </button>
         </div>
         {data && (
           <>
