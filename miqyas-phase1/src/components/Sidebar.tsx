@@ -5,12 +5,41 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { ROLE_LABEL } from "@/lib/types";
 
-const NAV = [
-  { href: "/dashboard", label: "اللوحة الرئيسية", icon: "📊" },
+const TRACK_NAV = [
+  { href: "/strategic", label: "المسار الاستراتيجي", icon: "🎯" },
+  { href: "/operational", label: "المسار التشغيلي", icon: "⚙️" },
+  { href: "/early-warning", label: "الإنذار المبكر", icon: "⚠️" },
+  { href: "/deviation", label: "بطاقات الانحراف", icon: "📉" },
+  { href: "/governance", label: "الحوكمة", icon: "🏛️" },
+  { href: "/knowledge", label: "المعرفة المؤسسية", icon: "📚" },
 ];
 
-export default function Sidebar({ user }: { user: { name: string; role: string } }) {
+const BASE_NAV = [
+  { href: "/dashboard", label: "اللوحة الرئيسية", icon: "📊" },
+  { href: "/my", label: "مهامي ومؤشراتي", icon: "📋" },
+  ...TRACK_NAV,
+];
+
+const ADMIN_NAV = [
+  { href: "/admin/kpis", label: "إدارة المؤشرات", icon: "⚙️" },
+  { href: "/admin/import", label: "استيراد Excel", icon: "📥" },
+  { href: "/admin/settings", label: "إعدادات النظام", icon: "🔧" },
+];
+
+export default function Sidebar({
+  user,
+  showApprovals,
+  isAdmin,
+}: {
+  user: { name: string; role: string };
+  showApprovals: boolean;
+  isAdmin: boolean;
+}) {
   const pathname = usePathname();
+
+  let nav = [...BASE_NAV];
+  if (showApprovals) nav.push({ href: "/approvals", label: "اعتماد القياسات", icon: "✅" });
+  if (isAdmin) nav = [...nav, ...ADMIN_NAV];
 
   return (
     <aside className="sidebar">
@@ -19,7 +48,7 @@ export default function Sidebar({ user }: { user: { name: string; role: string }
         <p>منصة قياس الأداء المؤسسي</p>
       </div>
       <nav className="sidebar-nav">
-        {NAV.map((item) => (
+        {nav.map((item) => (
           <Link
             key={item.href}
             href={item.href}

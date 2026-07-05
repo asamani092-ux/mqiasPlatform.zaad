@@ -133,9 +133,12 @@ model Kpi {
   frequency         Frequency @default(QUARTERLY)
   polarity          Polarity  @default(HIGHER_BETTER)
   measureFormula    String? // آلية الاحتساب
+  requiredData      String? // البيانات المطلوبة للقياس
   departmentId      Int?
   sectionId         Int?
   ownerId           Int? // الموظف المسؤول عن الإدخال
+  ownerLabel        String? // نص الإدارة المالكة الخام عند عدم الربط
+  recommendation    String? // توصيات قسم الاستراتيجية (تعريف المؤشر)
   strategicGoalId   Int?
   operationalGoalId Int?
   active            Boolean   @default(true)
@@ -197,6 +200,10 @@ model KpiEntry {
   period         Period
   actualValue    Float
   achievementPct Float? // نسبة التحقق المحسوبة
+  deviationValue Float? // قيمة الانحراف (محسوبة)
+  whatHappened   String? // ماذا حصل؟ (الموظف)
+  howHappened    String? // كيف حصل؟ (الموظف)
+  recommendation String? // توصيات القسم (المشرف فقط)
   status         KpiStatus      @default(NO_DATA)
   note           String?
   enteredById    Int

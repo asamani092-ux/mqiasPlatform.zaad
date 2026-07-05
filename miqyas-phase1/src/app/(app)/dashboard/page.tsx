@@ -1,12 +1,13 @@
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 import { currentQuarter } from "@/lib/kpi";
 import { STATUS_LABEL, STATUS_BADGE, PERIOD_LABEL, type KpiStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const user = await requireUser();
+  const user = await getSessionUser();
+  if (!user) return null;
   const { year, period } = currentQuarter();
 
   const [kpiCount, entries, openCards, alerts] = await Promise.all([

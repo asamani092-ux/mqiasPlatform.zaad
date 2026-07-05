@@ -25,7 +25,11 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result?.error) {
-      setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      setError(
+        result.error.includes("المحاولات")
+          ? "تم تجاوز عدد المحاولات، حاول بعد 15 دقيقة"
+          : "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+      );
       return;
     }
 

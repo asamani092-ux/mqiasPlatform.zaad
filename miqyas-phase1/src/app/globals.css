@@ -82,6 +82,10 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
+.grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
 /* ── Card ── */
 .card {
   background: var(--card);
@@ -329,6 +333,12 @@ input[type="password"] {
   background: rgba(196, 162, 70, 0.1);
   border: 1px solid rgba(196, 162, 70, 0.3);
   color: var(--gold);
+}
+
+.alert-warn {
+  background: rgba(245, 166, 35, 0.12);
+  border: 1px solid rgba(245, 166, 35, 0.35);
+  color: var(--amber);
 }
 
 /* ── Sidebar ── */
