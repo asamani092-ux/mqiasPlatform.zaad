@@ -1,5 +1,5 @@
 /**
- * تخطيط التطبيق — يبني على Tmkeen DS (tokens.css + components.css)
+ * تخطيط التطبيق — يبني على tokens.css + components.css
  */
 
 .app-shell {
@@ -14,11 +14,12 @@
   background: var(--tmkeen-surface-muted);
 }
 
+/* ── Sidebar (primary treatment) ── */
 .app-sidebar {
   width: 240px;
   flex-shrink: 0;
   background: var(--tmkeen-primary);
-  color: #fff;
+  color: color-mix(in srgb, var(--tmkeen-surface) 85%, transparent);
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -26,18 +27,19 @@
 
 .sidebar-brand {
   padding: 1.5rem 1.25rem 1rem;
-  border-bottom: 1px solid color-mix(in srgb, #fff 12%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--tmkeen-surface) 12%, transparent);
 }
 
 .sidebar-brand h2 {
+  font-family: var(--tmkeen-font-sans);
   font-size: 1.25rem;
   font-weight: 800;
-  color: #fff;
+  color: var(--tmkeen-surface);
 }
 
 .sidebar-brand p {
   font-size: 0.72rem;
-  color: color-mix(in srgb, #fff 55%, transparent);
+  color: color-mix(in srgb, var(--tmkeen-surface) 55%, transparent);
   margin-top: 0.2rem;
 }
 
@@ -47,6 +49,15 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  overflow-y: auto;
+}
+
+.sidebar-section-label {
+  padding: 0.75rem 0.85rem 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--tmkeen-surface) 45%, transparent);
+  text-transform: none;
 }
 
 .nav-link {
@@ -57,8 +68,9 @@
   border-radius: var(--tmkeen-radius-lg);
   font-size: 0.82rem;
   font-weight: 700;
-  color: color-mix(in srgb, #fff 70%, transparent);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  color: color-mix(in srgb, var(--tmkeen-surface) 85%, transparent);
+  border-inline-start: 3px solid transparent;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .nav-link-icon {
@@ -67,13 +79,14 @@
 }
 
 .nav-link:hover {
-  color: #fff;
-  background: color-mix(in srgb, #fff 8%, transparent);
+  color: var(--tmkeen-surface);
+  background: color-mix(in srgb, var(--tmkeen-surface) 8%, transparent);
 }
 
 .nav-link.active {
-  color: #fff;
-  background: var(--tmkeen-primary-dark);
+  color: var(--tmkeen-surface);
+  background: color-mix(in srgb, var(--tmkeen-surface) 14%, transparent);
+  border-inline-start-color: var(--tmkeen-secondary);
 }
 
 .sidebar-logout {
@@ -83,9 +96,32 @@
   gap: 0.5rem;
   margin-top: 0.75rem;
   width: 100%;
-  color: color-mix(in srgb, #fff 85%, transparent) !important;
-  border-color: color-mix(in srgb, #fff 35%, transparent) !important;
-  background: transparent !important;
+  color: var(--tmkeen-brand-gray) !important;
+  border-color: var(--tmkeen-surface-border) !important;
+  background: var(--tmkeen-surface) !important;
+}
+
+.sidebar-logout:hover {
+  background: var(--tmkeen-surface-muted) !important;
+}
+
+.sidebar-footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid color-mix(in srgb, var(--tmkeen-surface) 12%, transparent);
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--tmkeen-surface) 55%, transparent);
+}
+
+.sidebar-footer-name {
+  font-weight: 700;
+  color: color-mix(in srgb, var(--tmkeen-surface) 75%, transparent);
+  margin-bottom: 0.25rem;
+}
+
+.sidebar-footer-org {
+  font-size: 0.68rem;
+  color: color-mix(in srgb, var(--tmkeen-surface) 45%, transparent);
+  margin-bottom: 0.35rem;
 }
 
 .app-topbar {
@@ -196,18 +232,11 @@
   opacity: 0.85;
 }
 
-.tmkeen-toast {
+.app-toast {
   font-family: var(--tmkeen-font-sans) !important;
   text-align: start !important;
   border: 1px solid var(--tmkeen-surface-border) !important;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08) !important;
-}
-
-.sidebar-footer {
-  padding: 1rem 1.25rem;
-  border-top: 1px solid color-mix(in srgb, #fff 12%, transparent);
-  font-size: 0.75rem;
-  color: color-mix(in srgb, #fff 55%, transparent);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--tmkeen-foreground) 8%, transparent) !important;
 }
 
 .topbar {
@@ -232,6 +261,22 @@
 
 .stat-card {
   border-inline-start: 4px solid var(--tmkeen-primary);
+}
+
+.stat-card--success {
+  border-inline-start-color: var(--tmkeen-success);
+}
+
+.stat-card--warning {
+  border-inline-start-color: var(--tmkeen-warning);
+}
+
+.stat-card--danger {
+  border-inline-start-color: var(--tmkeen-danger);
+}
+
+.stat-card--secondary {
+  border-inline-start-color: var(--tmkeen-secondary);
 }
 
 .stat-num {
@@ -307,22 +352,6 @@
   margin-bottom: 0.75rem;
 }
 
-.notif-dot {
-  position: relative;
-}
-
-.notif-dot::after {
-  content: "";
-  position: absolute;
-  top: -2px;
-  inset-inline-start: -2px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--tmkeen-danger);
-  border: 2px solid var(--tmkeen-surface);
-}
-
 .badge-neutral {
   display: inline-block;
   border-radius: 9999px;
@@ -332,4 +361,55 @@
   font-weight: 600;
   color: var(--tmkeen-brand-gray);
   border: 1px solid var(--tmkeen-surface-border);
+}
+
+/* ── Login ── */
+.login-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--tmkeen-radius-lg);
+  background: var(--tmkeen-primary);
+  color: var(--tmkeen-surface);
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+
+.login-title {
+  font-family: var(--tmkeen-font-sans);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--tmkeen-primary);
+}
+
+.login-heading {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  color: var(--tmkeen-primary);
+}
+
+.login-brand-block {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--tmkeen-overlay);
+  z-index: 100;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.drawer-panel {
+  width: min(520px, 95vw);
+  height: 100vh;
+  overflow-y: auto;
+  border-radius: 0;
+  margin: 0;
 }

@@ -35,11 +35,11 @@ export default function ExecutiveClient({
   const { deviatedKpis, openDeviationCards, lateActions, activeAlerts, headline } = snapshot;
 
   const statCards = [
-    { id: "all", num: headline.totalKpis, lbl: "إجمالي المؤشرات", color: "var(--tmkeen-primary)" },
-    { id: "critical", num: `${headline.pctCritical}%`, lbl: "مؤشرات حرجة", color: "var(--tmkeen-danger)" },
-    { id: "atrisk", num: `${headline.pctAtRisk}%`, lbl: "معرضة للخطر", color: "var(--tmkeen-warning)" },
-    { id: "cards", num: headline.openCards, lbl: "بطاقات انحراف مفتوحة", color: "var(--tmkeen-warning)" },
-    { id: "late", num: headline.lateActions, lbl: "إجراءات متأخرة", color: "var(--tmkeen-danger)" },
+    { id: "all", num: headline.totalKpis, lbl: "إجمالي المؤشرات", accent: "" },
+    { id: "critical", num: `${headline.pctCritical}%`, lbl: "مؤشرات حرجة", accent: "stat-card--danger" },
+    { id: "atrisk", num: `${headline.pctAtRisk}%`, lbl: "معرضة للخطر", accent: "stat-card--warning" },
+    { id: "cards", num: headline.openCards, lbl: "بطاقات انحراف مفتوحة", accent: "stat-card--warning" },
+    { id: "late", num: headline.lateActions, lbl: "إجراءات متأخرة", accent: "stat-card--danger" },
   ];
 
   return (
@@ -54,7 +54,12 @@ export default function ExecutiveClient({
 
       <div className="grid grid-4" style={{ marginBottom: "1rem" }}>
         {statCards.map((s) => (
-          <a key={s.id} href={`#${s.id}`} className="card stat-card" style={{ borderRightColor: s.color, textDecoration: "none", color: "inherit" }}>
+          <a
+            key={s.id}
+            href={`#${s.id}`}
+            className={`card stat-card ${s.accent}`.trim()}
+            style={{ textDecoration: "none", color: "inherit" }}
+          >
             <div className="stat-num">{s.num}</div>
             <div className="stat-lbl">{s.lbl}</div>
           </a>

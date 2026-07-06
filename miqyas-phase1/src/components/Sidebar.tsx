@@ -30,6 +30,11 @@ type NavItem = {
   Icon: LucideIcon;
 };
 
+type NavSection = {
+  label?: string;
+  items: NavItem[];
+};
+
 const TRACK_NAV: NavItem[] = [
   { href: "/strategic", label: "المسار الاستراتيجي", Icon: Target },
   { href: "/operational", label: "المسار التشغيلي", Icon: Settings },
@@ -37,12 +42,6 @@ const TRACK_NAV: NavItem[] = [
   { href: "/deviation", label: "بطاقات الانحراف", Icon: FileWarning },
   { href: "/governance", label: "الحوكمة", Icon: Landmark },
   { href: "/knowledge", label: "المعرفة المؤسسية", Icon: BookOpen },
-];
-
-const BASE_NAV: NavItem[] = [
-  { href: "/dashboard", label: "اللوحة الرئيسية", Icon: LayoutDashboard },
-  { href: "/my", label: "مهامي ومؤشراتي", Icon: ClipboardList },
-  ...TRACK_NAV,
 ];
 
 const ADMIN_NAV: NavItem[] = [
@@ -64,6 +63,38 @@ const APPROVALS_NAV: NavItem = {
   Icon: CheckCircle2,
 };
 
+function buildSections(
+  showExecutive: boolean,
+  showApprovals: boolean,
+  isAdmin: boolean,
+): NavSection[] {
+  const sections: NavSection[] = [];
+
+  if (showExecutive) {
+    sections.push({ items: [EXECUTIVE_NAV] });
+  }
+
+  sections.push({
+    label: "الرئيسية",
+    items: [
+      { href: "/dashboard", label: "اللوحة الرئيسية", Icon: LayoutDashboard },
+      { href: "/my", label: "مهامي ومؤشراتي", Icon: ClipboardList },
+    ],
+  });
+
+  sections.push({ label: "مسارات القياس", items: TRACK_NAV });
+
+  if (showApprovals) {
+    sections.push({ items: [APPROVALS_NAV] });
+  }
+
+  if (isAdmin) {
+    sections.push({ label: "إدارة النظام", items: ADMIN_NAV });
+  }
+
+  return sections;
+}
+
 export default function Sidebar({
   user,
   showApprovals,
@@ -76,38 +107,38 @@ export default function Sidebar({
   showExecutive?: boolean;
 }) {
   const pathname = usePathname();
-
-  let nav: NavItem[] = [...BASE_NAV];
-  if (showExecutive) nav.unshift(EXECUTIVE_NAV);
-  if (showApprovals) nav.push(APPROVALS_NAV);
-  if (isAdmin) nav = [...nav, ...ADMIN_NAV];
+  const sections = buildSections(!!showExecutive, showApprovals, isAdmin);
 
   return (
     <aside className="app-sidebar">
       <div className="sidebar-brand">
         <h2>مِقياس</h2>
-        <p>منصة قياس الأداء المؤسسي</p>
+        <p>جمعية الزاد</p>
       </div>
       <nav className="sidebar-nav">
-        {nav.map((item) => {
-          const { Icon } = item;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`nav-link${pathname === item.href ? " active" : ""}`}
-            >
-              <Icon {...ICON_PROPS} className="nav-link-icon" />
-              {item.label}
-            </Link>
-          );
-        })}
+        {sections.map((section) => (
+          <div key={section.label ?? section.items[0]?.href}>
+            {section.label && <div className="sidebar-section-label">{section.label}</div>}
+            {section.items.map((item) => {
+              const { Icon } = item;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`nav-link${pathname === item.href ? " active" : ""}`}
+                >
+                  <Icon {...ICON_PROPS} className="nav-link-icon" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
       <div className="sidebar-footer">
-        <div style={{ fontWeight: 700, color: "rgba(255,255,255,0.75)", marginBottom: ".25rem" }}>
-          {user.name}
-        </div>
+        <div className="sidebar-footer-name">{user.name}</div>
         <div>{ROLE_LABEL[user.role] || user.role}</div>
+        <div className="sidebar-footer-org">جمعية الزاد</div>
         <button
           type="button"
           className="btn-secondary btn-sm sidebar-logout"

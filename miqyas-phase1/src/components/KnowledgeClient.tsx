@@ -76,10 +76,10 @@ export default function KnowledgeClient({
   }
 
   const statCards = [
-    { num: stats.total, lbl: "عدد الأصول", color: "var(--tmkeen-primary)" },
-    { num: `${stats.approvedPct}%`, lbl: "نسبة المعتمدة", color: "var(--tmkeen-success)" },
-    { num: `${stats.usedPct}%`, lbl: "نسبة المستخدمة", color: "var(--tmkeen-secondary)" },
-    { num: `${stats.growthPct}%`, lbl: "نمو المعرفة", color: "var(--tmkeen-warning)" },
+    { num: stats.total, lbl: "عدد الأصول", accent: "" },
+    { num: `${stats.approvedPct}%`, lbl: "نسبة المعتمدة", accent: "stat-card--success" },
+    { num: `${stats.usedPct}%`, lbl: "نسبة المستخدمة", accent: "stat-card--secondary" },
+    { num: `${stats.growthPct}%`, lbl: "نمو المعرفة", accent: "stat-card--warning" },
   ];
 
   return (
@@ -94,7 +94,7 @@ export default function KnowledgeClient({
 
       <div className="grid grid-4" style={{ marginBottom: "1rem" }}>
         {statCards.map((s) => (
-          <div key={s.lbl} className="card stat-card" style={{ borderRightColor: s.color }}>
+          <div key={s.lbl} className={`card stat-card ${s.accent}`.trim()}>
             <div className="stat-num">{s.num}</div>
             <div className="stat-lbl">{s.lbl}</div>
           </div>

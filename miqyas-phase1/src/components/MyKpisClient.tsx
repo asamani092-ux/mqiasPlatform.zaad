@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
+import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import {
   PERIOD_LABEL,
   STATUS_LABEL,
@@ -11,6 +12,7 @@ import {
   type Period,
   type KpiStatus,
 } from "@/lib/types";
+import { ICON_PROPS } from "@/lib/icon-props";
 
 type KpiItem = {
   kpi: {
@@ -257,8 +259,8 @@ export default function MyKpisClient({
                           <>
                             {item.entry.evidences.length}
                             {item.entry.approvalStatus !== "APPROVED" && (
-                              <label className="btn-secondary btn-sm" style={{ marginRight: ".3rem", cursor: "pointer" }}>
-                                +
+                              <label className="btn-secondary btn-sm" style={{ marginInlineStart: ".3rem", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: ".2rem" }}>
+                                <Plus {...ICON_PROPS} />
                                 <input
                                   type="file"
                                   hidden
@@ -285,10 +287,11 @@ export default function MyKpisClient({
                         <button
                           type="button"
                           className="btn-secondary btn-sm"
-                          style={{ marginRight: ".3rem" }}
+                          style={{ marginInlineStart: ".3rem", display: "inline-flex", alignItems: "center" }}
                           onClick={() => setExpanded(isExpanded ? null : item.kpi.id)}
+                          aria-label={isExpanded ? "طي التفاصيل" : "عرض التفاصيل"}
                         >
-                          {isExpanded ? "▲" : "▼"}
+                          {isExpanded ? <ChevronUp {...ICON_PROPS} /> : <ChevronDown {...ICON_PROPS} />}
                         </button>
                       </td>
                     </tr>
@@ -300,42 +303,72 @@ export default function MyKpisClient({
                               سبب الرفض: {item.entry.rejectReason}
                             </div>
                           )}
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: ".75rem" }}>
-                            <div>
-                              <label className="label-field">ماذا حصل؟</label>
-                              <textarea
-                                className="input-field"
-                                rows={3}
-                                value={draft.what}
-                                disabled={item.entry?.approvalStatus === "APPROVED"}
-                                onChange={(e) =>
-                                  setDrafts((d) => ({ ...d, [item.kpi.id]: { ...draft, what: e.target.value } }))
-                                }
-                              />
+                          <div className="field-grid" style={{ marginBottom: ".75rem" }}>
+                            <div className="field-cell">
+                              <div className="field-cell-row">
+                                <span className="field-cell-label">البيانات المطلوبة</span>
+                                <span className="field-cell-value">{item.kpi.requiredData || "—"}</span>
+                              </div>
                             </div>
-                            <div>
-                              <label className="label-field">كيف حصل؟</label>
-                              <textarea
-                                className="input-field"
-                                rows={3}
-                                value={draft.how}
-                                disabled={item.entry?.approvalStatus === "APPROVED"}
-                                onChange={(e) =>
-                                  setDrafts((d) => ({ ...d, [item.kpi.id]: { ...draft, how: e.target.value } }))
-                                }
-                              />
+                            <div className="field-cell">
+                              <div className="field-cell-row">
+                                <span className="field-cell-label">خط الأساس</span>
+                                <span className="field-cell-value">{item.kpi.baseline ?? "—"}</span>
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-muted" style={{ fontSize: ".72rem" }}>
-                            الاتجاه: {POLARITY_LABEL[item.kpi.polarity] || item.kpi.polarity}
-                            {item.entry?.recommendation && ` · التوصية: ${item.entry.recommendation}`}
+                            <div className="field-cell">
+                              <div className="field-cell-row">
+                                <span className="field-cell-label">الاتجاه</span>
+                                <span className="field-cell-value">{POLARITY_LABEL[item.kpi.polarity] || item.kpi.polarity}</span>
+                              </div>
+                            </div>
+                            {item.entry?.recommendation && (
+                              <div className="field-cell">
+                                <div className="field-cell-row">
+                                  <span className="field-cell-label">التوصية</span>
+                                  <span className="field-cell-value">{item.entry.recommendation}</span>
+                                </div>
+                              </div>
+                            )}
+                            <div className="field-cell">
+                              <div className="field-cell-row">
+                                <span className="field-cell-label">ماذا حصل؟</span>
+                                <div className="field-cell-control">
+                                  <textarea
+                                    className="input-field"
+                                    rows={3}
+                                    value={draft.what}
+                                    disabled={item.entry?.approvalStatus === "APPROVED"}
+                                    onChange={(e) =>
+                                      setDrafts((d) => ({ ...d, [item.kpi.id]: { ...draft, what: e.target.value } }))
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="field-cell">
+                              <div className="field-cell-row">
+                                <span className="field-cell-label">كيف حصل؟</span>
+                                <div className="field-cell-control">
+                                  <textarea
+                                    className="input-field"
+                                    rows={3}
+                                    value={draft.how}
+                                    disabled={item.entry?.approvalStatus === "APPROVED"}
+                                    onChange={(e) =>
+                                      setDrafts((d) => ({ ...d, [item.kpi.id]: { ...draft, how: e.target.value } }))
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            </div>
                           </div>
                           {item.entry?.evidences.map((ev) => (
                             <a
                               key={ev.id}
                               href={`/api/evidence/${ev.id}`}
                               className="badge-primary"
-                              style={{ marginLeft: ".4rem", display: "inline-block", marginTop: ".4rem" }}
+                              style={{ marginInlineStart: ".4rem", display: "inline-block", marginTop: ".4rem" }}
                             >
                               {ev.fileName}
                             </a>

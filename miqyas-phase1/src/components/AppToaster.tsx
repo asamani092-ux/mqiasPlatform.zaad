@@ -12,7 +12,7 @@ export default function AppToaster() {
       duration={4000}
       toastOptions={{
         classNames: {
-          toast: "tmkeen-toast",
+          toast: "app-toast",
         },
       }}
     />

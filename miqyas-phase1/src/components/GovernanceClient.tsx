@@ -54,6 +54,7 @@ export default function GovernanceClient({
   const [msg, setMsg] = useState("");
   const [newReq, setNewReq] = useState({ title: "", category: "", notes: "" });
   const [newObs, setNewObs] = useState({ title: "" });
+  const [tab, setTab] = useState<"requirements" | "observations">("requirements");
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/governance?year=${year}&period=${period}`);
@@ -160,12 +161,12 @@ export default function GovernanceClient({
   }
 
   const statCards = [
-    { num: stats.totalRequirements, lbl: "المتطلبات المعتمدة", color: "var(--tmkeen-primary)" },
-    { num: stats.appliedCount, lbl: "المطبقة", color: "var(--tmkeen-success)" },
-    { num: `${stats.compliancePct}%`, lbl: "نسبة الامتثال", color: "var(--tmkeen-secondary)" },
-    { num: stats.notAppliedCount, lbl: "غير المكتملة", color: "var(--tmkeen-warning)" },
-    { num: stats.openObservations, lbl: "ملاحظات قائمة", color: "var(--tmkeen-danger)" },
-    { num: stats.closedInPeriod, lbl: "ملاحظات مغلقة بالفترة", color: "var(--tmkeen-warning)" },
+    { num: stats.totalRequirements, lbl: "المتطلبات المعتمدة", accent: "" },
+    { num: stats.appliedCount, lbl: "المطبقة", accent: "stat-card--success" },
+    { num: `${stats.compliancePct}%`, lbl: "نسبة الامتثال", accent: "stat-card--secondary" },
+    { num: stats.notAppliedCount, lbl: "غير المكتملة", accent: "stat-card--warning" },
+    { num: stats.openObservations, lbl: "ملاحظات قائمة", accent: "stat-card--danger" },
+    { num: stats.closedInPeriod, lbl: "ملاحظات مغلقة بالفترة", accent: "stat-card--warning" },
   ];
 
   return (
@@ -182,13 +183,31 @@ export default function GovernanceClient({
 
       <div className="grid grid-3" style={{ marginBottom: "1rem" }}>
         {statCards.map((s) => (
-          <div key={s.lbl} className="card stat-card" style={{ borderRightColor: s.color }}>
+          <div key={s.lbl} className={`card stat-card ${s.accent}`.trim()}>
             <div className="stat-num">{s.num}</div>
             <div className="stat-lbl">{s.lbl}</div>
           </div>
         ))}
       </div>
 
+      <div className="tab-bar" style={{ marginBottom: "1rem" }}>
+        <button
+          type="button"
+          className={tab === "requirements" ? "active" : ""}
+          onClick={() => setTab("requirements")}
+        >
+          متطلبات الامتثال
+        </button>
+        <button
+          type="button"
+          className={tab === "observations" ? "active" : ""}
+          onClick={() => setTab("observations")}
+        >
+          الملاحظات
+        </button>
+      </div>
+
+      {tab === "requirements" && (
       <div className="card" style={{ marginBottom: "1rem" }}>
         <h3 style={{ marginBottom: ".75rem" }}>متطلبات الامتثال — {year}</h3>
         <table className="tmkeen-table">
@@ -242,7 +261,9 @@ export default function GovernanceClient({
           </div>
         )}
       </div>
+      )}
 
+      {tab === "observations" && (
       <div className="card">
         <h3 style={{ marginBottom: ".75rem" }}>الملاحظات</h3>
         <table className="tmkeen-table">
@@ -289,6 +310,7 @@ export default function GovernanceClient({
           </div>
         )}
       </div>
+      )}
     </>
   );
 }

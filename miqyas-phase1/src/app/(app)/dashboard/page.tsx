@@ -37,9 +37,9 @@ export default async function DashboardPage() {
 
       <div className="grid grid-4" style={{ marginBottom: "1rem" }}>
         <div className="card stat-card"><div className="stat-num">{kpiCount}</div><div className="stat-lbl">إجمالي المؤشرات النشطة</div></div>
-        <div className="card stat-card" style={{ borderRightColor: "var(--tmkeen-success)" }}><div className="stat-num">{avg}%</div><div className="stat-lbl">متوسط التحقق للفترة</div></div>
-        <div className="card stat-card" style={{ borderRightColor: "var(--tmkeen-warning)" }}><div className="stat-num">{alerts}</div><div className="stat-lbl">تنبيهات الإنذار المبكر</div></div>
-        <div className="card stat-card" style={{ borderRightColor: "var(--tmkeen-danger)" }}><div className="stat-num">{openCards}</div><div className="stat-lbl">بطاقات انحراف غير مغلقة</div></div>
+        <div className="card stat-card stat-card--success"><div className="stat-num">{avg}%</div><div className="stat-lbl">متوسط التحقق للفترة</div></div>
+        <div className="card stat-card stat-card--warning"><div className="stat-num">{alerts}</div><div className="stat-lbl">تنبيهات الإنذار المبكر</div></div>
+        <div className="card stat-card stat-card--danger"><div className="stat-num">{openCards}</div><div className="stat-lbl">بطاقات انحراف غير مغلقة</div></div>
       </div>
 
       <div className="card">

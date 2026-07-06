@@ -34,8 +34,8 @@ export default function KpiDetailDrawer({
   if (!kpiId) return null;
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 100, display: "flex", justifyContent: "flex-start" }}>
-      <div className="card" style={{ width: "min(520px, 95vw)", height: "100vh", overflowY: "auto", borderRadius: 0, margin: 0 }}>
+    <div className="drawer-overlay">
+      <div className="card drawer-panel">
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
           <h3>{data ? String((data.kpi as { name?: string }).name) : "..."}</h3>
           <button type="button" className="icon-btn btn-sm" onClick={onClose} aria-label="إغلاق">
