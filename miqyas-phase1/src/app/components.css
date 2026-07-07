@@ -1,11 +1,13 @@
 /**
- * Tmkeen Design System — Component Classes (framework-agnostic)
+ * هوية جمعية الزاد — منصة مِقياس (Component Classes)
  * يتطلب tokens.css
  */
 
 /* ── Base RTL ── */
 .tmkeen-root,
-[data-tmkeen] {
+.miqyas-root,
+[data-tmkeen],
+[data-miqyas] {
   color: var(--tmkeen-foreground);
   background: var(--tmkeen-background);
   font-family: var(--tmkeen-font-sans);
@@ -16,7 +18,10 @@
 
 .tmkeen-root *,
 .tmkeen-root *::before,
-.tmkeen-root *::after {
+.tmkeen-root *::after,
+.miqyas-root *,
+.miqyas-root *::before,
+.miqyas-root *::after {
   box-sizing: border-box;
 }
 
