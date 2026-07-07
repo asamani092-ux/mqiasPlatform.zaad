@@ -2,16 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import PeriodSelector from "@/components/PeriodSelector";
+import DonutChart from "@/components/charts/DonutChart";
+import CompareBarChart from "@/components/charts/CompareBarChart";
+import {
+  complianceCompareBars,
+  complianceDonutSegments,
+  GOVERNANCE_STAT_LABELS,
+  type GovernanceStats,
+} from "@/lib/governance-stats";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
-
-type Stats = {
-  totalRequirements: number;
-  appliedCount: number;
-  compliancePct: number;
-  notAppliedCount: number;
-  openObservations: number;
-  closedInPeriod: number;
-};
 
 type Requirement = {
   id: number;
@@ -19,7 +18,6 @@ type Requirement = {
   category: string | null;
   year: number;
   status: string;
-  notes: string | null;
 };
 
 type Observation = {
@@ -30,8 +28,12 @@ type Observation = {
   openedPeriod: string;
   closedYear: number | null;
   closedPeriod: string | null;
-  closedAt: string | null;
 };
+
+function formatPeriod(year: number | null, p: string | null) {
+  if (!year || !p) return "—";
+  return `${year} · ${PERIOD_LABEL[p as Period] || p}`;
+}
 
 export default function GovernanceClient({
   initialStats,
@@ -41,7 +43,7 @@ export default function GovernanceClient({
   period,
   canManage,
 }: {
-  initialStats: Stats;
+  initialStats: GovernanceStats;
   initialRequirements: Requirement[];
   initialObservations: Observation[];
   year: number;
@@ -52,8 +54,7 @@ export default function GovernanceClient({
   const [requirements, setRequirements] = useState(initialRequirements);
   const [observations, setObservations] = useState(initialObservations);
   const [msg, setMsg] = useState("");
-  const [newReq, setNewReq] = useState({ title: "", category: "", notes: "" });
-  const [newObs, setNewObs] = useState({ title: "" });
+  const [tab, setTab] = useState<"requirements" | "observations">("requirements");
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/governance?year=${year}&period=${period}`);
@@ -73,42 +74,16 @@ export default function GovernanceClient({
     const res = await fetch("/api/governance", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "requirement", id, status }),
+      body: JSON.stringify({
+        type: "requirement",
+        id,
+        status: status === "APPLIED" ? "NOT_APPLIED" : "APPLIED",
+      }),
     });
     if (res.ok) await load();
     else {
       const d = await res.json();
       setMsg(d.error || "فشل التحديث");
-    }
-  }
-
-  async function updateRequirement(id: number, patch: { notes?: string | null; title?: string; category?: string | null }) {
-    const res = await fetch("/api/governance", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "requirement", id, ...patch }),
-    });
-    if (res.ok) {
-      setMsg("تم حفظ التعديل");
-      await load();
-    } else {
-      const d = await res.json();
-      setMsg(d.error || "فشل الحفظ");
-    }
-  }
-
-  async function updateObservation(id: number, title: string) {
-    const res = await fetch("/api/governance", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "observation", id, title }),
-    });
-    if (res.ok) {
-      setMsg("تم حفظ الملاحظة");
-      await load();
-    } else {
-      const d = await res.json();
-      setMsg(d.error || "فشل الحفظ");
     }
   }
 
@@ -119,176 +94,174 @@ export default function GovernanceClient({
       body: JSON.stringify({
         type: "observation",
         id,
-        status,
-        closedYear: status === "CLOSED" ? year : null,
-        closedPeriod: status === "CLOSED" ? period : null,
+        status: status === "OPEN" ? "CLOSED" : "OPEN",
+        closedYear: status === "OPEN" ? year : null,
+        closedPeriod: status === "OPEN" ? period : null,
       }),
     });
     if (res.ok) await load();
-  }
-
-  async function addRequirement() {
-    if (!newReq.title.trim()) return;
-    const res = await fetch("/api/governance", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "requirement",
-        title: newReq.title,
-        category: newReq.category || null,
-        notes: newReq.notes || null,
-        year,
-      }),
-    });
-    if (res.ok) {
-      setNewReq({ title: "", category: "", notes: "" });
-      await load();
-    }
-  }
-
-  async function addObservation() {
-    if (!newObs.title.trim()) return;
-    const res = await fetch("/api/governance", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "observation", title: newObs.title, openedYear: year, openedPeriod: period }),
-    });
-    if (res.ok) {
-      setNewObs({ title: "" });
-      await load();
+    else {
+      const d = await res.json();
+      setMsg(d.error || "فشل التحديث");
     }
   }
 
   const statCards = [
-    { num: stats.totalRequirements, lbl: "المتطلبات المعتمدة", color: "var(--tmkeen-primary)" },
-    { num: stats.appliedCount, lbl: "المطبقة", color: "var(--tmkeen-success)" },
-    { num: `${stats.compliancePct}%`, lbl: "نسبة الامتثال", color: "var(--tmkeen-secondary)" },
-    { num: stats.notAppliedCount, lbl: "غير المكتملة", color: "var(--tmkeen-warning)" },
-    { num: stats.openObservations, lbl: "ملاحظات قائمة", color: "var(--tmkeen-danger)" },
-    { num: stats.closedInPeriod, lbl: "ملاحظات مغلقة بالفترة", color: "var(--tmkeen-warning)" },
+    { num: stats.totalRequirements, lbl: GOVERNANCE_STAT_LABELS.totalRequirements, accent: "" },
+    { num: stats.appliedCount, lbl: GOVERNANCE_STAT_LABELS.appliedCount, accent: "stat-card--success" },
+    { num: `${stats.compliancePct}%`, lbl: GOVERNANCE_STAT_LABELS.compliancePct, accent: "stat-card--secondary" },
+    { num: stats.notAppliedCount, lbl: GOVERNANCE_STAT_LABELS.notAppliedCount, accent: "stat-card--warning" },
+    { num: stats.openObservations, lbl: GOVERNANCE_STAT_LABELS.openObservations, accent: "stat-card--danger" },
+    { num: stats.closedInPeriod, lbl: GOVERNANCE_STAT_LABELS.closedInPeriod, accent: "stat-card--warning" },
   ];
+
+  const donutSegments = complianceDonutSegments(stats);
+  const compareBars = complianceCompareBars(stats);
 
   return (
     <>
       <div className="topbar">
         <div>
           <h1>مسار الحوكمة</h1>
-          <div className="text-muted">متطلبات الامتثال والملاحظات</div>
+          <div className="text-muted">متطلبات الامتثال والملاحظات — {PERIOD_LABEL[period]} {year}</div>
         </div>
         <PeriodSelector year={year} period={period} />
       </div>
 
-      {msg && <div className="alert alert-warn" style={{ marginBottom: "1rem" }}>{msg}</div>}
+      {msg && (
+        <div className="alert alert-warn" style={{ marginBottom: "1rem" }}>
+          {msg}
+        </div>
+      )}
 
       <div className="grid grid-3" style={{ marginBottom: "1rem" }}>
         {statCards.map((s) => (
-          <div key={s.lbl} className="card stat-card" style={{ borderRightColor: s.color }}>
+          <div key={s.lbl} className={`card stat-card ${s.accent}`.trim()}>
             <div className="stat-num">{s.num}</div>
             <div className="stat-lbl">{s.lbl}</div>
           </div>
         ))}
       </div>
 
-      <div className="card" style={{ marginBottom: "1rem" }}>
-        <h3 style={{ marginBottom: ".75rem" }}>متطلبات الامتثال — {year}</h3>
-        <table className="tmkeen-table">
-          <thead><tr><th>المتطلب</th><th>التصنيف</th><th>الحالة</th><th>ملاحظات</th></tr></thead>
-          <tbody>
-            {requirements.map((r) => (
-              <tr key={r.id}>
-                <td>{r.title}</td>
-                <td>{r.category || "—"}</td>
-                <td>
-                  {canManage ? (
-                    <button
-                      type="button"
-                      className={r.status === "APPLIED" ? "badge-success" : "badge-danger"}
-                      onClick={() => toggleRequirement(r.id, r.status === "APPLIED" ? "NOT_APPLIED" : "APPLIED")}
-                    >
-                      {r.status === "APPLIED" ? "مطبّق" : "غير مطبّق"}
-                    </button>
-                  ) : (
-                    <span className={r.status === "APPLIED" ? "badge-success" : "badge-danger"}>
-                      {r.status === "APPLIED" ? "مطبّق" : "غير مطبّق"}
-                    </span>
-                  )}
-                </td>
-                <td>
-                  {canManage ? (
-                    <input
-                      className="input-field"
-                      style={{ fontSize: ".78rem", minWidth: "140px" }}
-                      defaultValue={r.notes || ""}
-                      placeholder="أضف ملاحظة..."
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        if (v !== (r.notes || "")) updateRequirement(r.id, { notes: v || null });
-                      }}
-                    />
-                  ) : (
-                    r.notes || "—"
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {canManage && (
-          <div style={{ display: "flex", gap: ".5rem", marginTop: ".75rem", flexWrap: "wrap" }}>
-            <input className="input-field" placeholder="متطلب جديد" value={newReq.title} onChange={(e) => setNewReq({ ...newReq, title: e.target.value })} />
-            <input className="input-field" placeholder="التصنيف" value={newReq.category} onChange={(e) => setNewReq({ ...newReq, category: e.target.value })} />
-            <input className="input-field" placeholder="ملاحظات" value={newReq.notes} onChange={(e) => setNewReq({ ...newReq, notes: e.target.value })} />
-            <button type="button" className="btn-primary btn-sm" onClick={addRequirement}>إضافة</button>
-          </div>
-        )}
+      <div className="grid grid-2" style={{ marginBottom: "1rem" }}>
+        <div className="card">
+          <h3 style={{ marginBottom: ".75rem" }}>نسبة الامتثال</h3>
+          <DonutChart
+            segments={donutSegments}
+            centerLabel={`${stats.compliancePct}%`}
+            centerSubLabel="نسبة الامتثال"
+          />
+        </div>
+        <div className="card">
+          <h3 style={{ marginBottom: ".75rem" }}>المطبّق مقابل غير المطبّق</h3>
+          <CompareBarChart items={compareBars} />
+        </div>
       </div>
 
-      <div className="card">
-        <h3 style={{ marginBottom: ".75rem" }}>الملاحظات</h3>
-        <table className="tmkeen-table">
-          <thead><tr><th>الملاحظة</th><th>فترة الفتح</th><th>الحالة</th><th>إغلاق</th></tr></thead>
-          <tbody>
-            {observations.map((o) => (
-              <tr key={o.id}>
-                <td>
-                  {canManage ? (
-                    <input
-                      className="input-field"
-                      style={{ fontSize: ".78rem", minWidth: "180px" }}
-                      defaultValue={o.title}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        if (v && v !== o.title) updateObservation(o.id, v);
-                      }}
-                    />
-                  ) : (
-                    o.title
-                  )}
-                </td>
-                <td>{o.openedYear} · {PERIOD_LABEL[o.openedPeriod as Period] || o.openedPeriod}</td>
-                <td><span className={o.status === "OPEN" ? "badge-warning" : "badge-success"}>{o.status === "OPEN" ? "قائمة" : "مغلقة"}</span></td>
-                <td>
-                  {canManage && (
-                    <button
-                      type="button"
-                      className="btn-secondary btn-sm"
-                      onClick={() => toggleObservation(o.id, o.status === "OPEN" ? "CLOSED" : "OPEN")}
-                    >
-                      {o.status === "OPEN" ? "إغلاق" : "إعادة فتح"}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {canManage && (
-          <div style={{ display: "flex", gap: ".5rem", marginTop: ".75rem" }}>
-            <input className="input-field" placeholder="ملاحظة جديدة" value={newObs.title} onChange={(e) => setNewObs({ title: e.target.value })} />
-            <button type="button" className="btn-primary btn-sm" onClick={addObservation}>إضافة</button>
-          </div>
-        )}
+      <div className="tab-bar" style={{ marginBottom: "1rem" }}>
+        <button
+          type="button"
+          className={tab === "requirements" ? "active" : ""}
+          onClick={() => setTab("requirements")}
+        >
+          المتطلبات
+        </button>
+        <button
+          type="button"
+          className={tab === "observations" ? "active" : ""}
+          onClick={() => setTab("observations")}
+        >
+          الملاحظات
+        </button>
       </div>
+
+      {tab === "requirements" && (
+        <div className="card" style={{ marginBottom: "1rem" }}>
+          <h3 style={{ marginBottom: ".75rem" }}>متطلبات الامتثال — {year}</h3>
+          <table className="tmkeen-table">
+            <thead>
+              <tr>
+                <th>العنوان</th>
+                <th>التصنيف</th>
+                <th>الحالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {requirements.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.title}</td>
+                  <td>{r.category || "—"}</td>
+                  <td>
+                    {canManage ? (
+                      <button
+                        type="button"
+                        className={r.status === "APPLIED" ? "badge-success" : "badge-danger"}
+                        onClick={() => toggleRequirement(r.id, r.status)}
+                      >
+                        {r.status === "APPLIED" ? "مطبّق" : "غير مطبّق"}
+                      </button>
+                    ) : (
+                      <span className={r.status === "APPLIED" ? "badge-success" : "badge-danger"}>
+                        {r.status === "APPLIED" ? "مطبّق" : "غير مطبّق"}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {requirements.length === 0 && (
+            <p className="text-muted" style={{ paddingTop: ".75rem" }}>
+              لا توجد متطلبات لهذا العام.
+            </p>
+          )}
+        </div>
+      )}
+
+      {tab === "observations" && (
+        <div className="card">
+          <h3 style={{ marginBottom: ".75rem" }}>الملاحظات</h3>
+          <table className="tmkeen-table">
+            <thead>
+              <tr>
+                <th>العنوان</th>
+                <th>الحالة</th>
+                <th>فترة الفتح</th>
+                <th>فترة الإغلاق</th>
+              </tr>
+            </thead>
+            <tbody>
+              {observations.map((o) => (
+                <tr key={o.id}>
+                  <td>{o.title}</td>
+                  <td>
+                    {canManage ? (
+                      <button
+                        type="button"
+                        className={o.status === "OPEN" ? "badge-warning" : "badge-success"}
+                        onClick={() => toggleObservation(o.id, o.status)}
+                      >
+                        {o.status === "OPEN" ? "قائمة" : "مغلقة"}
+                      </button>
+                    ) : (
+                      <span className={o.status === "OPEN" ? "badge-warning" : "badge-success"}>
+                        {o.status === "OPEN" ? "قائمة" : "مغلقة"}
+                      </span>
+                    )}
+                  </td>
+                  <td>{formatPeriod(o.openedYear, o.openedPeriod)}</td>
+                  <td>{formatPeriod(o.closedYear, o.closedPeriod)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {observations.length === 0 && (
+            <p className="text-muted" style={{ paddingTop: ".75rem" }}>
+              لا توجد ملاحظات مسجّلة.
+            </p>
+          )}
+        </div>
+      )}
     </>
   );
 }

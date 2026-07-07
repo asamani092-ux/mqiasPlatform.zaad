@@ -1,6 +1,12 @@
 import type { Period } from "@prisma/client";
 import { db } from "@/lib/db";
-import { deviationPct } from "@/lib/kpi";
+import { achievementPct, deviationPct } from "@/lib/kpi";
+import {
+  classifyStatus5,
+  emptyStatus5Counts,
+  STATUS5_LABEL,
+  type Status5,
+} from "@/lib/status5";
 import type { KpiStatus } from "@/lib/types";
 
 export type DeviatedKpi = {
@@ -39,11 +45,19 @@ export type LateAction = {
   status: string;
 };
 
+export type Status5Slice = {
+  status: Status5;
+  label: string;
+  count: number;
+  pct: number;
+};
+
 export type ExecutiveSnapshot = {
   deviatedKpis: DeviatedKpi[];
   openDeviationCards: OpenDeviationCard[];
   lateActions: LateAction[];
   activeAlerts: { HIGH: number; MEDIUM: number; LOW: number };
+  status5Distribution: Status5Slice[];
   headline: {
     totalKpis: number;
     measuredKpis: number;
@@ -86,25 +100,34 @@ export async function getExecutiveSnapshot(opts: {
   const measuredKpis = entries.length;
   let criticalCount = 0;
   let atRiskCount = 0;
+  const status5Counts = emptyStatus5Counts();
 
   const deviatedKpis: DeviatedKpi[] = [];
 
   for (const entry of entries) {
+    const target = entry.kpi.targets[0]?.targetValue ?? null;
+    const pct =
+      target != null
+        ? achievementPct(entry.actualValue, target, entry.kpi.polarity) ??
+          entry.achievementPct
+        : entry.achievementPct;
+    const s5 = classifyStatus5(entry.actualValue, pct);
+    status5Counts[s5]++;
     if (entry.status === "CRITICAL") criticalCount++;
     if (entry.status === "AT_RISK") atRiskCount++;
 
     if (entry.status !== "AT_RISK" && entry.status !== "CRITICAL") continue;
 
-    const target = entry.kpi.targets[0]?.targetValue ?? 0;
+    const targetVal = entry.kpi.targets[0]?.targetValue ?? 0;
     deviatedKpis.push({
       kpiId: entry.kpiId,
       code: entry.kpi.code,
       name: entry.kpi.name,
       ownerLabel: entry.kpi.ownerLabel,
       departmentName: entry.kpi.department?.name ?? null,
-      target,
+      target: targetVal,
       actual: entry.actualValue,
-      achievementPct: entry.achievementPct,
+      achievementPct: pct,
       deviationPct: deviationPct(entry.achievementPct),
       status: entry.status as KpiStatus,
     });
@@ -177,11 +200,28 @@ export async function getExecutiveSnapshot(opts: {
     activeAlerts[row.riskLevel as keyof typeof activeAlerts] = row._count.id;
   }
 
+  const measuredForDonut =
+    status5Counts.exceeded +
+    status5Counts.achieved +
+    status5Counts.partial +
+    status5Counts.not_achieved;
+  const donutStatuses: Status5[] = ["exceeded", "achieved", "partial", "not_achieved"];
+  const status5Distribution: Status5Slice[] = donutStatuses.map((status) => ({
+    status,
+    label: STATUS5_LABEL[status],
+    count: status5Counts[status],
+    pct:
+      measuredForDonut > 0
+        ? Math.round((status5Counts[status] / measuredForDonut) * 1000) / 10
+        : 0,
+  }));
+
   return {
     deviatedKpis,
     openDeviationCards,
     lateActions,
     activeAlerts,
+    status5Distribution,
     headline: {
       totalKpis,
       measuredKpis,

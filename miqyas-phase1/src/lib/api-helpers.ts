@@ -11,6 +11,12 @@ export function handleApiError(e: unknown) {
   }
   const forbidden = handleForbidden(e);
   if (forbidden) return jsonError(forbidden.error, forbidden.status);
+  if (e && typeof e === "object" && "status" in e && (e as { status: number }).status === 400) {
+    return jsonError(
+      "message" in e ? String((e as { message: string }).message) : "طلب غير صالح",
+      400,
+    );
+  }
   if (e instanceof Error && e.message.startsWith("Zod")) {
     return jsonError("بيانات غير صالحة", 400);
   }

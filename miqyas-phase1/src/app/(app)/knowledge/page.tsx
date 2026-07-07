@@ -27,6 +27,7 @@ export default async function KnowledgePage({
   const total = assets.length;
   const approved = assets.filter((a) => a.status === "APPROVED").length;
   const used = assets.filter((a) => a.isUsed).length;
+  const draftCount = total - approved;
   const approvedPct = total > 0 ? Math.round((approved / total) * 1000) / 10 : 0;
   const usedPct = total > 0 ? Math.round((used / total) * 1000) / 10 : 0;
 
@@ -43,7 +44,7 @@ export default async function KnowledgePage({
 
   return (
     <KnowledgeClient
-      initialStats={{ total, approvedPct, usedPct, growthPct }}
+      initialStats={{ total, approvedPct, usedPct, growthPct, approvedCount: approved, draftCount }}
       initialAssets={assets}
       year={year}
       period={period}

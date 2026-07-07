@@ -90,6 +90,27 @@ async function main() {
   }
 
   console.log("✅ اكتملت البذرة: 6 إدارات، 18 قسمًا، 16 هدفًا استراتيجيًا، حساب المشرف");
+
+  const testPass = process.env.TEST_USER_PASSWORD;
+  if (testPass) {
+    const section = await db.section.findUnique({ where: { code: "1/1" } });
+    if (section) {
+      await db.user.upsert({
+        where: { email: "employee@zad.test" },
+        update: {},
+        create: {
+          name: "موظف تجريبي",
+          email: "employee@zad.test",
+          passwordHash: await bcrypt.hash(testPass, 12),
+          role: "EMPLOYEE",
+          status: "ACTIVE",
+          sectionId: section.id,
+          departmentId: section.departmentId,
+        },
+      });
+      console.log("ℹ️  تم إنشاء/تخطي موظف تجريبي: employee@zad.test");
+    }
+  }
 }
 
 main()

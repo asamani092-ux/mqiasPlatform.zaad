@@ -19,6 +19,7 @@ async function knowledgeStats(user: SessionUser, year: number, period: Period) {
   const total = assets.length;
   const approved = assets.filter((a) => a.status === "APPROVED").length;
   const used = assets.filter((a) => a.isUsed).length;
+  const draftCount = total - approved;
   const approvedPct = total > 0 ? Math.round((approved / total) * 1000) / 10 : 0;
   const usedPct = total > 0 ? Math.round((used / total) * 1000) / 10 : 0;
 
@@ -33,7 +34,7 @@ async function knowledgeStats(user: SessionUser, year: number, period: Period) {
         ? 100
         : 0;
 
-  return { total, approvedPct, usedPct, growthPct };
+  return { total, approvedPct, usedPct, growthPct, approvedCount: approved, draftCount };
 }
 
 export async function GET(req: NextRequest) {

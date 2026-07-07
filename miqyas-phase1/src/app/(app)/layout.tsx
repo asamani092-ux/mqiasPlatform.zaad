@@ -30,7 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="app-shell">
         <Sidebar user={{ name: user.name, role: user.role }} showApprovals={showApprovals} isAdmin={isAdmin} showExecutive={showExecutive} />
         <main className="app-main">
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: ".5rem" }}>
+          <div className="app-topbar">
             <NotifBell />
           </div>
           {children}

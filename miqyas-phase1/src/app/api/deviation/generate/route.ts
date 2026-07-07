@@ -3,7 +3,8 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { scopedKpiWhere } from "@/lib/analytics";
-import { deviationPct } from "@/lib/kpi";
+import { achievementPct, deviationPct } from "@/lib/kpi";
+import { classifyStatus5 } from "@/lib/status5";
 import { audit } from "@/lib/audit";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
 
@@ -20,39 +21,50 @@ export async function POST(req: NextRequest) {
     if (user.role !== "SYSTEM_ADMIN") return jsonError("مشرف النظام فقط", 403);
 
     const body = genSchema.parse(await req.json());
+    const scope = scopedKpiWhere(user);
+
     const entries = await db.kpiEntry.findMany({
       where: {
         year: body.year,
         period: body.period,
         approvalStatus: "APPROVED",
-        status: { in: ["CRITICAL", "AT_RISK"] },
-        kpi: scopedKpiWhere(user),
+        kpi: scope,
       },
-      include: { kpi: true },
+      include: { kpi: { select: { polarity: true } } },
     });
 
     let created = 0;
     for (const entry of entries) {
+      const target = await db.kpiTarget.findUnique({
+        where: { kpiId_year_period: { kpiId: entry.kpiId, year: body.year, period: body.period } },
+      });
+      if (target == null) continue;
+
+      const pct =
+        achievementPct(entry.actualValue, target.targetValue, entry.kpi.polarity) ??
+        entry.achievementPct;
+      const status5 = classifyStatus5(entry.actualValue, pct);
+      if (status5 !== "partial" && status5 !== "not_achieved") continue;
+
       const exists = await db.deviationCard.findUnique({
         where: { kpiId_year_period: { kpiId: entry.kpiId, year: body.year, period: body.period } },
       });
       if (exists) continue;
 
-      const target = await db.kpiTarget.findUnique({
-        where: { kpiId_year_period: { kpiId: entry.kpiId, year: body.year, period: body.period } },
-      });
-
-      await db.deviationCard.create({
+      const card = await db.deviationCard.create({
         data: {
           kpiId: entry.kpiId,
           year: body.year,
           period: body.period,
-          targetValue: target?.targetValue ?? entry.actualValue,
+          targetValue: target.targetValue,
           actualValue: entry.actualValue,
-          deviationPct: deviationPct(entry.achievementPct) ?? 0,
-          reasons: "توليد آلي — أداء حرج أو معرّض للخطر",
+          deviationPct: deviationPct(pct) ?? 0,
+          reasons: "توليد آلي — أداء جزئي أو غير متحقق",
           createdById: parseInt(user.id, 10),
         },
+      });
+      await audit(parseInt(user.id, 10), "CREATE_DEVIATION_CARD", "DeviationCard", card.id, {
+        generated: true,
       });
       created++;
     }

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
-import { getKpiRows, statusCounts } from "@/lib/analytics";
+import { getKpiRows } from "@/lib/analytics";
+import { enrichStrategicRows } from "@/lib/strategic-analytics";
 import { parseTrackParams } from "@/lib/track-params";
 import StrategicTrackClient from "@/components/StrategicTrackClient";
 
@@ -15,5 +16,7 @@ export default async function StrategicPage({
   if (!user) redirect("/login");
   const { year, period } = parseTrackParams(searchParams);
   const rows = await getKpiRows({ user, year, period, type: "STRATEGIC" });
-  return <StrategicTrackClient rows={rows} counts={statusCounts(rows)} year={year} period={period} />;
+  return (
+    <StrategicTrackClient rows={enrichStrategicRows(rows)} year={year} period={period} />
+  );
 }

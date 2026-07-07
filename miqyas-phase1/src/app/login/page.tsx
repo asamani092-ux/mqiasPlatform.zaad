@@ -41,29 +41,15 @@ export default function LoginPage() {
     <div className="page-shell">
       <div className="page-container-narrow">
         <div className="card">
-          <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "3rem",
-                height: "3rem",
-                borderRadius: "var(--tmkeen-radius-lg)",
-                background: "var(--tmkeen-primary)",
-                color: "#fff",
-                fontSize: "1.5rem",
-                fontWeight: 800,
-                marginBottom: "0.75rem",
-              }}
-            >
-              م
-            </span>
-            <h1 style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--tmkeen-primary)" }}>مِقياس</h1>
-            <p className="text-muted" style={{ marginBottom: 0 }}>جمعية الزاد — قياس الأداء المؤسسي</p>
+          <div className="login-brand-block">
+            <span className="login-brand-mark">م</span>
+            <h1 className="login-title">مِقياس</h1>
+            <p className="text-muted" style={{ marginBottom: 0 }}>
+              جمعية الزاد — قياس الأداء المؤسسي
+            </p>
           </div>
 
-          <h2 style={{ fontSize: "1.15rem", fontWeight: 800, marginBottom: "0.5rem" }}>تسجيل الدخول</h2>
+          <h2 className="login-heading">تسجيل الدخول</h2>
           <p className="text-muted">أدخل بيانات حسابك للوصول إلى المنصة</p>
 
           {error && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{error}</div>}

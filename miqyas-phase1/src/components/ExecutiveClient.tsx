@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import PeriodSelector from "@/components/PeriodSelector";
 import KpiDetailDrawer from "@/components/KpiDetailDrawer";
+import DonutChart from "@/components/charts/DonutChart";
 import { StatusBadge } from "@/components/TrackStatCards";
+import { STATUS5_COLOR } from "@/lib/status5";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
 import type { ExecutiveSnapshot } from "@/lib/executive";
+import { ICON_PROPS } from "@/lib/icon-props";
 
 const CARD_LABEL: Record<string, string> = {
   OPEN: "مفتوحة",
@@ -30,14 +34,23 @@ export default function ExecutiveClient({
   period: Period;
 }) {
   const [drawerId, setDrawerId] = useState<number | null>(null);
-  const { deviatedKpis, openDeviationCards, lateActions, activeAlerts, headline } = snapshot;
+  const { deviatedKpis, openDeviationCards, lateActions, activeAlerts, headline, status5Distribution } =
+    snapshot;
+
+  const donutSegments = status5Distribution
+    .filter((s) => s.count > 0)
+    .map((s) => ({
+      name: s.label,
+      value: s.pct,
+      color: STATUS5_COLOR[s.status],
+    }));
 
   const statCards = [
-    { id: "all", num: headline.totalKpis, lbl: "إجمالي المؤشرات", color: "var(--tmkeen-primary)" },
-    { id: "critical", num: `${headline.pctCritical}%`, lbl: "مؤشرات حرجة", color: "var(--tmkeen-danger)" },
-    { id: "atrisk", num: `${headline.pctAtRisk}%`, lbl: "معرضة للخطر", color: "var(--tmkeen-warning)" },
-    { id: "cards", num: headline.openCards, lbl: "بطاقات انحراف مفتوحة", color: "var(--tmkeen-warning)" },
-    { id: "late", num: headline.lateActions, lbl: "إجراءات متأخرة", color: "var(--tmkeen-danger)" },
+    { id: "all", num: headline.totalKpis, lbl: "إجمالي المؤشرات", accent: "" },
+    { id: "critical", num: `${headline.pctCritical}%`, lbl: "مؤشرات حرجة", accent: "stat-card--danger" },
+    { id: "atrisk", num: `${headline.pctAtRisk}%`, lbl: "معرضة للخطر", accent: "stat-card--warning" },
+    { id: "cards", num: headline.openCards, lbl: "بطاقات انحراف مفتوحة", accent: "stat-card--warning" },
+    { id: "late", num: headline.lateActions, lbl: "إجراءات متأخرة", accent: "stat-card--danger" },
   ];
 
   return (
@@ -52,11 +65,29 @@ export default function ExecutiveClient({
 
       <div className="grid grid-4" style={{ marginBottom: "1rem" }}>
         {statCards.map((s) => (
-          <a key={s.id} href={`#${s.id}`} className="card stat-card" style={{ borderRightColor: s.color, textDecoration: "none", color: "inherit" }}>
+          <a
+            key={s.id}
+            href={`#${s.id}`}
+            className={`card stat-card ${s.accent}`.trim()}
+            style={{ textDecoration: "none", color: "inherit" }}
+          >
             <div className="stat-num">{s.num}</div>
             <div className="stat-lbl">{s.lbl}</div>
           </a>
         ))}
+      </div>
+
+      <div className="card" style={{ marginBottom: "1rem" }}>
+        <h3 style={{ marginBottom: ".75rem" }}>توزيع حالات المؤشرات (5 حالات)</h3>
+        <DonutChart
+          segments={donutSegments}
+          centerLabel={
+            headline.measuredKpis > 0
+              ? `${headline.measuredKpis}`
+              : "—"
+          }
+          centerSubLabel="مؤشرات مقيسة"
+        />
       </div>
 
       <div id="critical" className="card" style={{ marginBottom: "1rem" }}>
@@ -121,7 +152,7 @@ export default function ExecutiveClient({
         ) : (
           <div className="grid grid-3">
             {openDeviationCards.map((c) => (
-              <div key={c.id} className="card" style={{ boxShadow: "none", border: "1px solid var(--border)" }}>
+              <div key={c.id} className="card" style={{ boxShadow: "none", border: "1px solid var(--tmkeen-surface-border)" }}>
                 <div style={{ fontWeight: 700, marginBottom: ".35rem" }}>{c.kpiName}</div>
                 <div style={{ fontSize: ".82rem", color: "var(--tmkeen-danger)", fontWeight: 700 }}>انحراف {c.deviationPct}%</div>
                 <div style={{ fontSize: ".78rem", margin: ".35rem 0" }}>{c.openActions} إجراء مفتوح</div>
@@ -141,7 +172,10 @@ export default function ExecutiveClient({
           <span className="badge-danger">مرتفع: {activeAlerts.HIGH}</span>
           <span className="badge-primary">متوسط: {activeAlerts.MEDIUM}</span>
           <span className="badge-success">منخفض: {activeAlerts.LOW}</span>
-          <Link href="/early-warning" className="btn-secondary btn-sm">عرض التفاصيل ←</Link>
+          <Link href="/early-warning" className="btn-secondary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: ".35rem" }}>
+            عرض التفاصيل
+            <ArrowLeft {...ICON_PROPS} />
+          </Link>
         </div>
         {activeAlerts.HIGH + activeAlerts.MEDIUM + activeAlerts.LOW === 0 && (
           <p className="text-muted" style={{ marginTop: ".75rem" }}>لا توجد إنذارات نشطة لهذه الفترة.</p>
