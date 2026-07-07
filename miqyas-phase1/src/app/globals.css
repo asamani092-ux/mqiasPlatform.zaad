@@ -299,8 +299,15 @@
 }
 
 .grid-4 > *,
-.grid-3 > * {
+.grid-3 > *,
+.grid-2 > * {
   min-width: 0;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 1rem;
 }
 
 .grid-3 {
