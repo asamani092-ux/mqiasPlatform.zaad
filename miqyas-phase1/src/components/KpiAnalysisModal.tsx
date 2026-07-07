@@ -7,7 +7,7 @@ import { Status5OwnerLine } from "@/components/Status5Badge";
 import { classifyStatus5 } from "@/lib/status5";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
-import type { StrategicKpiRow } from "@/lib/strategic-analytics";
+import type { AnalysisKpiRow } from "@/lib/analysis-row";
 
 type KpiDetailResponse = {
   kpi: {
@@ -35,11 +35,13 @@ export default function KpiAnalysisModal({
   year,
   period,
   onClose,
+  showStrategicLink = false,
 }: {
-  row: StrategicKpiRow;
+  row: AnalysisKpiRow;
   year: number;
   period: Period;
   onClose: () => void;
+  showStrategicLink?: boolean;
 }) {
   const printRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
@@ -149,6 +151,16 @@ export default function KpiAnalysisModal({
                 ownerLabel={row.ownerLabel}
                 departmentName={row.departmentName}
               />
+
+              {showStrategicLink && row.strategicGoalCode && (
+                <div className="field-cell" style={{ marginBottom: "1rem" }}>
+                  <div className="field-cell-label">الارتباط بالهدف الاستراتيجي</div>
+                  <div className="field-cell-value">
+                    {row.strategicGoalCode}
+                    {row.strategicGoalTitle ? ` — ${row.strategicGoalTitle}` : ""}
+                  </div>
+                </div>
+              )}
 
               <h4 className="section-h">
                 <BarChart3 {...ICON_PROPS} />

@@ -18,6 +18,7 @@ export type KpiAnalyticsRow = {
   deviationPct: number | null;
   status: KpiStatus;
   departmentName: string | null;
+  departmentId: number | null;
   sectionName: string | null;
   ownerLabel: string | null;
   strategicGoalCode: string | null;
@@ -38,7 +39,7 @@ export async function getKpiRows(opts: {
   const kpis = await db.kpi.findMany({
     where,
     include: {
-      department: { select: { name: true } },
+      department: { select: { id: true, name: true } },
       section: { select: { name: true } },
       strategicGoal: { select: { code: true, title: true } },
       operationalGoal: { select: { title: true } },
@@ -74,6 +75,7 @@ export async function getKpiRows(opts: {
       deviationPct: deviationPct(pct),
       status,
       departmentName: kpi.department?.name ?? null,
+      departmentId: kpi.department?.id ?? null,
       sectionName: kpi.section?.name ?? null,
       ownerLabel: kpi.ownerLabel,
       strategicGoalCode: kpi.strategicGoal?.code ?? null,
