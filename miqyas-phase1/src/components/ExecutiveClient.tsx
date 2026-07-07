@@ -5,7 +5,9 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import PeriodSelector from "@/components/PeriodSelector";
 import KpiDetailDrawer from "@/components/KpiDetailDrawer";
+import DonutChart from "@/components/charts/DonutChart";
 import { StatusBadge } from "@/components/TrackStatCards";
+import { STATUS5_COLOR } from "@/lib/status5";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
 import type { ExecutiveSnapshot } from "@/lib/executive";
 import { ICON_PROPS } from "@/lib/icon-props";
@@ -32,7 +34,16 @@ export default function ExecutiveClient({
   period: Period;
 }) {
   const [drawerId, setDrawerId] = useState<number | null>(null);
-  const { deviatedKpis, openDeviationCards, lateActions, activeAlerts, headline } = snapshot;
+  const { deviatedKpis, openDeviationCards, lateActions, activeAlerts, headline, status5Distribution } =
+    snapshot;
+
+  const donutSegments = status5Distribution
+    .filter((s) => s.count > 0)
+    .map((s) => ({
+      name: s.label,
+      value: s.pct,
+      color: STATUS5_COLOR[s.status],
+    }));
 
   const statCards = [
     { id: "all", num: headline.totalKpis, lbl: "إجمالي المؤشرات", accent: "" },
@@ -64,6 +75,19 @@ export default function ExecutiveClient({
             <div className="stat-lbl">{s.lbl}</div>
           </a>
         ))}
+      </div>
+
+      <div className="card" style={{ marginBottom: "1rem" }}>
+        <h3 style={{ marginBottom: ".75rem" }}>توزيع حالات المؤشرات (5 حالات)</h3>
+        <DonutChart
+          segments={donutSegments}
+          centerLabel={
+            headline.measuredKpis > 0
+              ? `${headline.measuredKpis}`
+              : "—"
+          }
+          centerSubLabel="مؤشرات مقيسة"
+        />
       </div>
 
       <div id="critical" className="card" style={{ marginBottom: "1rem" }}>

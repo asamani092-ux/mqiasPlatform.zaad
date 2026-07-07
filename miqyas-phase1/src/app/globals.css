@@ -413,3 +413,232 @@
   border-radius: 0;
   margin: 0;
 }
+
+/* ── Charts ── */
+.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: var(--tmkeen-brand-gray);
+  font-size: 0.84rem;
+}
+
+.chart-wrap {
+  background: var(--tmkeen-surface-muted);
+  border-radius: var(--tmkeen-radius-lg);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  padding-bottom: 3rem;
+}
+
+.donut-center-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--tmkeen-primary);
+}
+
+.donut-center-label {
+  font-size: 0.75rem;
+  color: var(--tmkeen-brand-gray);
+}
+
+.donut-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  justify-content: center;
+  margin-top: -0.5rem;
+}
+
+.donut-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--tmkeen-brand-gray);
+}
+
+.donut-legend-dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.donut-legend-val {
+  font-weight: 700;
+  color: var(--tmkeen-primary);
+}
+
+/* ── Strategic track ── */
+.axis-block {
+  margin-bottom: 2rem;
+}
+
+.axis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 0.85rem;
+}
+
+.kpi-card {
+  box-shadow: none;
+}
+
+.kpi-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.65rem;
+}
+
+.kpi-code {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--tmkeen-primary);
+  background: color-mix(in srgb, var(--tmkeen-primary) 10%, transparent);
+  padding: 0.18rem 0.5rem;
+  border-radius: 0.3rem;
+}
+
+.kpi-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+}
+
+.kpi-fields {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+}
+
+.kpi-fields .field {
+  background: var(--tmkeen-surface-muted);
+  border-radius: 0.45rem;
+  padding: 0.45rem 0.55rem;
+  text-align: center;
+}
+
+.kpi-fields .field-lbl {
+  font-size: 0.62rem;
+  color: var(--tmkeen-brand-gray);
+  margin-bottom: 0.15rem;
+}
+
+.kpi-fields .field-val {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.kpi-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--tmkeen-surface-border);
+  gap: 0.5rem;
+}
+
+.status-owner-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.section-h {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--tmkeen-brand-gray);
+  margin: 1rem 0 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.modal-head {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--tmkeen-surface-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--tmkeen-surface-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.badge-secondary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--tmkeen-surface-muted);
+  color: var(--tmkeen-brand-gray);
+  border: 1px solid var(--tmkeen-surface-border);
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .kpi-analysis-modal,
+  .kpi-analysis-modal * {
+    visibility: visible;
+  }
+
+  .kpi-analysis-modal {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    border: none;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .modal-overlay {
+    position: static;
+    background: transparent;
+    padding: 0;
+  }
+}
