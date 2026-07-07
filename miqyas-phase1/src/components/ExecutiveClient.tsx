@@ -152,7 +152,7 @@ export default function ExecutiveClient({
         ) : (
           <div className="grid grid-3">
             {openDeviationCards.map((c) => (
-              <div key={c.id} className="card" style={{ boxShadow: "none", border: "1px solid var(--border)" }}>
+              <div key={c.id} className="card" style={{ boxShadow: "none", border: "1px solid var(--tmkeen-surface-border)" }}>
                 <div style={{ fontWeight: 700, marginBottom: ".35rem" }}>{c.kpiName}</div>
                 <div style={{ fontSize: ".82rem", color: "var(--tmkeen-danger)", fontWeight: 700 }}>انحراف {c.deviationPct}%</div>
                 <div style={{ fontSize: ".78rem", margin: ".35rem 0" }}>{c.openActions} إجراء مفتوح</div>

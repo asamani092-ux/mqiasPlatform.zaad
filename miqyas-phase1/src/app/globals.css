@@ -637,16 +637,28 @@
 }
 
 @media print {
+  .app-shell,
+  .app-sidebar,
+  .app-topbar,
+  .no-print,
+  .no-print-overlay {
+    display: none !important;
+  }
+
+  body {
+    background: var(--tmkeen-surface) !important;
+  }
+
   body * {
     visibility: hidden;
   }
 
-  .kpi-analysis-modal,
-  .kpi-analysis-modal * {
+  .print-modal,
+  .print-modal * {
     visibility: visible;
   }
 
-  .kpi-analysis-modal {
+  .print-modal {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -655,15 +667,13 @@
     overflow: visible;
     box-shadow: none;
     border: none;
-  }
-
-  .no-print {
-    display: none !important;
+    margin: 0;
   }
 
   .modal-overlay {
     position: static;
     background: transparent;
     padding: 0;
+    backdrop-filter: none;
   }
 }

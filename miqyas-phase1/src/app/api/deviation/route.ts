@@ -1,39 +1,64 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import type { CardStatus } from "@prisma/client";
+import type { CardStatus, Period } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { can } from "@/lib/rbac";
 import { scopedKpiWhere } from "@/lib/analytics";
 import { audit } from "@/lib/audit";
 import { deviationPct } from "@/lib/kpi";
+import { summarizeDeviationCards } from "@/lib/deviation-stats";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
+
+async function countLateActions(year: number, period: Period, scope: Record<string, unknown>) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return db.correctiveAction.count({
+    where: {
+      OR: [
+        { status: "LATE" },
+        { status: { in: ["PENDING", "IN_PROGRESS"] }, dueDate: { lt: today } },
+      ],
+      card: { year, period, kpi: scope },
+    },
+  });
+}
 
 export async function GET(req: NextRequest) {
   try {
     const user = await requireUser();
     const status = req.nextUrl.searchParams.get("status") as CardStatus | null;
     const year = parseInt(req.nextUrl.searchParams.get("year") ?? "2026", 10);
-    const period = req.nextUrl.searchParams.get("period") ?? "Q1";
+    const period = (req.nextUrl.searchParams.get("period") ?? "Q1") as Period;
+    const scope = scopedKpiWhere(user);
 
-    const cards = await db.deviationCard.findMany({
-      where: {
-        year,
-        period: period as "Q1" | "Q2" | "Q3" | "Q4" | "H1" | "H2" | "Y",
-        ...(status ? { status } : {}),
-        kpi: scopedKpiWhere(user),
-      },
-      include: {
-        kpi: { select: { code: true, name: true, unit: true } },
-        createdBy: { select: { name: true } },
-        actions: { include: { responsible: { select: { name: true } } } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const [allCards, filteredCards, lateActions] = await Promise.all([
+      db.deviationCard.findMany({
+        where: { year, period, kpi: scope },
+        select: { id: true, status: true, actions: { select: { status: true } } },
+      }),
+      db.deviationCard.findMany({
+        where: {
+          year,
+          period,
+          ...(status ? { status } : {}),
+          kpi: scope,
+        },
+        include: {
+          kpi: { select: { code: true, name: true, unit: true } },
+          createdBy: { select: { name: true } },
+          actions: { include: { responsible: { select: { name: true } } } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      countLateActions(year, period, scope),
+    ]);
 
-    return NextResponse.json({ cards });
+    const summary = summarizeDeviationCards(allCards, lateActions);
+
+    return NextResponse.json({ cards: filteredCards, summary });
   } catch (e) {
     return handleApiError(e);
   }

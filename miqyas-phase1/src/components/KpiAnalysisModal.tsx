@@ -99,7 +99,7 @@ export default function KpiAnalysisModal({
     <div className="modal-overlay" onClick={onClose}>
       <div
         ref={printRef}
-        className="modal-panel card wide kpi-analysis-modal"
+        className="modal-panel card wide print-modal kpi-analysis-modal"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head no-print">

@@ -1,28 +1,29 @@
 import nodemailer from "nodemailer";
 import { db } from "@/lib/db";
+import { CHART_COLORS } from "@/lib/chart-colors";
 
 function buildHtml(subject: string, body: string): string {
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#F5F5F5;font-family:'Tajawal',Tahoma,Arial,sans-serif;direction:rtl;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F5F5;padding:24px 0;">
+<body style="margin:0;padding:0;background:${CHART_COLORS.background};font-family:'Tajawal',Tahoma,Arial,sans-serif;direction:rtl;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:${CHART_COLORS.background};padding:24px 0;">
     <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:${CHART_COLORS.surface};border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);">
         <tr>
-          <td style="background:#8B1538;padding:20px 28px;color:#fff;">
+          <td style="background:${CHART_COLORS.primary};padding:20px 28px;color:${CHART_COLORS.surface};">
             <div style="font-size:1.25rem;font-weight:800;">منصة مِقياس</div>
             <div style="font-size:.78rem;opacity:.85;margin-top:4px;">جمعية الزاد — قياس الأداء المؤسسي</div>
           </td>
         </tr>
         <tr>
-          <td style="padding:28px;color:#222;">
-            <h2 style="margin:0 0 12px;font-size:1.05rem;color:#8B1538;">${subject}</h2>
-            <div style="font-size:.88rem;line-height:1.7;color:#444;">${body}</div>
+          <td style="padding:28px;color:${CHART_COLORS.foreground};">
+            <h2 style="margin:0 0 12px;font-size:1.05rem;color:${CHART_COLORS.primary};">${subject}</h2>
+            <div style="font-size:.88rem;line-height:1.7;color:${CHART_COLORS.brandGray};">${body}</div>
           </td>
         </tr>
         <tr>
-          <td style="padding:16px 28px;background:#f4f4f4;font-size:.72rem;color:#888;text-align:center;">
+          <td style="padding:16px 28px;background:${CHART_COLORS.surfaceMuted};font-size:.72rem;color:${CHART_COLORS.brandGray};text-align:center;">
             هذه رسالة آلية من منصة مِقياس — لا ترد على هذا البريد
           </td>
         </tr>

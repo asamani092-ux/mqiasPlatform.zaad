@@ -1,6 +1,7 @@
 import type { NotificationType } from "@prisma/client";
 import { db } from "@/lib/db";
 import { sendMail } from "@/lib/mailer";
+import { CHART_COLORS } from "@/lib/chart-colors";
 
 type NotifyParams = {
   userIds: number[];
@@ -46,7 +47,7 @@ export async function notify(params: NotifyParams): Promise<NotifyResult> {
         u.email,
         title,
         `<p>مرحبًا ${u.name}،</p><p>${body}</p>${
-          link ? `<p><a href="${fullLink}" style="color:#8B1538;font-weight:700;">عرض التفاصيل</a></p>` : ""
+          link ? `<p><a href="${fullLink}" style="color:${CHART_COLORS.primary};font-weight:700;">عرض التفاصيل</a></p>` : ""
         }`,
       ),
     ),
