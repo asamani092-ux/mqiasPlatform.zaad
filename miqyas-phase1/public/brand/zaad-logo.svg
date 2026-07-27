@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 220" fill="none" role="img" aria-label=",E9J) 'D2'/">
+  <!-- Wordmark -->
+  <g fill="#706F6F" font-family="Tajawal, Tahoma, Arial, sans-serif" text-anchor="middle">
+    <text x="175" y="88" font-size="34" font-weight="500">,E9J)</text>
+    <text x="175" y="152" font-size="64" font-weight="800">'D2'/</text>
+  </g>
+
+  <!-- Emblem body (maroon) -->
+  <path
+    d="M352 24
+       C372 24 404 24 418 38
+       C432 52 436 78 436 104
+       L436 150
+       C436 176 424 196 398 196
+       L346 196
+       C320 196 308 176 308 150
+       L308 72
+       C308 40 328 24 352 24 Z"
+    fill="#8B1538"
+  />
+
+  <!-- Gold lower section -->
+  <path
+    d="M308 138
+       C330 118 360 108 392 108
+       C414 108 430 116 436 128
+       L436 150
+       C436 176 424 196 398 196
+       L346 196
+       C320 196 308 176 308 150
+       Z"
+    fill="#F2B824"
+  />
+
+  <!-- White swoosh -->
+  <path
+    d="M304 134
+       C328 112 362 102 394 102
+       C418 102 436 112 442 128
+       C422 146 388 154 354 154
+       C334 154 316 146 304 134 Z"
+    fill="#FFFFFF"
+  />
+
+  <!-- Wheat stalk -->
+  <g fill="#FFFFFF" transform="translate(372 54)">
+    <rect x="-2.2" y="22" width="4.4" height="58" rx="2.2"/>
+    <ellipse cx="0" cy="12" rx="6" ry="10"/>
+    <ellipse cx="-11" cy="26" rx="6" ry="10" transform="rotate(-30 -11 26)"/>
+    <ellipse cx="11" cy="26" rx="6" ry="10" transform="rotate(30 11 26)"/>
+    <ellipse cx="-13" cy="42" rx="6" ry="10" transform="rotate(-30 -13 42)"/>
+    <ellipse cx="13" cy="42" rx="6" ry="10" transform="rotate(30 13 42)"/>
+    <ellipse cx="-13" cy="58" rx="6" ry="10" transform="rotate(-30 -13 58)"/>
+    <ellipse cx="13" cy="58" rx="6" ry="10" transform="rotate(30 13 58)"/>
+  </g>
+</svg>

@@ -8,7 +8,7 @@ export default function BrandMark({ variant = "login" }: BrandMarkProps) {
     <div className={`brand-mark brand-mark--${variant}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/brand/zaad-logo.png"
+        src="/brand/zaad-logo.svg"
         alt="جمعية الزاد"
         className="brand-mark-logo"
         decoding="async"
