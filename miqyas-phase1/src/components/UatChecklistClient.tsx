@@ -200,9 +200,12 @@ export default function UatChecklistClient() {
                         </td>
                         <td>
                           {tool.href ? (
-                            <Link href={tool.href} className="nav-link" style={{ display: "inline-flex", gap: ".25rem", alignItems: "center" }}>
+                            <Link
+                              href={tool.href}
+                              style={{ display: "inline-flex", gap: ".25rem", alignItems: "center", color: "var(--tmkeen-primary, #0f766e)" }}
+                            >
                               {tool.path}
-                              <ExternalLink size={14} />
+                              <ExternalLink {...ICON_PROPS} />
                             </Link>
                           ) : (
                             <code>{tool.path}</code>
