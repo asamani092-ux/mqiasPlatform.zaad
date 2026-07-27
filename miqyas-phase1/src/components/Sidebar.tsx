@@ -22,6 +22,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import BrandMark from "@/components/BrandMark";
 import { ROLE_LABEL } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
 
@@ -64,10 +65,17 @@ const APPROVALS_NAV: NavItem = {
   Icon: CheckCircle2,
 };
 
+const UAT_NAV: NavItem = {
+  href: "/uat",
+  label: "تقييم الأدوات",
+  Icon: ClipboardCheck,
+};
+
 function buildSections(
   showExecutive: boolean,
   showApprovals: boolean,
   isAdmin: boolean,
+  showUat: boolean,
 ): NavSection[] {
   const sections: NavSection[] = [];
 
@@ -80,7 +88,6 @@ function buildSections(
     items: [
       { href: "/dashboard", label: "اللوحة الرئيسية", Icon: LayoutDashboard },
       { href: "/my", label: "مهامي ومؤشراتي", Icon: ClipboardList },
-      { href: "/uat", label: "تقييم الأدوات", Icon: ClipboardCheck },
     ],
   });
 
@@ -94,6 +101,10 @@ function buildSections(
     sections.push({ label: "إدارة النظام", items: ADMIN_NAV });
   }
 
+  if (showUat) {
+    sections.push({ label: "بيئة التجربة", items: [UAT_NAV] });
+  }
+
   return sections;
 }
 
@@ -102,24 +113,29 @@ export default function Sidebar({
   showApprovals,
   isAdmin,
   showExecutive,
+  showUat = false,
 }: {
   user: { name: string; role: string };
   showApprovals: boolean;
   isAdmin: boolean;
   showExecutive?: boolean;
+  showUat?: boolean;
 }) {
   const pathname = usePathname();
-  const sections = buildSections(!!showExecutive, showApprovals, isAdmin);
+  const sections = buildSections(!!showExecutive, showApprovals, isAdmin, showUat);
 
   return (
     <aside className="app-sidebar">
       <div className="sidebar-brand">
-        <h2>مِقياس</h2>
-        <p>جمعية الزاد</p>
+        <BrandMark variant="sidebar" />
+        <div className="sidebar-brand-titles">
+          <h2>مِقياس</h2>
+          <p>جمعية الزاد</p>
+        </div>
       </div>
       <nav className="sidebar-nav">
         {sections.map((section) => (
-          <div key={section.label ?? section.items[0]?.href}>
+          <div key={section.label ?? section.items[0]?.href} className="sidebar-section">
             {section.label && <div className="sidebar-section-label">{section.label}</div>}
             {section.items.map((item) => {
               const { Icon } = item;

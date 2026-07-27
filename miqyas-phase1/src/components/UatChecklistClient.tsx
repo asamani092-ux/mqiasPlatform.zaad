@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardCheck, ExternalLink, RotateCcw } from "lucide-react";
+import { Check, ClipboardCheck, Copy, ExternalLink, RotateCcw } from "lucide-react";
 import { ICON_PROPS } from "@/lib/icon-props";
 import {
   UAT_ALL_TOOLS,
@@ -11,6 +11,7 @@ import {
   UAT_STORAGE_KEY,
   UAT_TOOL_GROUPS,
   UAT_VERDICTS,
+  buildUatReport,
   defaultUatState,
   type UatChecklistState,
   type UatNoteCategory,
@@ -28,6 +29,8 @@ export default function UatChecklistClient() {
   const [filter, setFilter] = useState<"all" | UatVerdict>("all");
   const [search, setSearch] = useState("");
   const [hydrated, setHydrated] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     try {
@@ -61,6 +64,8 @@ export default function UatChecklistClient() {
     return c;
   }, [state.verdicts]);
 
+  const report = useMemo(() => buildUatReport(state), [state]);
+
   function setVerdict(id: string, value: UatVerdict) {
     setState((prev) => ({
       ...prev,
@@ -93,6 +98,17 @@ export default function UatChecklistClient() {
     setState(defaultUatState());
   }
 
+  async function copyReport() {
+    try {
+      await navigator.clipboard.writeText(report);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setShowPreview(true);
+      window.alert("تعذّر النسخ تلقائياً — حدّد النص من معاينة التقرير وانسخه يدوياً.");
+    }
+  }
+
   const q = search.trim().toLowerCase();
 
   return (
@@ -104,14 +120,42 @@ export default function UatChecklistClient() {
             قائمة تقييم الأدوات
           </h1>
           <div className="text-muted">
-            تجربة قبول (UAT) — حدّد لكل أداة: يعتمد · يحتاج تحسين · غير مجرّب
+            بيئة التجربة فقط — حدّد لكل أداة: يعتمد · يحتاج تحسين · غير مجرّب · ثم انسخ التقرير
           </div>
         </div>
-        <button type="button" className="btn-secondary btn-sm" onClick={resetAll}>
-          <RotateCcw {...ICON_PROPS} />
-          إعادة تعيين
-        </button>
+        <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+          <button type="button" className="btn-primary btn-sm" onClick={copyReport}>
+            {copied ? <Check {...ICON_PROPS} /> : <Copy {...ICON_PROPS} />}
+            {copied ? "تم النسخ" : "نسخ التقرير"}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            onClick={() => setShowPreview((v) => !v)}
+          >
+            {showPreview ? "إخفاء المعاينة" : "معاينة التقرير"}
+          </button>
+          <button type="button" className="btn-secondary btn-sm" onClick={resetAll}>
+            <RotateCcw {...ICON_PROPS} />
+            إعادة تعيين
+          </button>
+        </div>
       </div>
+
+      {showPreview && (
+        <div className="card" style={{ marginBottom: "1rem" }}>
+          <h3 style={{ marginBottom: ".5rem" }}>معاينة التقرير (للتحديد والنسخ اليدوي)</h3>
+          <textarea
+            className="input-field"
+            readOnly
+            rows={16}
+            value={report}
+            dir="rtl"
+            style={{ fontFamily: "ui-monospace, monospace", fontSize: ".85rem", width: "100%" }}
+            onFocus={(e) => e.currentTarget.select()}
+          />
+        </div>
+      )}
 
       <div className="grid grid-4" style={{ marginBottom: "1rem" }}>
         <div className="card stat-card">
@@ -202,7 +246,13 @@ export default function UatChecklistClient() {
                           {tool.href ? (
                             <Link
                               href={tool.href}
-                              style={{ display: "inline-flex", gap: ".25rem", alignItems: "center", color: "var(--tmkeen-primary, #0f766e)" }}
+                              style={{
+                                display: "inline-flex",
+                                gap: ".25rem",
+                                alignItems: "center",
+                                color: "var(--tmkeen-primary)",
+                                textDecoration: "none",
+                              }}
                             >
                               {tool.path}
                               <ExternalLink {...ICON_PROPS} />

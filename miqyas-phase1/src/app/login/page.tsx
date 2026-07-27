@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import BrandMark from "@/components/BrandMark";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function LoginPage() {
       <div className="page-container-narrow">
         <div className="card">
           <div className="login-brand-block">
-            <span className="login-brand-mark">م</span>
+            <BrandMark variant="login" />
             <h1 className="login-title">مِقياس</h1>
             <p className="text-muted" style={{ marginBottom: 0 }}>
               جمعية الزاد — قياس الأداء المؤسسي

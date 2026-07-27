@@ -323,3 +323,58 @@ export function defaultUatState(): UatChecklistState {
   for (const t of UAT_ALL_TOOLS) verdicts[t.id] = "غير مجرّب";
   return { verdicts, notes: {} };
 }
+
+/** تقرير Markdown كامل للصق — زمن O(n) · مساحة O(n) */
+export function buildUatReport(state: UatChecklistState): string {
+  const counts = { total: 0, "غير مجرّب": 0, يعتمد: 0, "يحتاج تحسين": 0 };
+  for (const t of UAT_ALL_TOOLS) {
+    const v = state.verdicts[t.id] ?? "غير مجرّب";
+    counts[v] += 1;
+    counts.total += 1;
+  }
+
+  const now = new Date().toLocaleString("ar-SA", {
+    dateStyle: "full",
+    timeStyle: "short",
+  });
+
+  const lines: string[] = [
+    "# تقرير تقييم أدوات — مِقياس | جمعية الزاد",
+    "",
+    `تاريخ التقرير: ${now}`,
+    "",
+    "## الملخص",
+    "",
+    `| الإجمالي | يعتمد | يحتاج تحسين | غير مجرّب |`,
+    `|----------|-------|-------------|-----------|`,
+    `| ${counts.total} | ${counts["يعتمد"]} | ${counts["يحتاج تحسين"]} | ${counts["غير مجرّب"]} |`,
+    "",
+  ];
+
+  for (const group of UAT_TOOL_GROUPS) {
+    lines.push(`## ${group.title}`, "");
+    for (const tool of group.tools) {
+      const v = state.verdicts[tool.id] ?? "غير مجرّب";
+      const note = state.notes[tool.id];
+      const category = note?.category?.trim() || "—";
+      const text = note?.text?.trim() || "—";
+      lines.push(`### ${tool.tool}`);
+      lines.push(`- المسار: \`${tool.path}\``);
+      lines.push(`- الصلاحية: ${tool.permission}`);
+      lines.push(`- التقييم: **${v}**`);
+      lines.push(`- تصنيف الملاحظة: ${category}`);
+      lines.push(`- ملاحظة: ${text}`);
+      lines.push(`- ما يُتحقق منه:`);
+      for (const c of tool.checks) lines.push(`  - ${c}`);
+      lines.push("");
+    }
+  }
+
+  lines.push("## خارج نطاق التجربة", "");
+  for (const row of UAT_OUT_OF_SCOPE) {
+    lines.push(`- **${row.item}**: ${row.note}`);
+  }
+  lines.push("");
+
+  return lines.join("\n");
+}
