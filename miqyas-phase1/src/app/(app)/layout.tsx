@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import Sidebar from "@/components/Sidebar";
 import NotifBell from "@/components/NotifBell";
-import BrandMark from "@/components/BrandMark";
 import Providers from "@/components/Providers";
 import { can } from "@/lib/rbac";
 import { getSetting } from "@/lib/settings";
@@ -40,9 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         />
         <main className="app-main">
           <div className="app-topbar">
-            <div className="app-topbar-brand">
-              <BrandMark variant="topbar" showTitle />
-            </div>
+            <div className="app-topbar-spacer" aria-hidden />
             <NotifBell />
           </div>
           {children}

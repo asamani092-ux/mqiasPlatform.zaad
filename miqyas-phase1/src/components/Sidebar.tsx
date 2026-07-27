@@ -130,7 +130,6 @@ export default function Sidebar({
         <BrandMark variant="sidebar" />
         <div className="sidebar-brand-titles">
           <h2>مِقياس</h2>
-          <p>جمعية الزاد</p>
         </div>
       </div>
       <nav className="sidebar-nav">

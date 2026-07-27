@@ -46,7 +46,7 @@ export default function LoginPage() {
             <BrandMark variant="login" />
             <h1 className="login-title">مِقياس</h1>
             <p className="text-muted" style={{ marginBottom: 0 }}>
-              جمعية الزاد — قياس الأداء المؤسسي
+              قياس الأداء المؤسسي
             </p>
           </div>
 
