@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   BookOpen,
   CheckCircle2,
+  ClipboardCheck,
   ClipboardList,
   Crown,
   FileWarning,
@@ -79,6 +80,7 @@ function buildSections(
     items: [
       { href: "/dashboard", label: "اللوحة الرئيسية", Icon: LayoutDashboard },
       { href: "/my", label: "مهامي ومؤشراتي", Icon: ClipboardList },
+      { href: "/uat", label: "تقييم الأدوات", Icon: ClipboardCheck },
     ],
   });
 
