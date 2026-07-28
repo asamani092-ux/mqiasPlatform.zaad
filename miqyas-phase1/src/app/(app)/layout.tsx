@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import Sidebar from "@/components/Sidebar";
-import NotifBell from "@/components/NotifBell";
+import AppShell from "@/components/AppShell";
 import Providers from "@/components/Providers";
 import { can } from "@/lib/rbac";
 import { getSetting } from "@/lib/settings";
@@ -29,22 +28,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <Providers>
-      <div className="app-shell">
-        <Sidebar
-          user={{ name: user.name, role: user.role }}
-          showApprovals={showApprovals}
-          isAdmin={isAdmin}
-          showExecutive={showExecutive}
-          showUat={showUat}
-        />
-        <main className="app-main">
-          <div className="app-topbar">
-            <div className="app-topbar-spacer" aria-hidden />
-            <NotifBell />
-          </div>
-          {children}
-        </main>
-      </div>
+      <AppShell
+        user={{ name: user.name, role: user.role }}
+        showApprovals={showApprovals}
+        isAdmin={isAdmin}
+        showExecutive={showExecutive}
+        showUat={showUat}
+      >
+        {children}
+      </AppShell>
     </Providers>
   );
 }

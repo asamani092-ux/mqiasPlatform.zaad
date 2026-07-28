@@ -1,8 +1,8 @@
 type BrandMarkProps = {
-  variant?: "login" | "sidebar";
+  variant?: "login" | "topbar" | "drawer";
 };
 
-/** يعرض ملف الشعار كما هو دون قص أو نسب أبعاد مفروضة */
+/** يعرض ملف الشعار الرسمي كما هو دون قص أو نسب أبعاد مفروضة */
 export default function BrandMark({ variant = "login" }: BrandMarkProps) {
   return (
     <div className={`brand-mark brand-mark--${variant}`}>

@@ -1,5 +1,6 @@
 /**
  * تخطيط التطبيق — يبني على tokens.css + components.css
+ * قشرة: شريط علوي + درج تنقّل (بدون قائمة جانبية دائمة)
  */
 
 a,
@@ -25,167 +26,195 @@ a:visited {
 }
 
 .brand-mark--login .brand-mark-logo {
-  max-width: 220px;
-  max-height: 132px;
+  max-width: 240px;
+  max-height: 140px;
   margin-bottom: 0.75rem;
 }
 
-.brand-mark--sidebar {
-  background: var(--tmkeen-surface);
-  border-radius: var(--tmkeen-radius-lg);
-  padding: 0.5rem 0.6rem;
-  margin-bottom: 0.55rem;
+.brand-mark--topbar .brand-mark-logo {
+  max-height: 40px;
+  max-width: 120px;
 }
 
-.brand-mark--sidebar .brand-mark-logo {
-  max-width: 100%;
-  max-height: 56px;
+.brand-mark--drawer .brand-mark-logo {
+  max-height: 48px;
+  max-width: 140px;
 }
 
 .app-shell {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  background: var(--tmkeen-surface-muted);
 }
 
 .app-main {
   flex: 1;
-  padding: 1.5rem 2rem;
+  width: 100%;
+  max-width: var(--tmkeen-page-max-width);
+  margin-inline: auto;
+  padding: 1.5rem 1.25rem 2rem;
   overflow-x: auto;
-  background: var(--tmkeen-surface-muted);
 }
 
-/* ── Sidebar (primary treatment) ── */
-.app-sidebar {
-  width: 260px;
+/* ── Top bar (DS Navbar pattern) ── */
+.app-topbar-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 4rem;
+  padding: 0.65rem 1.25rem;
+  background: var(--tmkeen-surface);
+  border-bottom: 1px solid var(--tmkeen-surface-border);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+.app-topbar-start,
+.app-topbar-end {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.app-topbar-brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-product-name {
+  font-family: var(--tmkeen-font-sans);
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--tmkeen-primary);
+  white-space: nowrap;
+}
+
+.app-product-name--drawer {
+  font-size: 1.05rem;
+}
+
+.app-user-chip {
+  text-align: start;
+  line-height: 1.25;
+}
+
+.app-user-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--tmkeen-primary);
+}
+
+.app-user-role {
+  font-size: 0.72rem;
+  color: var(--tmkeen-brand-gray);
+}
+
+.app-menu-btn {
   flex-shrink: 0;
-  background: var(--tmkeen-primary);
-  color: color-mix(in srgb, var(--tmkeen-surface) 85%, transparent);
+}
+
+/* ── Nav drawer (SlideOver from start / RTL right) ── */
+.nav-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: var(--tmkeen-overlay);
+  display: flex;
+  justify-content: flex-start;
+}
+
+.nav-drawer {
+  width: min(320px, 92vw);
+  height: 100%;
+  background: var(--tmkeen-surface);
+  border-inline-end: 1px solid var(--tmkeen-surface-border);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  overflow: hidden;
 }
 
-.sidebar-brand {
-  padding: 1.15rem 1rem 1rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--tmkeen-surface) 12%, transparent);
+.nav-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--tmkeen-surface-border);
 }
 
-.sidebar-brand-titles h2 {
-  font-family: var(--tmkeen-font-sans);
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: var(--tmkeen-surface);
-  margin: 0;
+.nav-drawer-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
 }
 
-.sidebar-brand-titles p {
-  font-size: 0.72rem;
-  color: color-mix(in srgb, var(--tmkeen-surface) 55%, transparent);
-  margin-top: 0.2rem;
-}
-
-.sidebar-nav {
+.nav-drawer-nav {
   flex: 1;
+  overflow-y: auto;
   padding: 0.85rem 0.75rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  overflow-y: auto;
 }
 
-.sidebar-section {
+.nav-drawer-section {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
 }
 
-.sidebar-section-label {
+.nav-drawer-section-label {
   padding: 0.35rem 0.85rem 0.4rem;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  color: color-mix(in srgb, var(--tmkeen-surface) 50%, transparent);
-  text-transform: none;
+  color: var(--tmkeen-brand-gray);
 }
 
-.nav-link {
+.nav-drawer-link {
   display: flex;
   align-items: center;
   gap: 0.65rem;
   padding: 0.7rem 0.85rem;
   border-radius: var(--tmkeen-radius-lg);
-  font-size: 0.84rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  color: color-mix(in srgb, var(--tmkeen-surface) 88%, transparent);
-  border-inline-start: 3px solid transparent;
+  color: var(--tmkeen-brand-gray);
   text-decoration: none;
+  border-inline-start: 3px solid transparent;
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.nav-link-icon {
+.nav-drawer-link-icon {
   flex-shrink: 0;
   color: currentColor;
-  opacity: 0.92;
 }
 
-.nav-link:hover {
-  color: var(--tmkeen-surface);
-  background: color-mix(in srgb, var(--tmkeen-surface) 10%, transparent);
+.nav-drawer-link:hover {
+  color: var(--tmkeen-primary);
+  background: color-mix(in srgb, var(--tmkeen-primary) 8%, transparent);
   text-decoration: none;
 }
 
-.nav-link.active {
-  color: var(--tmkeen-surface);
-  background: color-mix(in srgb, var(--tmkeen-surface) 16%, transparent);
+.nav-drawer-link.active {
+  color: var(--tmkeen-primary);
+  background: color-mix(in srgb, var(--tmkeen-primary) 12%, transparent);
   border-inline-start-color: var(--tmkeen-secondary);
 }
 
-.sidebar-logout {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  width: 100%;
-  color: var(--tmkeen-brand-gray) !important;
-  border-color: var(--tmkeen-surface-border) !important;
-  background: var(--tmkeen-surface) !important;
-}
-
-.sidebar-logout:hover {
-  background: var(--tmkeen-surface-muted) !important;
-}
-
-.sidebar-footer {
-  padding: 1rem 1.25rem;
-  border-top: 1px solid color-mix(in srgb, var(--tmkeen-surface) 12%, transparent);
-  font-size: 0.75rem;
-  color: color-mix(in srgb, var(--tmkeen-surface) 55%, transparent);
-}
-
-.sidebar-footer-name {
-  font-weight: 700;
-  color: color-mix(in srgb, var(--tmkeen-surface) 75%, transparent);
-  margin-bottom: 0.25rem;
-}
-
-.sidebar-footer-org {
-  font-size: 0.68rem;
-  color: color-mix(in srgb, var(--tmkeen-surface) 45%, transparent);
-  margin-bottom: 0.35rem;
-}
-
-.app-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  min-height: 2.5rem;
-}
-
-.app-topbar-spacer {
-  flex: 1;
+.nav-drawer-footer {
+  padding: 1rem 1.15rem;
+  border-top: 1px solid var(--tmkeen-surface-border);
+  font-size: 0.78rem;
 }
 
 .icon-btn {
@@ -686,8 +715,8 @@ a:visited {
 
 @media print {
   .app-shell,
-  .app-sidebar,
-  .app-topbar,
+  .app-topbar-bar,
+  .nav-drawer-overlay,
   .no-print,
   .no-print-overlay {
     display: none !important;
