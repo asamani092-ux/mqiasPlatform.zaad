@@ -1,5 +1,5 @@
 /**
- * هوية جمعية الزاد — منصة مِقياس (Component Classes)
+ * Tmkeen Design System — Component Classes (framework-agnostic)
  * يتطلب tokens.css
  */
 
@@ -135,9 +135,7 @@
 
 /* ── Forms ── */
 .input-field {
-  display: block;
   width: 100%;
-  max-width: 100%;
   border-radius: var(--tmkeen-radius-lg);
   border: 1px solid var(--tmkeen-surface-border);
   background: var(--tmkeen-surface);
@@ -324,8 +322,17 @@ input[type="password"][dir="ltr"],
   color: var(--tmkeen-brand-gray);
   background: transparent;
   border: none;
+  outline: none;
+  text-decoration: none;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.tab-bar button:hover {
+  background: color-mix(in srgb, var(--tmkeen-surface-muted) 80%, transparent);
+  color: var(--tmkeen-primary);
+}
+.tab-bar button:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tmkeen-secondary) 55%, transparent);
 }
 .tab-bar button[data-active="true"],
 .tab-bar button.active {

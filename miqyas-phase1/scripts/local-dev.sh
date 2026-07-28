@@ -35,6 +35,7 @@ SMTP_PASS=""
 SMTP_FROM="miqyas@zad.org.sa"
 APP_URL="http://localhost:3000"
 CRON_SECRET="$(openssl rand -hex 24)"
+ENABLE_UAT=true
 EOF
 fi
 
