@@ -11,6 +11,7 @@ const ALLOWED_KEYS = [
   "early_warning_gap_pct",
   "action_escalation_days",
   "current_year",
+  "current_period",
 ] as const;
 
 const postSchema = z.object({
@@ -23,6 +24,7 @@ const LABELS: Record<string, string> = {
   early_warning_gap_pct: "نسبة فجوة تفعيل الإنذار المبكر (%)",
   action_escalation_days: "مهلة تصعيد الإجراءات المتأخرة (أيام)",
   current_year: "سنة القياس الحالية",
+  current_period: "الفترة الحالية",
 };
 
 export async function GET() {

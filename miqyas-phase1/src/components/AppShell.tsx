@@ -28,6 +28,7 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const sections = buildNavSections(!!showExecutive, showApprovals, isAdmin, showUat);
 
   useEffect(() => {
@@ -70,10 +71,14 @@ export default function AppShell({
           <button
             type="button"
             className="btn-secondary btn-sm"
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            disabled={signingOut}
+            onClick={() => {
+              setSigningOut(true);
+              void signOut({ callbackUrl: "/login" });
+            }}
           >
             <LogOut {...ICON_PROPS} />
-            خروج
+            {signingOut ? "جاري الخروج..." : "خروج"}
           </button>
         </div>
       </header>

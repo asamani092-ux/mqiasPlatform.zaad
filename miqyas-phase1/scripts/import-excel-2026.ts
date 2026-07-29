@@ -233,7 +233,7 @@ async function upsertDepartment(raw: string): Promise<{ departmentId: number | n
   }
 
   const norm = normalizeDeptText(trimmed);
-  for (const [cachedNorm, dept] of deptByNorm) {
+  for (const [cachedNorm, dept] of Array.from(deptByNorm.entries())) {
     if (norm === cachedNorm || norm.includes(cachedNorm) || cachedNorm.includes(norm)) {
       return { departmentId: dept.id, ownerLabel: null };
     }
@@ -317,7 +317,7 @@ async function main() {
     }
   }
 
-  for (const row of kpiDefs.values()) {
+  for (const row of Array.from(kpiDefs.values())) {
     const { departmentId, ownerLabel } = await upsertDepartment(row.ownerDeptRaw);
     counts.departments = deptByNorm.size;
 

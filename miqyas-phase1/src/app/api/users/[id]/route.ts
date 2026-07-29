@@ -57,10 +57,16 @@ export async function PUT(
       body.sectionId !== undefined ? body.sectionId : existing.sectionId,
     );
 
+    if (body.email != null && body.email !== existing.email) {
+      const dup = await db.user.findUnique({ where: { email: body.email } });
+      if (dup) return jsonError("البريد الإلكتروني مستخدم مسبقًا", 409);
+    }
+
     const updated = await db.user.update({
       where: { id },
       data: {
         ...(body.name != null ? { name: body.name } : {}),
+        ...(body.email != null ? { email: body.email } : {}),
         role: nextRole,
         status: nextStatus,
         departmentId: scope.departmentId,

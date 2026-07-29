@@ -72,24 +72,59 @@ async function main() {
     where: { email: adminEmail },
     update: { passwordHash: await bcrypt.hash(adminPass, 12), status: "ACTIVE" },
     create: {
-      name: "مكتب إدارة الأداء",
+      name: "قسم الاستراتيجية — إدارة الأداء والنمو",
       email: adminEmail,
       passwordHash: await bcrypt.hash(adminPass, 12),
       role: "SYSTEM_ADMIN",
     },
   });
 
+  const { year: cy, period: cp } = (() => {
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+    let period = "Q1";
+    if (month <= 3) period = "Q1";
+    else if (month <= 6) period = "Q2";
+    else if (month <= 9) period = "Q3";
+    else period = "Q4";
+    return { year, period };
+  })();
+
   const settings: [string, string][] = [
     ["section_head_can_approve", "0"],
     ["early_warning_gap_pct", "20"],
     ["action_escalation_days", "0"],
-    ["current_year", String(new Date().getFullYear())],
+    ["current_year", String(cy)],
+    ["current_period", cp],
   ];
   for (const [key, value] of settings) {
     await db.systemSetting.upsert({ where: { key }, update: {}, create: { key, value } });
   }
 
-  console.log("✅ اكتملت البذرة: 6 إدارات، 18 قسمًا، 16 هدفًا استراتيجيًا، حساب المشرف");
+  const govYear = 2026;
+  const sampleGov = [
+    { code: "GOV-01", title: "سياسة الحوكمة المعتمدة", category: "سياسات", owner: "مجلس الإدارة", compliancePct: 100, status: "COMPLIANT" as const },
+    { code: "GOV-02", title: "لوائح الصلاحيات والتفويض", category: "لوائح", owner: "الإدارة التنفيذية", compliancePct: 75, status: "PARTIAL" as const },
+    { code: "GOV-03", title: "تقارير الامتثال الربعية", category: "تقارير", owner: "وحدة الامتثال", compliancePct: 40, status: "NON_COMPLIANT" as const },
+    { code: "GOV-04", title: "مصفوفة المخاطر المؤسسية", category: "مخاطر", owner: "إدارة المخاطر", compliancePct: 0, status: "PENDING" as const },
+    { code: "GOV-05", title: "دليل الإفصاح والشفافية", category: "إفصاح", owner: "الاتصال المؤسسي", compliancePct: 90, status: "COMPLIANT" as const },
+  ];
+  for (const g of sampleGov) {
+    await db.governanceRequirement.upsert({
+      where: { code: g.code },
+      update: {
+        title: g.title,
+        category: g.category,
+        owner: g.owner,
+        compliancePct: g.compliancePct,
+        status: g.status,
+        year: govYear,
+      },
+      create: { ...g, year: govYear },
+    });
+  }
+
+  console.log("✅ اكتملت البذرة: 6 إدارات، 18 قسمًا، 16 هدفًا استراتيجيًا، 5 معايير حوكمة، حساب المشرف");
 
   const testPass = process.env.TEST_USER_PASSWORD;
   if (testPass) {

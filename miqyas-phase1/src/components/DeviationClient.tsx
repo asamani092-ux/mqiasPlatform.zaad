@@ -112,6 +112,13 @@ export default function DeviationClient({
         </div>
       </div>
 
+      {isAdmin && (
+        <p className="text-muted" style={{ marginBottom: "1rem", fontSize: ".85rem" }}>
+          <strong>توليد بطاقات:</strong> يُنشئ بطاقات انحراف بحالة «مفتوحة» للمؤشرات المعتمدة ذات الحالة
+          «جزئي» أو «غير محقق» والتي لا تملك بطاقة انحراف حالية في هذه الفترة.
+        </p>
+      )}
+
       {msg && (
         <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
           {msg}

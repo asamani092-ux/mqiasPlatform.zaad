@@ -1,12 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { currentQuarter } from "@/lib/kpi";
+import { PERIOD_LABEL, type Period } from "@/lib/types";
 
 type Setting = { key: string; label: string; value: string };
+
+const QUARTER_PERIODS: Period[] = ["Q1", "Q2", "Q3", "Q4"];
 
 export default function SettingsClient() {
   const [settings, setSettings] = useState<Setting[]>([]);
   const [msg, setMsg] = useState("");
+  const defaults = currentQuarter();
 
   const load = useCallback(async () => {
     const res = await fetch("/api/settings");
@@ -30,6 +35,11 @@ export default function SettingsClient() {
     }
   }
 
+  function getValue(key: string, fallback: string): string {
+    const s = settings.find((x) => x.key === key);
+    return s?.value || fallback;
+  }
+
   return (
     <>
       <div className="topbar">
@@ -42,10 +52,39 @@ export default function SettingsClient() {
       {msg && <div className="alert alert-success" style={{ marginBottom: "1rem" }}>{msg}</div>}
 
       <div className="card">
-        {settings.map((s) => (
-          <div key={s.key} style={{ marginBottom: "1.25rem" }}>
-            <label className="label-field">{s.label}</label>
-            {s.key === "section_head_can_approve" ? (
+        <div style={{ marginBottom: "1.25rem" }}>
+          <label className="label-field">سنة القياس الحالية</label>
+          <div style={{ display: "flex", gap: ".5rem" }}>
+            <input
+              type="number"
+              className="input-field"
+              style={{ maxWidth: 200 }}
+              defaultValue={getValue("current_year", String(defaults.year))}
+              key={`year-${getValue("current_year", String(defaults.year))}`}
+              onBlur={(e) => save("current_year", e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: "1.25rem" }}>
+          <label className="label-field">الفترة الحالية</label>
+          <select
+            className="input-field"
+            style={{ maxWidth: 200 }}
+            value={getValue("current_period", defaults.period)}
+            onChange={(e) => save("current_period", e.target.value)}
+          >
+            {QUARTER_PERIODS.map((p) => (
+              <option key={p} value={p}>{PERIOD_LABEL[p]}</option>
+            ))}
+          </select>
+        </div>
+
+        {settings
+          .filter((s) => s.key === "section_head_can_approve")
+          .map((s) => (
+            <div key={s.key} style={{ marginBottom: "1.25rem" }}>
+              <label className="label-field">{s.label}</label>
               <select
                 className="input-field"
                 style={{ maxWidth: 200 }}
@@ -55,7 +94,14 @@ export default function SettingsClient() {
                 <option value="0">معطّل</option>
                 <option value="1">مفعّل</option>
               </select>
-            ) : (
+            </div>
+          ))}
+
+        {settings
+          .filter((s) => !["current_year", "current_period", "section_head_can_approve"].includes(s.key))
+          .map((s) => (
+            <div key={s.key} style={{ marginBottom: "1.25rem" }}>
+              <label className="label-field">{s.label}</label>
               <div style={{ display: "flex", gap: ".5rem" }}>
                 <input
                   className="input-field"
@@ -74,9 +120,8 @@ export default function SettingsClient() {
                   حفظ
                 </button>
               </div>
-            )}
-          </div>
-        ))}
+            </div>
+          ))}
       </div>
     </>
   );

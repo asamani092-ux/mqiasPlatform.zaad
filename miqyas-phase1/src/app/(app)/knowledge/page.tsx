@@ -18,11 +18,17 @@ export default async function KnowledgePage({
   const { year, period } = parseTrackParams(searchParams);
   const scope = scopedKnowledgeWhere(user);
 
-  const assets = await db.knowledgeAsset.findMany({
-    where: { year, period, ...scope },
-    include: { department: { select: { name: true } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const [assets, departments] = await Promise.all([
+    db.knowledgeAsset.findMany({
+      where: { year, period, ...scope },
+      include: { department: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    db.department.findMany({
+      orderBy: { deptNo: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
 
   const total = assets.length;
   const approved = assets.filter((a) => a.status === "APPROVED").length;
@@ -46,6 +52,7 @@ export default async function KnowledgePage({
     <KnowledgeClient
       initialStats={{ total, approvedPct, usedPct, growthPct, approvedCount: approved, draftCount }}
       initialAssets={assets}
+      departments={departments}
       year={year}
       period={period}
       canManage={can.manageKnowledge(user)}

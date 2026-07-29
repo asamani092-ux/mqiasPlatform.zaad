@@ -18,7 +18,7 @@ type Preview = {
   };
 };
 
-export default function ImportClient() {
+export default function ImportClient({ embedded = false }: { embedded?: boolean }) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -57,12 +57,14 @@ export default function ImportClient() {
 
   return (
     <>
-      <div className="topbar">
-        <div>
-          <h1>استيراد Excel</h1>
-          <div className="text-muted">معاينة ثم تأكيد — الصفوف تُرسل مع طلب التأكيد</div>
+      {!embedded && (
+        <div className="topbar">
+          <div>
+            <h1>استيراد Excel</h1>
+            <div className="text-muted">معاينة ثم تأكيد — الصفوف تُرسل مع طلب التأكيد</div>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="card" style={{ marginBottom: "1rem" }}>
         <label className="btn-primary" style={{ cursor: "pointer" }}>

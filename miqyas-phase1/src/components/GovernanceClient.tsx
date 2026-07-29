@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import PeriodSelector from "@/components/PeriodSelector";
 import DonutChart from "@/components/charts/DonutChart";
 import CompareBarChart from "@/components/charts/CompareBarChart";
@@ -8,6 +8,7 @@ import {
   complianceCompareBars,
   complianceDonutSegments,
   GOVERNANCE_STAT_LABELS,
+  GOVERNANCE_STATUS_LABEL,
   type GovernanceStats,
 } from "@/lib/governance-stats";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
@@ -21,13 +22,6 @@ type Requirement = {
   owner: string | null;
   status: string;
   compliancePct: number;
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  COMPLIANT: "ممتثل",
-  PARTIAL: "جزئي",
-  NON_COMPLIANT: "غير ممتثل",
-  PENDING: "قيد المراجعة",
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -78,7 +72,9 @@ export default function GovernanceClient({
   const [requirements, setRequirements] = useState(initialRequirements);
   const [observations, setObservations] = useState(initialObservations);
   const [msg, setMsg] = useState("");
-  const [tab, setTab] = useState<"requirements" | "observations">("requirements");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [showObservations, setShowObservations] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/governance?year=${year}&period=${period}`);
@@ -130,24 +126,36 @@ export default function GovernanceClient({
     }
   }
 
-  const statCards = [
-    { num: stats.totalRequirements, lbl: GOVERNANCE_STAT_LABELS.totalRequirements, accent: "" },
-    { num: stats.compliantCount, lbl: GOVERNANCE_STAT_LABELS.compliantCount, accent: "stat-card--success" },
-    { num: `${stats.compliancePct}%`, lbl: GOVERNANCE_STAT_LABELS.compliancePct, accent: "stat-card--secondary" },
-    { num: stats.notCompliantCount, lbl: GOVERNANCE_STAT_LABELS.notCompliantCount, accent: "stat-card--warning" },
-    { num: stats.openObservations, lbl: GOVERNANCE_STAT_LABELS.openObservations, accent: "stat-card--danger" },
-    { num: stats.closedInPeriod, lbl: GOVERNANCE_STAT_LABELS.closedInPeriod, accent: "stat-card--warning" },
-  ];
+  const categories = useMemo(
+    () =>
+      Array.from(
+        new Set(requirements.map((r) => r.category).filter((c): c is string => Boolean(c)))
+      ).sort(),
+    [requirements]
+  );
+
+  const filtered = useMemo(
+    () =>
+      requirements.filter((r) => {
+        if (statusFilter && r.status !== statusFilter) return false;
+        if (categoryFilter && r.category !== categoryFilter) return false;
+        return true;
+      }),
+    [requirements, statusFilter, categoryFilter]
+  );
 
   const donutSegments = complianceDonutSegments(stats);
   const compareBars = complianceCompareBars(stats);
+  const readinessPct = Math.min(100, Math.max(0, stats.compliancePct));
 
   return (
     <>
       <div className="topbar">
         <div>
           <h1>مسار الحوكمة</h1>
-          <div className="text-muted">متطلبات الامتثال والملاحظات — {PERIOD_LABEL[period]} {year}</div>
+          <div className="text-muted">
+            درجة الجاهزية ومعايير الالتزام — {PERIOD_LABEL[period]} {year}
+          </div>
         </div>
         <PeriodSelector year={year} period={period} />
       </div>
@@ -158,99 +166,153 @@ export default function GovernanceClient({
         </div>
       )}
 
-      <div className="grid grid-3" style={{ marginBottom: "1rem" }}>
-        {statCards.map((s) => (
-          <div key={s.lbl} className={`card stat-card ${s.accent}`.trim()}>
-            <div className="stat-num">{s.num}</div>
-            <div className="stat-lbl">{s.lbl}</div>
+      <div className="card" style={{ marginBottom: "1rem", borderTop: "3px solid var(--color-primary, #8b1a2a)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ".85rem" }}>
+          <h2 style={{ margin: 0, fontSize: "1rem" }}>درجة جاهزية الحوكمة الكلية</h2>
+          <span style={{ fontSize: "1.8rem", fontWeight: 800 }}>{readinessPct}%</span>
+        </div>
+        <div
+          style={{
+            height: 8,
+            borderRadius: 99,
+            background: "var(--color-border, #e5e5e5)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${readinessPct}%`,
+              background: "var(--color-primary, #8b1a2a)",
+              transition: "width 1.2s ease",
+            }}
+          />
+        </div>
+        <div className="grid grid-3" style={{ marginTop: "1.1rem", gap: "1rem" }}>
+          <div className="card stat-card stat-card--success" style={{ margin: 0 }}>
+            <div className="stat-num">{stats.compliantCount}</div>
+            <div className="stat-lbl">{GOVERNANCE_STAT_LABELS.compliantCount}</div>
           </div>
-        ))}
+          <div className="card stat-card stat-card--warning" style={{ margin: 0 }}>
+            <div className="stat-num">{stats.partialCount}</div>
+            <div className="stat-lbl">{GOVERNANCE_STAT_LABELS.partialCount}</div>
+          </div>
+          <div className="card stat-card stat-card--danger" style={{ margin: 0 }}>
+            <div className="stat-num">{stats.notCompliantCount}</div>
+            <div className="stat-lbl">{GOVERNANCE_STAT_LABELS.notCompliantCount}</div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-2" style={{ marginBottom: "1rem" }}>
         <div className="card">
-          <h3 style={{ marginBottom: ".75rem" }}>نسبة الامتثال</h3>
+          <h3 style={{ marginBottom: ".75rem" }}>توزيع الالتزام</h3>
           <DonutChart
             segments={donutSegments}
-            centerLabel={`${stats.compliancePct}%`}
-            centerSubLabel="نسبة الامتثال"
+            centerLabel={`${readinessPct}%`}
+            centerSubLabel="الجاهزية"
           />
         </div>
         <div className="card">
-          <h3 style={{ marginBottom: ".75rem" }}>الممتثل مقابل غير الممتثل</h3>
+          <h3 style={{ marginBottom: ".75rem" }}>مستوفى مقابل غير مستوفى</h3>
           <CompareBarChart items={compareBars} />
         </div>
       </div>
 
-      <div className="tab-bar" style={{ marginBottom: "1rem" }}>
-        <button
-          type="button"
-          className={tab === "requirements" ? "active" : ""}
-          onClick={() => setTab("requirements")}
+      <div style={{ display: "flex", gap: ".65rem", flexWrap: "wrap", marginBottom: "1rem", alignItems: "center" }}>
+        <select
+          className="inp"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          style={{ width: "auto" }}
         >
-          المتطلبات
+          <option value="">كل التصنيفات</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        <select
+          className="inp"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={{ width: "auto" }}
+        >
+          <option value="">كل الحالات</option>
+          <option value="COMPLIANT">ملتزم</option>
+          <option value="PARTIAL">جزئي</option>
+          <option value="NON_COMPLIANT">غير ملتزم</option>
+          <option value="PENDING">انتظار</option>
+        </select>
+        <button type="button" className="btn btn-ghost" onClick={() => load()}>
+          تحديث
         </button>
         <button
           type="button"
-          className={tab === "observations" ? "active" : ""}
-          onClick={() => setTab("observations")}
+          className="btn btn-ghost"
+          onClick={() => setShowObservations((v) => !v)}
         >
-          الملاحظات
+          {showObservations ? "إخفاء الملاحظات" : "الملاحظات (ثانوي)"}
         </button>
       </div>
 
-      {tab === "requirements" && (
-        <div className="card" style={{ marginBottom: "1rem" }}>
-          <h3 style={{ marginBottom: ".75rem" }}>متطلبات الامتثال — {year}</h3>
-          <table className="tmkeen-table">
-            <thead>
-              <tr>
-                <th>الرمز</th>
-                <th>العنوان</th>
-                <th>التصنيف</th>
-                <th>المسؤول</th>
-                <th>نسبة الامتثال</th>
-                <th>الحالة</th>
+      <div className="card" style={{ marginBottom: "1rem", padding: 0, overflow: "hidden" }}>
+        <table className="tmkeen-table">
+          <thead>
+            <tr>
+              <th>الرمز</th>
+              <th>المعيار</th>
+              <th>التصنيف</th>
+              <th>الجهة</th>
+              <th>نسبة الالتزام</th>
+              <th>الحالة</th>
+              <th>الإجراء</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((r) => (
+              <tr key={r.id}>
+                <td>{r.code}</td>
+                <td>{r.title}</td>
+                <td>{r.category || "—"}</td>
+                <td>{r.owner || "—"}</td>
+                <td>{r.compliancePct}%</td>
+                <td>
+                  <span className={STATUS_BADGE[r.status] ?? "badge-secondary"}>
+                    {GOVERNANCE_STATUS_LABEL[r.status] ?? r.status}
+                  </span>
+                </td>
+                <td>
+                  {canManage ? (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => cycleRequirementStatus(r.id, r.status)}
+                    >
+                      تغيير الحالة
+                    </button>
+                  ) : (
+                    "—"
+                  )}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {requirements.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.code}</td>
-                  <td>{r.title}</td>
-                  <td>{r.category || "—"}</td>
-                  <td>{r.owner || "—"}</td>
-                  <td>{r.compliancePct}%</td>
-                  <td>
-                    {canManage ? (
-                      <button
-                        type="button"
-                        className={STATUS_BADGE[r.status] ?? "badge-secondary"}
-                        onClick={() => cycleRequirementStatus(r.id, r.status)}
-                      >
-                        {STATUS_LABEL[r.status] ?? r.status}
-                      </button>
-                    ) : (
-                      <span className={STATUS_BADGE[r.status] ?? "badge-secondary"}>
-                        {STATUS_LABEL[r.status] ?? r.status}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {requirements.length === 0 && (
-            <p className="text-muted" style={{ paddingTop: ".75rem" }}>
-              لا توجد متطلبات لهذا العام.
-            </p>
-          )}
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+        {filtered.length === 0 && (
+          <p className="text-muted" style={{ padding: ".75rem 1rem" }}>
+            لا توجد معايير مطابقة للفلتر.
+          </p>
+        )}
+      </div>
 
-      {tab === "observations" && (
+      {showObservations && (
         <div className="card">
-          <h3 style={{ marginBottom: ".75rem" }}>الملاحظات</h3>
+          <h3 style={{ marginBottom: ".75rem" }}>الملاحظات (قسم ثانوي)</h3>
+          <p className="text-muted" style={{ marginBottom: ".75rem", fontSize: ".85rem" }}>
+            مفتوحة: {stats.openObservations} · مغلقة خلال الفترة: {stats.closedInPeriod}
+          </p>
           <table className="tmkeen-table">
             <thead>
               <tr>

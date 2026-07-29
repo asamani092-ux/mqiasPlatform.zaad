@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { can } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { previousPeriod, scopedKnowledgeWhere } from "@/lib/knowledge-scope";
+import { ASSET_TYPES } from "@/lib/knowledge-constants";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
 import type { SessionUser } from "@/lib/rbac";
 import type { Period } from "@prisma/client";
@@ -68,8 +69,8 @@ export async function GET(req: NextRequest) {
 
 const createSchema = z.object({
   title: z.string().min(2).max(500),
-  assetType: z.string().max(200).optional().nullable(),
-  departmentId: z.number().int().optional().nullable(),
+  assetType: z.enum(ASSET_TYPES).optional().nullable(),
+  departmentId: z.number().int().positive().optional().nullable(),
   year: z.number().int(),
   period: z.enum(["Q1", "Q2", "Q3", "Q4", "H1", "H2", "Y"]),
   status: z.enum(["DRAFT", "APPROVED"]).optional(),
@@ -131,6 +132,27 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ asset });
   } catch (e) {
     if (e instanceof z.ZodError) return jsonError("بيانات غير صالحة", 400);
+    return handleApiError(e);
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await requireUser();
+    if (!can.manageKnowledge(user)) return jsonError("غير مصرح", 403);
+
+    const id = parseInt(req.nextUrl.searchParams.get("id") ?? "", 10);
+    if (Number.isNaN(id)) return jsonError("معرّف غير صالح", 400);
+
+    const scope = scopedKnowledgeWhere(user);
+    const existing = await db.knowledgeAsset.findFirst({ where: { id, ...scope } });
+    if (!existing) return jsonError("الأصل غير موجود", 404);
+
+    await db.knowledgeAsset.delete({ where: { id } });
+    await audit(parseInt(user.id, 10), "DELETE_KNOWLEDGE_ASSET", "KnowledgeAsset", id);
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
     return handleApiError(e);
   }
 }

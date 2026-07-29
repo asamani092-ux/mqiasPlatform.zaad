@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, TrendingDown, TrendingUp, X } from "lucide-react";
+import { Pencil, Plus, Trash2, TrendingDown, TrendingUp, X } from "lucide-react";
 import PeriodSelector from "@/components/PeriodSelector";
 import DonutChart from "@/components/charts/DonutChart";
 import {
@@ -9,8 +9,11 @@ import {
   KNOWLEDGE_STAT_LABELS,
   type KnowledgeStats,
 } from "@/lib/knowledge-stats";
+import { ASSET_TYPES } from "@/lib/knowledge-constants";
 import { ICON_PROPS } from "@/lib/icon-props";
 import type { Period } from "@/lib/types";
+
+type Department = { id: number; name: string };
 
 type Asset = {
   id: number;
@@ -18,19 +21,22 @@ type Asset = {
   assetType: string | null;
   status: string;
   isUsed: boolean;
+  departmentId: number | null;
   department: { name: string } | null;
 };
 
 type AssetForm = {
   title: string;
   assetType: string;
+  departmentId: string;
   status: "DRAFT" | "APPROVED";
   isUsed: boolean;
 };
 
 const emptyForm = (): AssetForm => ({
   title: "",
-  assetType: "",
+  assetType: ASSET_TYPES[0],
+  departmentId: "",
   status: "DRAFT",
   isUsed: false,
 });
@@ -38,12 +44,14 @@ const emptyForm = (): AssetForm => ({
 export default function KnowledgeClient({
   initialStats,
   initialAssets,
+  departments,
   year,
   period,
   canManage,
 }: {
   initialStats: KnowledgeStats;
   initialAssets: Asset[];
+  departments: Department[];
   year: number;
   period: Period;
   canManage: boolean;
@@ -72,17 +80,22 @@ export default function KnowledgeClient({
     setEditingId(null);
     setForm(emptyForm());
     setModalOpen(true);
+    setMsg("");
   }
 
   function openEdit(asset: Asset) {
     setEditingId(asset.id);
     setForm({
       title: asset.title,
-      assetType: asset.assetType || "",
+      assetType: asset.assetType && ASSET_TYPES.includes(asset.assetType as (typeof ASSET_TYPES)[number])
+        ? asset.assetType
+        : ASSET_TYPES[0],
+      departmentId: asset.departmentId != null ? String(asset.departmentId) : "",
       status: asset.status as "DRAFT" | "APPROVED",
       isUsed: asset.isUsed,
     });
     setModalOpen(true);
+    setMsg("");
   }
 
   async function saveAsset() {
@@ -92,7 +105,8 @@ export default function KnowledgeClient({
     }
     const payload = {
       title: form.title.trim(),
-      assetType: form.assetType.trim() || null,
+      assetType: form.assetType,
+      departmentId: form.departmentId ? parseInt(form.departmentId, 10) : null,
       status: form.status,
       isUsed: form.isUsed,
       year,
@@ -112,6 +126,18 @@ export default function KnowledgeClient({
     } else {
       const d = await res.json();
       setMsg(d.error || "فشل الحفظ");
+    }
+  }
+
+  async function deleteAsset(id: number, title: string) {
+    if (!window.confirm(`هل تريد حذف «${title}»؟`)) return;
+    setMsg("");
+    const res = await fetch(`/api/knowledge?id=${id}`, { method: "DELETE" });
+    if (res.ok) {
+      await load();
+    } else {
+      const d = await res.json();
+      setMsg(d.error || "فشل الحذف");
     }
   }
 
@@ -182,43 +208,53 @@ export default function KnowledgeClient({
         />
       </div>
 
-      <div className="card">
-        <table className="tmkeen-table">
-          <thead>
-            <tr>
-              <th>العنوان</th>
-              <th>النوع</th>
-              <th>الإدارة</th>
-              <th>الحالة</th>
-              <th>مستخدم؟</th>
-            </tr>
-          </thead>
-          <tbody>
-            {assets.map((a) => (
-              <tr
-                key={a.id}
-                style={canManage ? { cursor: "pointer" } : undefined}
-                onClick={canManage ? () => openEdit(a) : undefined}
-              >
-                <td>{a.title}</td>
-                <td>{a.assetType || "—"}</td>
-                <td>{a.department?.name || "—"}</td>
-                <td>
-                  <span className={a.status === "APPROVED" ? "badge-success" : "badge-warning"}>
-                    {a.status === "APPROVED" ? "معتمد" : "مسودة"}
-                  </span>
-                </td>
-                <td>{a.isUsed ? "نعم" : "لا"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {assets.length === 0 && (
-          <p className="text-muted" style={{ padding: "1rem" }}>
-            لا توجد أصول في هذه الفترة.
-          </p>
-        )}
+      <div className="kpi-grid">
+        {assets.map((a) => (
+          <div key={a.id} className="card kpi-card" style={{ textAlign: "start" }}>
+            <div className="kpi-row">
+              <span className="kpi-code">{a.assetType || "أخرى"}</span>
+              <span className={a.status === "APPROVED" ? "badge-success" : "badge-warning"}>
+                {a.status === "APPROVED" ? "معتمد" : "مسودة"}
+              </span>
+            </div>
+            <div className="kpi-name">{a.title}</div>
+            <div className="text-muted" style={{ fontSize: ".78rem", marginBottom: ".5rem" }}>
+              {a.department?.name || "—"}
+            </div>
+            <div style={{ display: "flex", gap: ".35rem", flexWrap: "wrap", alignItems: "center" }}>
+              <span className={a.isUsed ? "badge-success" : "badge-neutral"}>
+                {a.isUsed ? "مستخدم" : "غير مستخدم"}
+              </span>
+              {canManage && (
+                <div style={{ marginInlineStart: "auto", display: "flex", gap: ".25rem" }}>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    aria-label="تعديل"
+                    onClick={() => openEdit(a)}
+                  >
+                    <Pencil {...ICON_PROPS} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    aria-label="حذف"
+                    onClick={() => deleteAsset(a.id, a.title)}
+                  >
+                    <Trash2 {...ICON_PROPS} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
+
+      {assets.length === 0 && (
+        <div className="card">
+          <p className="text-muted">لا توجد أصول في هذه الفترة.</p>
+        </div>
+      )}
 
       {modalOpen && (
         <div className="modal-overlay" onClick={() => setModalOpen(false)}>
@@ -246,12 +282,32 @@ export default function KnowledgeClient({
                   <label className="field-cell-label" htmlFor="asset-type">
                     النوع
                   </label>
-                  <input
+                  <select
                     id="asset-type"
                     className="input-field"
                     value={form.assetType}
                     onChange={(e) => setForm({ ...form, assetType: e.target.value })}
-                  />
+                  >
+                    {ASSET_TYPES.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field-cell field-cell-control">
+                  <label className="field-cell-label" htmlFor="asset-dept">
+                    الإدارة
+                  </label>
+                  <select
+                    id="asset-dept"
+                    className="input-field"
+                    value={form.departmentId}
+                    onChange={(e) => setForm({ ...form, departmentId: e.target.value })}
+                  >
+                    <option value="">— اختر إدارة —</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="field-cell field-cell-control">
                   <label className="field-cell-label" htmlFor="asset-status">
@@ -270,18 +326,15 @@ export default function KnowledgeClient({
                   </select>
                 </div>
                 <div className="field-cell field-cell-control">
-                  <label className="field-cell-label" htmlFor="asset-used">
-                    مستخدم؟
+                  <label className="field-cell-label" htmlFor="asset-used" style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
+                    <input
+                      id="asset-used"
+                      type="checkbox"
+                      checked={form.isUsed}
+                      onChange={(e) => setForm({ ...form, isUsed: e.target.checked })}
+                    />
+                    مستخدم
                   </label>
-                  <select
-                    id="asset-used"
-                    className="input-field"
-                    value={form.isUsed ? "yes" : "no"}
-                    onChange={(e) => setForm({ ...form, isUsed: e.target.value === "yes" })}
-                  >
-                    <option value="no">لا</option>
-                    <option value="yes">نعم</option>
-                  </select>
                 </div>
               </div>
             </div>

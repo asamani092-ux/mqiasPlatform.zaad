@@ -213,6 +213,7 @@ export default function UsersClient({ departments }: { departments: Department[]
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: editForm.name,
+        email: editForm.email,
         role: editForm.role,
         departmentId: editForm.departmentId ? +editForm.departmentId : null,
         sectionId: editForm.sectionId ? +editForm.sectionId : null,
@@ -522,7 +523,14 @@ export default function UsersClient({ departments }: { departments: Department[]
               </div>
               <div style={{ marginBottom: "1rem" }}>
                 <label className="label-field">البريد الإلكتروني</label>
-                <input className="input-field" dir="ltr" value={editForm.email} disabled />
+                <input
+                  type="email"
+                  className="input-field"
+                  dir="ltr"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  required
+                />
               </div>
               <div style={{ marginBottom: "1rem" }}>
                 <label className="label-field">الدور</label>

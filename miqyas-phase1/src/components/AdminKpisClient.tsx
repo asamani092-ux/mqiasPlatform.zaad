@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
 import { FREQUENCY_LABEL, TYPE_LABEL, POLARITY_LABEL_API } from "@/lib/kpi-schemas";
 import { resolvePeriods } from "@/lib/kpi";
+import ImportClient from "@/components/ImportClient";
+
+const KPI_UNITS = ["%", "عدد", "ريال", "مستفيد", "يوم", "ساعة", "أخرى"] as const;
+
+type Department = { id: number; name: string };
+type DeptUser = { id: number; name: string; departmentId: number | null };
 
 type Kpi = {
   id: number;
@@ -46,7 +52,16 @@ const emptyForm = {
   operationalGoalId: "",
 };
 
-export default function AdminKpisClient() {
+type Tab = "kpis" | "import";
+
+export default function AdminKpisClient({
+  departments,
+  users,
+}: {
+  departments: Department[];
+  users: DeptUser[];
+}) {
+  const [tab, setTab] = useState<Tab>("kpis");
   const [kpis, setKpis] = useState<Kpi[]>([]);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState(emptyForm);
@@ -54,6 +69,12 @@ export default function AdminKpisClient() {
   const [targetYear, setTargetYear] = useState(2026);
   const [targets, setTargets] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
+
+  const deptUsers = useMemo(() => {
+    if (!form.departmentId) return users;
+    const deptId = parseInt(form.departmentId, 10);
+    return users.filter((u) => u.departmentId === deptId);
+  }, [form.departmentId, users]);
 
   const load = useCallback(async () => {
     const q = search ? `?search=${encodeURIComponent(search)}&active=all` : "?active=all";
@@ -85,7 +106,7 @@ export default function AdminKpisClient() {
       code: kpi.code,
       name: kpi.name,
       type: kpi.type as "STRATEGIC",
-      unit: kpi.unit,
+      unit: KPI_UNITS.includes(kpi.unit as (typeof KPI_UNITS)[number]) ? kpi.unit : "أخرى",
       polarity: kpi.polarity as "HIGHER_BETTER",
       frequency: kpi.frequency as "QUARTERLY",
       requiredData: kpi.requiredData ?? "",
@@ -169,80 +190,124 @@ export default function AdminKpisClient() {
           <h1>إدارة المؤشرات</h1>
           <div className="text-muted">تعريف المؤشرات والمستهدفات — مشرف النظام</div>
         </div>
-        <input className="input-field" style={{ width: 220 }} placeholder="بحث بالرمز أو الاسم..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        {tab === "kpis" && (
+          <input className="input-field" style={{ width: 220 }} placeholder="بحث بالرمز أو الاسم..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        )}
       </div>
 
-      {msg && <div className="alert alert-success" style={{ marginBottom: "1rem" }}>{msg}</div>}
+      <div className="tab-bar" style={{ marginBottom: "1rem" }}>
+        <button type="button" className={tab === "kpis" ? "active" : ""} onClick={() => setTab("kpis")}>
+          المؤشرات
+        </button>
+        <button type="button" className={tab === "import" ? "active" : ""} onClick={() => setTab("import")}>
+          استيراد Excel
+        </button>
+      </div>
 
-      <div className="card" style={{ marginBottom: "1rem" }}>
-        <h3>{editId ? "تعديل مؤشر" : "مؤشر جديد"}</h3>
-        <div className="grid grid-4" style={{ gap: ".75rem", marginBottom: ".75rem" }}>
-          {[
-            ["code", "رمز المؤشر"],
-            ["name", "اسم المؤشر"],
-            ["unit", "وحدة القياس"],
-            ["requiredData", "البيانات المطلوبة"],
-            ["ownerLabel", "الإدارة المالكة (نص)"],
-            ["ownerId", "معرف الموظف المسؤول"],
-            ["baseline", "خط الأساس"],
-            ["annualTarget", "المستهدف السنوي"],
-            ["recommendation", "توصيات القسم"],
-          ].map(([key, label]) => (
-            <div key={key}>
-              <label className="label-field">{label}</label>
-              <input className="input-field" value={(form as Record<string, string>)[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
+      {tab === "import" ? (
+        <ImportClient embedded />
+      ) : (
+        <>
+          {msg && <div className="alert alert-success" style={{ marginBottom: "1rem" }}>{msg}</div>}
+
+          <div className="card" style={{ marginBottom: "1rem" }}>
+            <h3>{editId ? "تعديل مؤشر" : "مؤشر جديد"}</h3>
+            <div className="grid grid-4" style={{ gap: ".75rem", marginBottom: ".75rem" }}>
+              {[
+                ["code", "رمز المؤشر"],
+                ["name", "اسم المؤشر"],
+                ["requiredData", "البيانات المطلوبة"],
+                ["ownerLabel", "الإدارة المالكة (نص)"],
+                ["baseline", "خط الأساس"],
+                ["annualTarget", "المستهدف السنوي"],
+                ["recommendation", "توصيات القسم"],
+              ].map(([key, label]) => (
+                <div key={key}>
+                  <label className="label-field">{label}</label>
+                  <input className="input-field" value={(form as Record<string, string>)[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
+                </div>
+              ))}
+              <div>
+                <label className="label-field">وحدة القياس</label>
+                <select className="input-field" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}>
+                  {KPI_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label-field">الإدارة</label>
+                <select
+                  className="input-field"
+                  value={form.departmentId}
+                  onChange={(e) => setForm({ ...form, departmentId: e.target.value, ownerId: "" })}
+                >
+                  <option value="">— اختر إدارة —</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label-field">الموظف المسؤول</label>
+                <select
+                  className="input-field"
+                  value={form.ownerId}
+                  onChange={(e) => setForm({ ...form, ownerId: e.target.value })}
+                  disabled={!form.departmentId}
+                >
+                  <option value="">— اختر موظف —</option>
+                  {deptUsers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </div>
             </div>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap", marginBottom: ".75rem" }}>
-          <select className="input-field" style={{ width: "auto" }} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as "STRATEGIC" })}>
-            {Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-          <select className="input-field" style={{ width: "auto" }} value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value as "QUARTERLY" })}>
-            {Object.entries(FREQUENCY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-          <select className="input-field" style={{ width: "auto" }} value={form.polarity} onChange={(e) => setForm({ ...form, polarity: e.target.value as "HIGHER_BETTER" })}>
-            {Object.entries(POLARITY_LABEL_API).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-        </div>
-        <h4 style={{ marginBottom: ".5rem" }}>المستهدفات — {targetYear}</h4>
-        <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginBottom: ".75rem" }}>
-          {periods.map((p) => (
-            <div key={p}>
-              <label className="label-field">{PERIOD_LABEL[p as Period]}</label>
-              <input className="input-field" style={{ width: 100 }} value={targets[p] ?? ""} onChange={(e) => setTargets({ ...targets, [p]: e.target.value })} />
+            <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap", marginBottom: ".75rem" }}>
+              <select className="input-field" style={{ width: "auto" }} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as "STRATEGIC" })}>
+                {Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+              <select className="input-field" style={{ width: "auto" }} value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value as "QUARTERLY" })}>
+                {Object.entries(FREQUENCY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+              <select className="input-field" style={{ width: "auto" }} value={form.polarity} onChange={(e) => setForm({ ...form, polarity: e.target.value as "HIGHER_BETTER" })}>
+                {Object.entries(POLARITY_LABEL_API).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
             </div>
-          ))}
-        </div>
-        <button type="button" className="btn-primary btn-sm" onClick={saveKpi}>{editId ? "تحديث" : "إنشاء"}</button>
-        {editId && <button type="button" className="btn-secondary btn-sm" style={{ marginRight: ".5rem" }} onClick={() => { setEditId(null); setForm(emptyForm); }}>إلغاء</button>}
-      </div>
+            <h4 style={{ marginBottom: ".5rem" }}>المستهدفات — {targetYear}</h4>
+            <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginBottom: ".75rem" }}>
+              {periods.map((p) => (
+                <div key={p}>
+                  <label className="label-field">{PERIOD_LABEL[p as Period]}</label>
+                  <input className="input-field" style={{ width: 100 }} value={targets[p] ?? ""} onChange={(e) => setTargets({ ...targets, [p]: e.target.value })} />
+                </div>
+              ))}
+            </div>
+            <button type="button" className="btn-primary btn-sm" onClick={saveKpi}>{editId ? "تحديث" : "إنشاء"}</button>
+            {editId && <button type="button" className="btn-secondary btn-sm" style={{ marginRight: ".5rem" }} onClick={() => { setEditId(null); setForm(emptyForm); }}>إلغاء</button>}
+          </div>
 
-      <div className="card" style={{ overflowX: "auto" }}>
-        <table className="tmkeen-table">
-          <thead>
-            <tr>
-              <th>الرمز</th><th>الاسم</th><th>النوع</th><th>الدورية</th><th>الإدارة</th><th>نشط</th><th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {kpis.map((k) => (
-              <tr key={k.id}>
-                <td>{k.code}</td>
-                <td>{k.name}</td>
-                <td>{TYPE_LABEL[k.type as keyof typeof TYPE_LABEL]}</td>
-                <td>{FREQUENCY_LABEL[k.frequency as keyof typeof FREQUENCY_LABEL]}</td>
-                <td>{k.department?.name || k.ownerLabel || "—"}</td>
-                <td>{k.active ? "نعم" : "لا"}</td>
-                <td>
-                  <button type="button" className="btn-secondary btn-sm" onClick={() => startEdit(k)}>تعديل</button>
-                  {k.active && <button type="button" className="btn-secondary btn-sm" style={{ marginRight: ".3rem" }} onClick={() => softDelete(k.id)}>تعطيل</button>}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          <div className="card" style={{ overflowX: "auto" }}>
+            <table className="tmkeen-table">
+              <thead>
+                <tr>
+                  <th>الرمز</th><th>الاسم</th><th>النوع</th><th>الدورية</th><th>الإدارة</th><th>نشط</th><th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {kpis.map((k) => (
+                  <tr key={k.id}>
+                    <td>{k.code}</td>
+                    <td>{k.name}</td>
+                    <td>{TYPE_LABEL[k.type as keyof typeof TYPE_LABEL]}</td>
+                    <td>{FREQUENCY_LABEL[k.frequency as keyof typeof FREQUENCY_LABEL]}</td>
+                    <td>{k.department?.name || k.ownerLabel || "—"}</td>
+                    <td>{k.active ? "نعم" : "لا"}</td>
+                    <td>
+                      <button type="button" className="btn-secondary btn-sm" onClick={() => startEdit(k)}>تعديل</button>
+                      {k.active && <button type="button" className="btn-secondary btn-sm" style={{ marginRight: ".3rem" }} onClick={() => softDelete(k.id)}>تعطيل</button>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </>
   );
 }

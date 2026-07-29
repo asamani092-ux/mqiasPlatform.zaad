@@ -18,6 +18,7 @@ declare module "next-auth" {
     role: Role;
     departmentId: number | null;
     sectionId: number | null;
+    rememberMe?: boolean;
   }
 }
 
@@ -27,5 +28,6 @@ declare module "next-auth/jwt" {
     role?: Role;
     departmentId?: number | null;
     sectionId?: number | null;
+    rememberMe?: boolean;
   }
 }

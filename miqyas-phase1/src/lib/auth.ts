@@ -29,22 +29,15 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "البريد", type: "email" },
         password: { label: "كلمة المرور", type: "password" },
+        rememberMe: { label: "تذكرني", type: "text" },
       },
       async authorize(credentials, req) {
         const email = credentials?.email?.trim().toLowerCase();
         const password = credentials?.password;
+        const rememberMe = credentials?.rememberMe === "true";
         const ip = extractClientIp(req);
 
         if (!email || !password) return null;
-
-        const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);
-        const failedCount = await db.loginAttempt.count({
-          where: { email, success: false, createdAt: { gte: fifteenMinAgo } },
-        });
-
-        if (failedCount >= 5) {
-          throw new Error("تم تجاوز عدد المحاولات، حاول بعد 15 دقيقة");
-        }
 
         const user = await db.user.findUnique({ where: { email } });
         let success = false;
@@ -78,23 +71,36 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           departmentId: user.departmentId,
           sectionId: user.sectionId,
+          rememberMe,
         };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
+      const THIRTY_DAYS = 30 * 24 * 60 * 60;
+      const EIGHT_HOURS = 8 * 60 * 60;
+
       if (user) {
         const u = user as {
           id: string;
           role: Role;
           departmentId: number | null;
           sectionId: number | null;
+          rememberMe?: boolean;
         };
         token.uid = u.id;
         token.role = u.role;
         token.departmentId = u.departmentId;
         token.sectionId = u.sectionId;
+        if (u.rememberMe) {
+          token.rememberMe = true;
+          token.exp = Math.floor(Date.now() / 1000) + THIRTY_DAYS;
+        } else {
+          token.exp = Math.floor(Date.now() / 1000) + EIGHT_HOURS;
+        }
+      } else if (token.rememberMe) {
+        token.exp = Math.floor(Date.now() / 1000) + THIRTY_DAYS;
       }
       return token;
     },

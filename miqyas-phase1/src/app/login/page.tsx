@@ -1,42 +1,50 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import BrandMark from "@/components/BrandMark";
+
+type SubmitState = "idle" | "loading" | "success";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [submitState, setSubmitState] = useState<SubmitState>("idle");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setSubmitState("loading");
 
     const result = await signIn("credentials", {
       email,
       password,
+      rememberMe: rememberMe ? "true" : "false",
       redirect: false,
     });
 
-    setLoading(false);
-
     if (result?.error) {
-      setError(
-        result.error.includes("المحاولات")
-          ? "تم تجاوز عدد المحاولات، حاول بعد 15 دقيقة"
-          : "البريد الإلكتروني أو كلمة المرور غير صحيحة",
-      );
+      setSubmitState("idle");
+      setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
       return;
     }
 
+    setSubmitState("success");
     router.push("/dashboard");
     router.refresh();
   }
+
+  const buttonLabel =
+    submitState === "loading"
+      ? "جاري الدخول..."
+      : submitState === "success"
+        ? "تم بنجاح"
+        : "دخول";
 
   return (
     <div className="page-shell">
@@ -69,7 +77,7 @@ export default function LoginPage() {
                 dir="ltr"
               />
             </div>
-            <div style={{ marginBottom: "1.25rem" }}>
+            <div style={{ marginBottom: "1rem" }}>
               <label className="label-field" htmlFor="password">كلمة المرور</label>
               <input
                 id="password"
@@ -82,8 +90,43 @@ export default function LoginPage() {
                 dir="ltr"
               />
             </div>
-            <button type="submit" className="btn-primary" style={{ width: "100%" }} disabled={loading}>
-              {loading ? "جاري الدخول..." : "دخول"}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "1.25rem",
+                gap: "0.75rem",
+                flexWrap: "wrap",
+              }}
+            >
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  cursor: "pointer",
+                  fontSize: "0.9rem",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+                تذكرني
+              </label>
+              <Link href="/forgot-password" className="text-muted" style={{ fontSize: "0.9rem" }}>
+                نسيت كلمة المرور؟
+              </Link>
+            </div>
+            <button
+              type="submit"
+              className="btn-primary"
+              style={{ width: "100%" }}
+              disabled={submitState !== "idle"}
+            >
+              {buttonLabel}
             </button>
           </form>
         </div>
