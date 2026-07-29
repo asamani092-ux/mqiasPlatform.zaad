@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "prisma db seed",
+    "seed:excel": "tsx scripts/import-excel-2026.ts",
     "db:migrate": "prisma migrate deploy"
   },
   "dependencies": {
