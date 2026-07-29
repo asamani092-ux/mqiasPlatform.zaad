@@ -1,22 +1,40 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
-import { currentQuarter } from "@/lib/kpi";
 import { getDashboardOverview } from "@/lib/dashboard-overview";
+import { can } from "@/lib/rbac";
+import { parseTrackParams } from "@/lib/track-params";
 import { db } from "@/lib/db";
 import DashboardClient from "@/components/DashboardClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  const { year, period } = currentQuarter();
+  const { year, period } = parseTrackParams(searchParams);
 
-  const [overview, entries] = await Promise.all([
+  const [overview, entries, departments] = await Promise.all([
     getDashboardOverview(user, year, period),
     db.kpiEntry.findMany({
       where: { year, period, approvalStatus: "APPROVED" },
       select: { status: true },
+    }),
+    db.department.findMany({
+      orderBy: { deptNo: "asc" },
+      select: {
+        id: true,
+        deptNo: true,
+        name: true,
+        color: true,
+        sections: {
+          orderBy: { sectionNo: "asc" },
+          select: { id: true, sectionNo: true, name: true, code: true },
+        },
+      },
     }),
   ]);
 
@@ -28,6 +46,8 @@ export default async function DashboardPage() {
       overview={overview}
       byStatus={byStatus}
       userName={user.name}
+      departments={departments}
+      canManageStructure={can.manageStructure(user) || can.manageUsers(user)}
     />
   );
 }

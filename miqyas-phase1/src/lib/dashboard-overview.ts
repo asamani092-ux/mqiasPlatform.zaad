@@ -1,7 +1,7 @@
 import type { Period } from "@prisma/client";
 import { getKpiRows } from "@/lib/analytics";
 import { governanceStats } from "@/lib/governance-scope";
-import { averageAchievementPct } from "@/lib/status5";
+import { averageAchievementPct, status5FromAveragePct, type Status5 } from "@/lib/status5";
 import { db } from "@/lib/db";
 import type { SessionUser } from "@/lib/rbac";
 import { scopedKnowledgeWhere } from "@/lib/knowledge-scope";
@@ -19,6 +19,43 @@ export type DashboardOverview = {
   overallPct: number | null;
   donutSegments: { name: string; value: number; key: string }[];
 };
+
+export type TrackBarItem = {
+  name: string;
+  value: number;
+  status5: Status5;
+  key: string;
+};
+
+/** Big O: O(1) time, O(1) space */
+export function trackBarData(overview: DashboardOverview): TrackBarItem[] {
+  return [
+    {
+      name: "الأداء الاستراتيجي",
+      value: roundTrackPct(overview.strategicPct),
+      status5: status5FromAveragePct(overview.strategicPct),
+      key: "strategic",
+    },
+    {
+      name: "الأداء التشغيلي",
+      value: roundTrackPct(overview.operationalPct),
+      status5: status5FromAveragePct(overview.operationalPct),
+      key: "operational",
+    },
+    {
+      name: "مسار الحوكمة",
+      value: overview.governancePct,
+      status5: status5FromAveragePct(overview.governancePct),
+      key: "governance",
+    },
+    {
+      name: "المعرفة المؤسسية",
+      value: overview.knowledgePct,
+      status5: status5FromAveragePct(overview.knowledgePct),
+      key: "knowledge",
+    },
+  ];
+}
 
 function roundTrackPct(pct: number | null): number {
   return pct != null ? Math.round(pct * 10) / 10 : 0;

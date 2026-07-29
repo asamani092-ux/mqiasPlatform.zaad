@@ -22,6 +22,12 @@ export function enrichStrategicRows(rows: KpiAnalyticsRow[]): StrategicKpiRow[] 
   }));
 }
 
+export type StrategicGoalGroup = {
+  goalCode: string | null;
+  goalTitle: string;
+  rows: StrategicKpiRow[];
+};
+
 export type AxisPerformance = {
   axis: StrategicAxis;
   label: string;
@@ -30,7 +36,23 @@ export type AxisPerformance = {
   avgPct: number | null;
   status5: Status5;
   rows: StrategicKpiRow[];
+  goalGroups: StrategicGoalGroup[];
 };
+
+/** Big O: O(n) time, O(n) space */
+export function groupGoalsInAxis(rows: StrategicKpiRow[]): StrategicGoalGroup[] {
+  const goalMap = new Map<string, StrategicKpiRow[]>();
+  for (const r of rows) {
+    const key = r.strategicGoalCode || r.strategicGoalTitle || "بدون هدف استراتيجي";
+    if (!goalMap.has(key)) goalMap.set(key, []);
+    goalMap.get(key)!.push(r);
+  }
+  return Array.from(goalMap.entries()).map(([key, goalRows]) => ({
+    goalCode: goalRows[0]?.strategicGoalCode ?? null,
+    goalTitle: goalRows[0]?.strategicGoalTitle || key,
+    rows: goalRows,
+  }));
+}
 
 /** Big O: O(n) time, O(n) space */
 export function groupByAxis(rows: StrategicKpiRow[]): AxisPerformance[] {
@@ -51,6 +73,7 @@ export function groupByAxis(rows: StrategicKpiRow[]): AxisPerformance[] {
       avgPct,
       status5: status5FromAveragePct(avgPct),
       rows: axisRows,
+      goalGroups: groupGoalsInAxis(axisRows),
     };
   });
 }

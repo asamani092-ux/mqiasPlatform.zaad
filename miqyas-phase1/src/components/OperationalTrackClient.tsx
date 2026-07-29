@@ -22,6 +22,59 @@ import {
 import { type Period } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
 
+function formatDeviation(pct: number | null | undefined): string {
+  if (pct == null) return "—";
+  return pct > 0 ? `+${pct}%` : `${pct}%`;
+}
+
+function KpiMeasurementFields({ row }: { row: OperationalKpiRow }) {
+  return (
+    <div
+      className="kpi-fields"
+      style={{ gridTemplateColumns: "repeat(4, 1fr)" }}
+    >
+      <div className="field">
+        <div className="field-lbl">خط الأساس</div>
+        <div className="field-val">{row.baseline ?? "—"}</div>
+      </div>
+      <div className="field">
+        <div className="field-lbl">المستهدف السنوي</div>
+        <div className="field-val">{row.annualTarget ?? "—"}</div>
+      </div>
+      <div className="field">
+        <div className="field-lbl">مستهدف الفترة</div>
+        <div className="field-val">{row.target ?? "—"}</div>
+      </div>
+      <div className="field">
+        <div className="field-lbl">المتحقق</div>
+        <div className="field-val">{row.actual ?? "—"}</div>
+      </div>
+      <div className="field">
+        <div className="field-lbl">الإنجاز</div>
+        <div className="field-val">
+          {row.achievementPct != null ? `${row.achievementPct}%` : "—"}
+        </div>
+      </div>
+      <div className="field">
+        <div className="field-lbl">الانحراف</div>
+        <div className="field-val">{formatDeviation(row.deviationPct)}</div>
+      </div>
+      <div className="field">
+        <div className="field-lbl">الحالة</div>
+        <div className="field-val" style={{ fontSize: ".68rem" }}>
+          <Status5Badge status={row.status5} />
+        </div>
+      </div>
+      <div className="field">
+        <div className="field-lbl">المالك</div>
+        <div className="field-val" style={{ fontSize: ".72rem" }}>
+          {row.ownerLabel || row.sectionName || row.departmentName || "—"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function OperationalTrackClient({
   rows,
   departments,
@@ -39,6 +92,11 @@ export default function OperationalTrackClient({
   const summary = useMemo(() => operationalSummary(rows), [rows]);
   const deptGroups = useMemo(() => groupByDepartment(rows, departments), [rows, departments]);
   const barItems = useMemo(() => departmentBarData(deptGroups), [deptGroups]);
+
+  const filteredRows = useMemo(
+    () => rows.filter((r) => filter === "all" || r.status5 === filter),
+    [rows, filter],
+  );
 
   const filteredDepts = useMemo(
     () =>
@@ -125,7 +183,7 @@ export default function OperationalTrackClient({
       </div>
 
       {filteredDepts.length === 0 && (
-        <div className="card">
+        <div className="card" style={{ marginBottom: "1rem" }}>
           <p className="text-muted">لا توجد مؤشرات مطابقة للفلتر في نطاق صلاحياتك.</p>
         </div>
       )}
@@ -150,7 +208,7 @@ export default function OperationalTrackClient({
           {dept.goalGroups.map((goal) => (
             <div key={goal.goalTitle} className="goal-block">
               <div className="goal-header">
-                <span className="text-muted">{goal.goalTitle}</span>
+                <span>{goal.goalTitle}</span>
               </div>
               <div className="kpi-grid">
                 {goal.rows.map((r) => (
@@ -165,22 +223,7 @@ export default function OperationalTrackClient({
                         الارتباط الاستراتيجي: {r.strategicGoalCode}
                       </div>
                     )}
-                    <div className="kpi-fields">
-                      <div className="field">
-                        <div className="field-lbl">المستهدف</div>
-                        <div className="field-val">{r.target ?? "—"}</div>
-                      </div>
-                      <div className="field">
-                        <div className="field-lbl">المتحقق</div>
-                        <div className="field-val">{r.actual ?? "—"}</div>
-                      </div>
-                      <div className="field">
-                        <div className="field-lbl">الإنجاز</div>
-                        <div className="field-val">
-                          {r.achievementPct != null ? `${r.achievementPct}%` : "—"}
-                        </div>
-                      </div>
-                    </div>
+                    <KpiMeasurementFields row={r} />
                     <div className="kpi-footer">
                       <span className="text-muted">{r.sectionName || r.ownerLabel || "—"}</span>
                       <button
@@ -199,6 +242,55 @@ export default function OperationalTrackClient({
           ))}
         </div>
       ))}
+
+      <div className="card" style={{ marginTop: "1rem" }}>
+        <h3 style={{ marginBottom: ".75rem" }}>جميع المؤشرات التشغيلية</h3>
+        {filteredRows.length === 0 ? (
+          <p className="text-muted">لا توجد مؤشرات للعرض.</p>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table className="tmkeen-table">
+              <thead>
+                <tr>
+                  <th>الرمز</th>
+                  <th>المؤشر</th>
+                  <th>المستهدف</th>
+                  <th>الفعلي</th>
+                  <th>الإنجاز</th>
+                  <th>الانحراف</th>
+                  <th>الحالة</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((r) => (
+                  <tr key={r.kpiId}>
+                    <td>{r.code}</td>
+                    <td>{r.name}</td>
+                    <td>{r.target ?? "—"}</td>
+                    <td>{r.actual ?? "—"}</td>
+                    <td>{r.achievementPct != null ? `${r.achievementPct}%` : "—"}</td>
+                    <td>{formatDeviation(r.deviationPct)}</td>
+                    <td>
+                      <Status5Badge status={r.status5} />
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn-primary btn-sm"
+                        onClick={() => setAnalysisRow(r)}
+                      >
+                        <BarChart3 {...ICON_PROPS} />
+                        تحليل
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {analysisRow && (
         <KpiAnalysisModal
