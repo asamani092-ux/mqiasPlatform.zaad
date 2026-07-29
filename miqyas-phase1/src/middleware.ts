@@ -57,6 +57,7 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    "/((?!login|forgot-password|reset-password|api/auth|api/cron|_next/static|_next/image|favicon.ico|brand/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // استثناء api/* حتى تُرجع المسارات JSON 401 بدل إعادة توجيه HTML لصفحة الدخول
+    "/((?!login|forgot-password|reset-password|api/|_next/static|_next/image|favicon.ico|brand/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

@@ -20,22 +20,25 @@ function fmtTime(iso: string): string {
 }
 
 export default function NotifBell() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/notifications");
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/notifications", { credentials: "same-origin" });
+      if (!res.ok) return;
       const data = await res.json();
-      setNotifications(data.notifications);
+      setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+    } catch {
+      // تجاهل أخطاء الشبكة/HMR دون كسر الواجهة
     }
   }, []);
 
   useEffect(() => {
-    if (session) load();
-  }, [session, load]);
+    if (status === "authenticated") load();
+  }, [status, load]);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -47,7 +50,7 @@ export default function NotifBell() {
     return () => document.removeEventListener("click", onDocClick);
   }, [open]);
 
-  if (!session) return null;
+  if (status !== "authenticated" || !session) return null;
 
   const unread = notifications.filter((n) => !n.readAt).length;
 
@@ -55,8 +58,12 @@ export default function NotifBell() {
     const next = !open;
     setOpen(next);
     if (next && unread > 0) {
-      await fetch("/api/notifications", { method: "POST" });
-      load();
+      try {
+        await fetch("/api/notifications", { method: "POST", credentials: "same-origin" });
+        await load();
+      } catch {
+        // ignore
+      }
     }
   }
 
