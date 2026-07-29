@@ -6,7 +6,7 @@ import DonutChart from "@/components/charts/DonutChart";
 import BarChartWithTarget from "@/components/charts/BarChartWithTarget";
 import PeriodSelector from "@/components/PeriodSelector";
 import { CHART_COLORS } from "@/lib/chart-colors";
-import { trackBarData, type DashboardOverview } from "@/lib/dashboard-overview";
+import { trackBarData, type DashboardOverview } from "@/lib/dashboard-overview-client";
 import { PERIOD_LABEL, STATUS_BADGE, STATUS_LABEL, type KpiStatus } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
 
