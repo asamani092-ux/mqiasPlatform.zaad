@@ -106,8 +106,9 @@ function mapPolarity(v: string): Polarity {
 function mapApproval(raw: string, hasActual: boolean): ApprovalStatus {
   const s = raw.trim();
   if (s.includes("معتمد")) return "APPROVED";
-  if (s.includes("تحت المراجعة")) return "PENDING";
-  if (hasActual) return "PENDING";
+  if (s.includes("تحت المراجعة") || s.includes("معلق") || s.includes("بانتظار")) return "PENDING";
+  // Excel 2026 غالباً بلا عمود اعتماد مملوء — نعتمد ذات الفعلي لفتح اللوحات والمسارات
+  if (hasActual) return "APPROVED";
   return "PENDING";
 }
 
@@ -508,6 +509,20 @@ async function main() {
     await db.kpi.updateMany({
       where: { id: { in: kpiCodesForEmployee } },
       data: { ownerId: employee.id },
+    });
+  }
+
+  // إبقاء عيّنة PENDING لقائمة الاعتماد في بيئة التجربة
+  const approvalSample = await db.kpiEntry.findMany({
+    where: { year: YEAR, approvalStatus: "APPROVED" },
+    take: 5,
+    orderBy: { id: "asc" },
+    select: { id: true },
+  });
+  if (approvalSample.length > 0) {
+    await db.kpiEntry.updateMany({
+      where: { id: { in: approvalSample.map((e) => e.id) } },
+      data: { approvalStatus: "PENDING", approvedAt: null },
     });
   }
 
