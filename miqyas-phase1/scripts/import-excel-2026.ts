@@ -526,6 +526,38 @@ async function main() {
     });
   }
 
+  // عيّنة إنذار مبكر لصفحة /early-warning (الكرون يتخطى خارج نافذة الشهر الثالث)
+  const alertCount = await db.earlyWarningAlert.count({ where: { year: YEAR } });
+  if (alertCount === 0) {
+    const sampleEntries = await db.kpiEntry.findMany({
+      where: { year: YEAR, period: "Q2", approvalStatus: "APPROVED" },
+      include: { kpi: { select: { name: true } } },
+      take: 3,
+      orderBy: { id: "asc" },
+    });
+    for (const e of sampleEntries) {
+      const target = await db.kpiTarget.findUnique({
+        where: { kpiId_year_period: { kpiId: e.kpiId, year: YEAR, period: "Q2" } },
+      });
+      if (!target) continue;
+      const gap = Math.max(15, Math.round((100 - (e.achievementPct ?? 70)) * 10) / 10);
+      await db.earlyWarningAlert.create({
+        data: {
+          kpiId: e.kpiId,
+          year: YEAR,
+          period: "Q2",
+          expectedToDate: target.targetValue,
+          actualToDate: e.actualValue,
+          gapPct: gap,
+          riskLevel: gap >= 30 ? "HIGH" : "MEDIUM",
+          message: `فجوة تجريبية — ${e.kpi.name}`,
+          recipients: "manager@zad.org.sa",
+          emailSent: false,
+        },
+      });
+    }
+  }
+
   console.log("\n═══════════════════════════════════════");
   console.log("✅ اكتمل استيراد Excel 2026");
   console.log("═══════════════════════════════════════");
