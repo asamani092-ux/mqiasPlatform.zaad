@@ -25,12 +25,15 @@ export default function BarChartWithTarget({
   items,
   targetValue = 100,
   height = 300,
+  keepZeros = false,
 }: {
   items: BarTargetItem[];
   targetValue?: number;
   height?: number;
+  /** عند true يُعرض كل عنصر حتى لو كانت النسبة 0 (مطلوب لمخطط المسارات التراكمي) */
+  keepZeros?: boolean;
 }) {
-  const data = items.filter((d) => d.value > 0 || d.isOverall);
+  const data = keepZeros ? items : items.filter((d) => d.value > 0 || d.isOverall);
 
   if (!data.length) {
     return (

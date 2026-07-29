@@ -37,7 +37,7 @@ export async function getDashboardOverview(
   const operationalPct = averageAchievementPct(operationalRows);
   const governancePct = gov.compliancePct;
   const knowledgeTotal = knowledgeAssets.length;
-  const knowledgeApproved = knowledgeAssets.filter((a) => a.status === "APPROVED").length;
+  const knowledgeApproved = knowledgeAssets.filter((a) => a.status === "ACTIVE").length;
   const knowledgePct =
     knowledgeTotal > 0 ? Math.round((knowledgeApproved / knowledgeTotal) * 1000) / 10 : 0;
 

@@ -75,6 +75,37 @@
   outline: 2px solid var(--tmkeen-surface-border);
   outline-offset: 2px;
 }
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--tmkeen-radius-lg);
+  background: var(--tmkeen-danger);
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  color: #fff;
+  text-align: start;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+  border: none;
+  cursor: pointer;
+}
+.btn-danger:hover {
+  opacity: 0.9;
+}
+.btn-danger:focus-visible {
+  outline: 2px solid var(--tmkeen-danger);
+  outline-offset: 2px;
+}
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .btn-recommend {
   display: inline-flex;

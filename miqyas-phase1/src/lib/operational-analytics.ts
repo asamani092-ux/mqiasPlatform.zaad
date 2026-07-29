@@ -35,6 +35,7 @@ export type OperationalGoalGroup = {
 export type DepartmentPerformance = {
   departmentId: number;
   name: string;
+  deptNo: number;
   kpiCount: number;
   goalCount: number;
   avgPct: number | null;
@@ -75,6 +76,7 @@ export function groupByDepartment(
       return {
         departmentId: dept.id,
         name: dept.name,
+        deptNo: dept.deptNo,
         kpiCount: deptRows.length,
         goalCount: goals.size,
         avgPct,
@@ -107,10 +109,17 @@ export type DepartmentBarItem = {
   status5: Status5;
 };
 
-/** Big O: O(d) time, O(d) space */
+/** Short chart label: deptNo + trimmed name (readable on X axis) */
+function chartDeptLabel(d: DepartmentPerformance): string {
+  const raw = d.name.replace(/^إدارة\s+/, "").trim();
+  const short = raw.length > 16 ? `${raw.slice(0, 14)}…` : raw;
+  return `${d.deptNo}. ${short}`;
+}
+
+/** Big O: O(d) time, O(d) space — zeros retained for axis comparison */
 export function departmentBarData(depts: DepartmentPerformance[]): DepartmentBarItem[] {
   return depts.map((d) => ({
-    name: d.name,
+    name: chartDeptLabel(d),
     value: d.avgPct ?? 0,
     status5: d.status5,
   }));

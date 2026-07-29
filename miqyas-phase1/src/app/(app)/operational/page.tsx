@@ -15,7 +15,7 @@ export default async function OperationalPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  const { year, period } = parseTrackParams(searchParams);
+  const { year, period } = await parseTrackParams(searchParams);
 
   const [rows, departments] = await Promise.all([
     getKpiRows({ user, year, period, type: "OPERATIONAL" }),

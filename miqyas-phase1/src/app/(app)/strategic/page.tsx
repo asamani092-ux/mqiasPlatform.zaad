@@ -14,7 +14,7 @@ export default async function StrategicPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  const { year, period } = parseTrackParams(searchParams);
+  const { year, period } = await parseTrackParams(searchParams);
   const rows = await getKpiRows({ user, year, period, type: "STRATEGIC" });
   return (
     <StrategicTrackClient rows={enrichStrategicRows(rows)} year={year} period={period} />

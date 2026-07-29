@@ -12,7 +12,7 @@ export default function PeriodSelector({ year, period }: { year: number; period:
     const q = new URLSearchParams(params.toString());
     q.set("year", String(y));
     q.set("period", p);
-    router.push(`${pathname}?${q.toString()}`);
+    router.push(`${pathname}?${q.toString()}`, { scroll: false });
   }
 
   const periods: Period[] = ["Q1", "Q2", "Q3", "Q4", "H1", "H2", "Y"];

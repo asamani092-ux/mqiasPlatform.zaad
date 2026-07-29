@@ -91,10 +91,12 @@ function ResetPasswordForm() {
             <label className="label-field" htmlFor="password">كلمة المرور الجديدة</label>
             <input
               id="password"
+              name="password"
               type="password"
               className="input-field"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
               required
               minLength={8}
               autoComplete="new-password"
@@ -105,10 +107,12 @@ function ResetPasswordForm() {
             <label className="label-field" htmlFor="confirmPassword">تأكيد كلمة المرور</label>
             <input
               id="confirmPassword"
+              name="confirmPassword"
               type="password"
               className="input-field"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              onInput={(e) => setConfirmPassword((e.target as HTMLInputElement).value)}
               required
               minLength={8}
               autoComplete="new-password"

@@ -8,7 +8,7 @@ import { PrismaClient } from "@prisma/client";
 import type { ApprovalStatus, Frequency, KpiType, Period, Polarity } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { normalizeDeptText } from "../src/lib/department-map";
+import { mapDepartmentName, normalizeDeptText } from "../src/lib/department-map";
 import { achievementPct, deviationValue, kpiStatus } from "../src/lib/kpi";
 
 const YEAR = 2026;
@@ -120,13 +120,6 @@ function colIndex(headers: string[], patterns: RegExp[]): number {
   return -1;
 }
 
-function cleanDeptName(raw: string): string {
-  return raw
-    .replace(/^إدارة\s+/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function parseSheet(ws: XLSX.WorkSheet, period: Period): ParsedRow[] {
   const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "" });
   let headerIdx = 1;
@@ -225,27 +218,41 @@ async function loadDepartments() {
 }
 
 async function upsertDepartment(raw: string): Promise<{ departmentId: number | null; ownerLabel: string | null }> {
+  const departments = Array.from(deptByNorm.values()).map((d) => ({ id: d.id, name: d.name }));
+  const mapped = mapDepartmentName(raw, departments);
+  if (mapped.departmentId != null || mapped.ownerLabel != null) {
+    return mapped;
+  }
+  // لا نُنشئ إدارات جديدة من Excel — الإبقاء على الهيكل الأساسي (6 إدارات)
   const trimmed = raw.trim();
-  if (!trimmed || trimmed.includes("جميع الإدارات")) {
-    return { departmentId: null, ownerLabel: trimmed || null };
-  }
-  if (trimmed.includes("،") || trimmed.includes(",")) {
-    return { departmentId: null, ownerLabel: trimmed };
-  }
+  return { departmentId: null, ownerLabel: trimmed || null };
+}
 
-  const norm = normalizeDeptText(trimmed);
-  for (const [cachedNorm, dept] of Array.from(deptByNorm.entries())) {
-    if (norm === cachedNorm || norm.includes(cachedNorm) || cachedNorm.includes(norm)) {
-      return { departmentId: dept.id, ownerLabel: null };
+/** دمج الإدارات المكررة (همزة) إلى الإدارات الأساسية 1–6 */
+async function mergeDuplicateDepartments() {
+  const all = await db.department.findMany({ orderBy: { deptNo: "asc" } });
+  const canonical = all.filter((d) => d.deptNo >= 1 && d.deptNo <= 6);
+  const extras = all.filter((d) => d.deptNo > 6);
+  for (const extra of extras) {
+    const mapped = mapDepartmentName(extra.name, canonical);
+    const targetId = mapped.departmentId;
+    if (!targetId || targetId === extra.id) {
+      const orphanKpis = await db.kpi.count({ where: { departmentId: extra.id } });
+      const orphanUsers = await db.user.count({ where: { departmentId: extra.id } });
+      if (orphanKpis === 0 && orphanUsers === 0) {
+        await db.section.deleteMany({ where: { departmentId: extra.id } });
+        await db.department.delete({ where: { id: extra.id } }).catch(() => undefined);
+      }
+      continue;
     }
+    await db.kpi.updateMany({ where: { departmentId: extra.id }, data: { departmentId: targetId } });
+    await db.user.updateMany({ where: { departmentId: extra.id }, data: { departmentId: targetId } });
+    await db.knowledgeAsset.updateMany({ where: { departmentId: extra.id }, data: { departmentId: targetId } }).catch(() => undefined);
+    await db.operationalGoal.updateMany({ where: { departmentId: extra.id }, data: { departmentId: targetId } }).catch(() => undefined);
+    await db.section.deleteMany({ where: { departmentId: extra.id } });
+    await db.department.delete({ where: { id: extra.id } }).catch(() => undefined);
   }
-
-  const max = await db.department.aggregate({ _max: { deptNo: true } });
-  const deptNo = (max._max.deptNo ?? 0) + 1;
-  const name = cleanDeptName(trimmed);
-  const created = await db.department.create({ data: { deptNo, name } });
-  deptByNorm.set(normalizeDeptText(name), created);
-  return { departmentId: created.id, ownerLabel: null };
+  await loadDepartments();
 }
 
 async function upsertStrategicGoal(code: string): Promise<number> {
@@ -276,6 +283,7 @@ async function main() {
   console.log(`📄 تم تحليل ${rows.length} صفًا من Q1 و Q2`);
 
   await loadDepartments();
+  await mergeDuplicateDepartments();
   const firstDept = await db.department.findFirst({ orderBy: { deptNo: "asc" } });
   const firstSection = await db.section.findFirst({ orderBy: { id: "asc" } });
   if (!firstDept) throw new Error("لا توجد إدارات — شغّل prisma db seed أولاً");

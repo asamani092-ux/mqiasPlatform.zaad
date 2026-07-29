@@ -14,6 +14,7 @@ const postSchema = z
     entryId: z.number().int().positive(),
     action: z.enum(["approve", "reject"]),
     rejectReason: z.string().min(3).max(2000).optional(),
+    comment: z.string().max(2000).optional(),
   })
   .strict();
 
@@ -114,6 +115,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const approveNote = body.comment?.trim() || null;
+
     const updated =
       body.action === "approve"
         ? await db.kpiEntry.update({
@@ -123,6 +126,7 @@ export async function POST(req: NextRequest) {
               approvedById: userId,
               approvedAt: new Date(),
               rejectReason: null,
+              ...(approveNote ? { note: approveNote } : {}),
             },
           })
         : await db.kpiEntry.update({
@@ -135,13 +139,17 @@ export async function POST(req: NextRequest) {
             },
           });
 
+    const approveBody = approveNote
+      ? `تم اعتماد قياس المؤشر ${entry.kpi.code} — ${entry.kpi.name}. ملاحظة: ${approveNote}`
+      : `تم اعتماد قياس المؤشر ${entry.kpi.code} — ${entry.kpi.name}`;
+
     await notify({
       userIds: [entry.enteredById],
       type: "APPROVAL_RESULT",
       title: body.action === "approve" ? "تم اعتماد قياسك" : "تم رفض قياسك",
       body:
         body.action === "approve"
-          ? `تم اعتماد قياس المؤشر ${entry.kpi.code} — ${entry.kpi.name}`
+          ? approveBody
           : `تم رفض قياس المؤشر ${entry.kpi.code}: ${body.rejectReason}`,
       link: "/my",
       email: true,

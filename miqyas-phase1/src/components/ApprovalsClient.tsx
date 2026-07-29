@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   PERIOD_LABEL,
   STATUS_LABEL,
   STATUS_BADGE,
   type KpiStatus,
+  type Period,
 } from "@/lib/types";
 
 type PendingEntry = {
@@ -23,11 +24,16 @@ type PendingEntry = {
   evidences: { id: number; fileName: string }[];
 };
 
+const FILTER_PERIODS: Period[] = ["Q1", "Q2", "Q3", "Q4", "H1", "H2", "Y"];
+
 export default function ApprovalsClient() {
   const [entries, setEntries] = useState<PendingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectId, setRejectId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [approveComment, setApproveComment] = useState<Record<number, string>>({});
+  const [filterYear, setFilterYear] = useState<string>("");
+  const [filterPeriod, setFilterPeriod] = useState<string>("");
   const [msg, setMsg] = useState("");
   const [acting, setActing] = useState<number | null>(null);
 
@@ -47,6 +53,23 @@ export default function ApprovalsClient() {
     load();
   }, [load]);
 
+  const yearOptions = useMemo(() => {
+    const years = new Set(entries.map((e) => e.year));
+    const cy = new Date().getFullYear();
+    years.add(cy - 1);
+    years.add(cy);
+    years.add(cy + 1);
+    return Array.from(years).sort((a, b) => b - a);
+  }, [entries]);
+
+  const filtered = useMemo(() => {
+    return entries.filter((e) => {
+      if (filterYear && e.year !== parseInt(filterYear, 10)) return false;
+      if (filterPeriod && e.period !== filterPeriod) return false;
+      return true;
+    });
+  }, [entries, filterYear, filterPeriod]);
+
   async function act(entryId: number, action: "approve" | "reject") {
     if (action === "reject" && !rejectReason.trim()) {
       setMsg("يرجى إدخال سبب الرفض");
@@ -54,6 +77,7 @@ export default function ApprovalsClient() {
     }
     setActing(entryId);
     setMsg("");
+    const comment = approveComment[entryId]?.trim();
     const res = await fetch("/api/approvals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -61,12 +85,18 @@ export default function ApprovalsClient() {
         entryId,
         action,
         rejectReason: action === "reject" ? rejectReason : undefined,
+        comment: action === "approve" && comment ? comment : undefined,
       }),
     });
     setActing(null);
     if (res.ok) {
       setRejectId(null);
       setRejectReason("");
+      setApproveComment((prev) => {
+        const next = { ...prev };
+        delete next[entryId];
+        return next;
+      });
       setMsg(action === "approve" ? "تم الاعتماد" : "تم الرفض");
       await load();
     } else {
@@ -84,6 +114,45 @@ export default function ApprovalsClient() {
         </div>
       </div>
 
+      <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
+        <strong>من يرى هذا التبويب؟</strong> مشرف النظام (SYSTEM_ADMIN)، ورئيس القسم (SECTION_HEAD)
+        إذا كان تفويض الاعتماد مفعّلاً من الإعدادات.
+        <br />
+        الاعتماد أو الرفض يغيّر الحالة من بانتظار الاعتماد (PENDING) إلى معتمد (APPROVED) أو مرفوض (REJECTED)
+        ويُشعر مقدّم القياس بالنتيجة.
+      </div>
+
+      <div className="card" style={{ marginBottom: "1rem", display: "flex", gap: ".75rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div>
+          <label className="label-field">السنة (اختياري)</label>
+          <select
+            className="input-field"
+            style={{ width: "auto" }}
+            value={filterYear}
+            onChange={(e) => setFilterYear(e.target.value)}
+          >
+            <option value="">الكل</option>
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label-field">الفترة (اختياري)</label>
+          <select
+            className="input-field"
+            style={{ width: "auto" }}
+            value={filterPeriod}
+            onChange={(e) => setFilterPeriod(e.target.value)}
+          >
+            <option value="">الكل</option>
+            {FILTER_PERIODS.map((p) => (
+              <option key={p} value={p}>{PERIOD_LABEL[p]}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {msg && (
         <div className={`alert ${msg.includes("تم") ? "alert-success" : "alert-error"}`} style={{ marginBottom: "1rem" }}>
           {msg}
@@ -92,11 +161,11 @@ export default function ApprovalsClient() {
 
       {loading ? (
         <p className="text-muted">جاري التحميل...</p>
-      ) : entries.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="card"><p className="text-muted">لا توجد قياسات بانتظار الاعتماد.</p></div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {entries.map((e) => (
+          {filtered.map((e) => (
             <div key={e.id} className="card">
               <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: ".5rem", marginBottom: ".75rem" }}>
                 <div>
@@ -150,12 +219,13 @@ export default function ApprovalsClient() {
 
               {rejectId === e.id ? (
                 <div style={{ marginBottom: ".75rem" }}>
-                  <label className="label-field">سبب الرفض</label>
+                  <label className="label-field">سبب الرفض (مطلوب)</label>
                   <textarea
                     className="input-field"
                     rows={2}
                     value={rejectReason}
                     onChange={(ev) => setRejectReason(ev.target.value)}
+                    placeholder="اكتب سبب الرفض..."
                   />
                   <div style={{ display: "flex", gap: ".5rem", marginTop: ".5rem" }}>
                     <button type="button" className="btn-primary btn-sm" disabled={acting === e.id} onClick={() => act(e.id, "reject")}>
@@ -167,13 +237,24 @@ export default function ApprovalsClient() {
                   </div>
                 </div>
               ) : (
-                <div style={{ display: "flex", gap: ".5rem" }}>
-                  <button type="button" className="btn-primary btn-sm" disabled={acting === e.id} onClick={() => act(e.id, "approve")}>
-                    {acting === e.id ? "..." : "اعتماد"}
-                  </button>
-                  <button type="button" className="btn-secondary btn-sm" onClick={() => setRejectId(e.id)}>
-                    رفض
-                  </button>
+                <div>
+                  <label className="label-field">تعليق الاعتماد (اختياري)</label>
+                  <textarea
+                    className="input-field"
+                    rows={2}
+                    value={approveComment[e.id] ?? ""}
+                    onChange={(ev) => setApproveComment((prev) => ({ ...prev, [e.id]: ev.target.value }))}
+                    placeholder="يمكن إضافة ملاحظة للمقدّم عند الاعتماد..."
+                    style={{ marginBottom: ".5rem" }}
+                  />
+                  <div style={{ display: "flex", gap: ".5rem" }}>
+                    <button type="button" className="btn-primary btn-sm" disabled={acting === e.id} onClick={() => act(e.id, "approve")}>
+                      {acting === e.id ? "..." : "اعتماد"}
+                    </button>
+                    <button type="button" className="btn-secondary btn-sm" onClick={() => setRejectId(e.id)}>
+                      رفض
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

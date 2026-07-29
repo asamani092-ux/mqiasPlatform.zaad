@@ -37,6 +37,13 @@ export default function ExecutiveClient({
   const { deviatedKpis, openDeviationCards, lateActions, activeAlerts, headline, status5Distribution } =
     snapshot;
 
+  const openCardKpiIds = new Set(
+    openDeviationCards
+      .filter((c) => c.status === "OPEN" || c.status === "IN_PROGRESS")
+      .map((c) => c.kpiId),
+  );
+  const visibleDeviatedKpis = deviatedKpis.filter((k) => !openCardKpiIds.has(k.kpiId));
+
   const donutSegments = status5Distribution
     .filter((s) => s.count > 0)
     .map((s) => ({
@@ -92,8 +99,12 @@ export default function ExecutiveClient({
 
       <div id="critical" className="card" style={{ marginBottom: "1rem" }}>
         <h3 style={{ marginBottom: ".75rem" }}>المؤشرات المنحرفة</h3>
-        {deviatedKpis.length === 0 ? (
-          <p className="text-muted">لا توجد مؤشرات منحرفة لهذه الفترة — أداء ضمن المستهدف.</p>
+        {visibleDeviatedKpis.length === 0 ? (
+          <p className="text-muted">
+            {deviatedKpis.length === 0
+              ? "لا توجد مؤشرات منحرفة لهذه الفترة — أداء ضمن المستهدف."
+              : "جميع المؤشرات المنحرفة لديها بطاقة متابعة مفتوحة لهذه الفترة."}
+          </p>
         ) : (
           <table className="tmkeen-table">
             <thead>
@@ -103,7 +114,7 @@ export default function ExecutiveClient({
               </tr>
             </thead>
             <tbody>
-              {deviatedKpis.map((k) => (
+              {visibleDeviatedKpis.map((k) => (
                 <tr key={k.kpiId} style={{ cursor: "pointer" }} onClick={() => setDrawerId(k.kpiId)}>
                   <td>{k.code}</td>
                   <td>{k.name}</td>
@@ -146,7 +157,10 @@ export default function ExecutiveClient({
       </div>
 
       <div id="cards" className="card" style={{ marginBottom: "1rem" }}>
-        <h3 style={{ marginBottom: ".75rem" }}>بطاقات الانحراف غير المغلقة</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: ".5rem", marginBottom: ".75rem" }}>
+          <h3 style={{ margin: 0 }}>بطاقات متابعة مفتوحة (إجراءات تصحيحية)</h3>
+          <Link href="/deviation" className="btn-secondary btn-sm">عرض بطاقات الانحراف</Link>
+        </div>
         {openDeviationCards.length === 0 ? (
           <p className="text-muted">لا توجد بطاقات انحراف مفتوحة لهذه الفترة.</p>
         ) : (

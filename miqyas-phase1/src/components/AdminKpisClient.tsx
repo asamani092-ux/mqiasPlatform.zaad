@@ -53,6 +53,7 @@ const emptyForm = {
 };
 
 type Tab = "kpis" | "import";
+type TypeFilter = "all" | "STRATEGIC" | "OPERATIONAL";
 
 export default function AdminKpisClient({
   departments,
@@ -64,11 +65,18 @@ export default function AdminKpisClient({
   const [tab, setTab] = useState<Tab>("kpis");
   const [kpis, setKpis] = useState<Kpi[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState<number | null>(null);
   const [targetYear, setTargetYear] = useState(2026);
   const [targets, setTargets] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const deptUsers = useMemo(() => {
     if (!form.departmentId) return users;
@@ -77,13 +85,15 @@ export default function AdminKpisClient({
   }, [form.departmentId, users]);
 
   const load = useCallback(async () => {
-    const q = search ? `?search=${encodeURIComponent(search)}&active=all` : "?active=all";
-    const res = await fetch(`/api/kpis${q}`);
+    const params = new URLSearchParams({ active: "all" });
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (typeFilter !== "all") params.set("type", typeFilter);
+    const res = await fetch(`/api/kpis?${params.toString()}`);
     if (res.ok) {
       const data = await res.json();
       setKpis(data.kpis);
     }
-  }, [search]);
+  }, [debouncedSearch, typeFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -178,7 +188,23 @@ export default function AdminKpisClient({
   async function softDelete(id: number) {
     if (!confirm("تعطيل هذا المؤشر؟")) return;
     await fetch(`/api/kpis/${id}`, { method: "DELETE" });
+    setMsg("تم تعطيل المؤشر");
     load();
+  }
+
+  async function reactivate(id: number) {
+    if (!confirm("إعادة تفعيل هذا المؤشر؟")) return;
+    const res = await fetch(`/api/kpis/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: true }),
+    });
+    if (res.ok) {
+      setMsg("تم إعادة تفعيل المؤشر");
+      load();
+    } else {
+      setMsg("فشلت إعادة التفعيل");
+    }
   }
 
   const periods = resolvePeriods(form.frequency);
@@ -191,7 +217,25 @@ export default function AdminKpisClient({
           <div className="text-muted">تعريف المؤشرات والمستهدفات — مشرف النظام</div>
         </div>
         {tab === "kpis" && (
-          <input className="input-field" style={{ width: 220 }} placeholder="بحث بالرمز أو الاسم..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", alignItems: "center" }}>
+            <select
+              className="input-field"
+              style={{ width: "auto" }}
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
+            >
+              <option value="all">كل الأنواع</option>
+              <option value="STRATEGIC">استراتيجي</option>
+              <option value="OPERATIONAL">تشغيلي</option>
+            </select>
+            <input
+              className="input-field"
+              style={{ width: 220 }}
+              placeholder="بحث بالرمز أو الاسم..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         )}
       </div>
 
@@ -205,10 +249,28 @@ export default function AdminKpisClient({
       </div>
 
       {tab === "import" ? (
-        <ImportClient embedded />
+        <>
+          <div className="card" style={{ marginBottom: "1rem" }}>
+            <h3 style={{ marginBottom: ".5rem" }}>دليل أعمدة القالب</h3>
+            <p className="text-muted" style={{ fontSize: ".82rem", marginBottom: ".5rem" }}>
+              رمزالمؤشر · المؤشر · نوع المؤشر · وحدة القياس · الإدارة المالكة · المستهدف · المتحقق الفعلي · حالة الاعتماد · ماذا حصل؟ · كيف حصل؟
+            </p>
+            <p className="text-muted" style={{ fontSize: ".82rem" }}>
+              ملف عيّنة للاختبار: <code>data/performance-2026.xlsx</code>
+            </p>
+          </div>
+          <ImportClient embedded />
+        </>
       ) : (
         <>
-          {msg && <div className="alert alert-success" style={{ marginBottom: "1rem" }}>{msg}</div>}
+          {msg && (
+            <div
+              className={`alert ${msg.includes("فشل") ? "alert-error" : "alert-success"}`}
+              style={{ marginBottom: "1rem" }}
+            >
+              {msg}
+            </div>
+          )}
 
           <div className="card" style={{ marginBottom: "1rem" }}>
             <h3>{editId ? "تعديل مؤشر" : "مؤشر جديد"}</h3>
@@ -217,7 +279,6 @@ export default function AdminKpisClient({
                 ["code", "رمز المؤشر"],
                 ["name", "اسم المؤشر"],
                 ["requiredData", "البيانات المطلوبة"],
-                ["ownerLabel", "الإدارة المالكة (نص)"],
                 ["baseline", "خط الأساس"],
                 ["annualTarget", "المستهدف السنوي"],
                 ["recommendation", "توصيات القسم"],
@@ -285,7 +346,7 @@ export default function AdminKpisClient({
             <table className="tmkeen-table">
               <thead>
                 <tr>
-                  <th>الرمز</th><th>الاسم</th><th>النوع</th><th>الدورية</th><th>الإدارة</th><th>نشط</th><th></th>
+                  <th>الرمز</th><th>الاسم</th><th>النوع</th><th>الدورية</th><th>الإدارة</th><th>نشط</th><th>إجراءات</th>
                 </tr>
               </thead>
               <tbody>
@@ -297,9 +358,31 @@ export default function AdminKpisClient({
                     <td>{FREQUENCY_LABEL[k.frequency as keyof typeof FREQUENCY_LABEL]}</td>
                     <td>{k.department?.name || k.ownerLabel || "—"}</td>
                     <td>{k.active ? "نعم" : "لا"}</td>
-                    <td>
-                      <button type="button" className="btn-secondary btn-sm" onClick={() => startEdit(k)}>تعديل</button>
-                      {k.active && <button type="button" className="btn-secondary btn-sm" style={{ marginRight: ".3rem" }} onClick={() => softDelete(k.id)}>تعطيل</button>}
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <button type="button" className="btn-secondary btn-sm" title="تعديل المؤشر" onClick={() => startEdit(k)}>
+                        تعديل
+                      </button>
+                      {k.active ? (
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm"
+                          style={{ marginRight: ".3rem" }}
+                          title="تعطيل المؤشر"
+                          onClick={() => softDelete(k.id)}
+                        >
+                          تعطيل
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn-primary btn-sm"
+                          style={{ marginRight: ".3rem" }}
+                          title="إعادة تفعيل المؤشر"
+                          onClick={() => reactivate(k.id)}
+                        >
+                          إعادة تفعيل
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

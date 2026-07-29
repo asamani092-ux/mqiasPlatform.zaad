@@ -67,6 +67,15 @@ export default function ImportClient({ embedded = false }: { embedded?: boolean 
       )}
 
       <div className="card" style={{ marginBottom: "1rem" }}>
+        <h3 style={{ marginBottom: ".5rem" }}>متطلبات الملف</h3>
+        <p className="text-muted" style={{ fontSize: ".82rem", marginBottom: ".5rem" }}>
+          تُقرأ أوراق العمل التي يحتوي اسمها على «قياس الأداء» (أو ورقة «ادخال بيانات»).
+        </p>
+        <p className="text-muted" style={{ fontSize: ".82rem", marginBottom: ".75rem" }}>
+          الأعمدة المطلوبة/المتعرَّف عليها: رمزالمؤشر، المؤشر، الإدارة المالكة، المستهدف، المتحقق الفعلي،
+          حالة الاعتماد، نوع المؤشر، وحدة القياس، اتجاه المؤشر، دورية القياس، البيانات المطلوبة،
+          خط الأساس، مستهدف عام، ماذا حصل؟، كيف حصل؟، توصيات القسم.
+        </p>
         <label className="btn-primary" style={{ cursor: "pointer" }}>
           اختيار ملف .xlsx
           <input type="file" hidden accept=".xlsx,.xls" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} />

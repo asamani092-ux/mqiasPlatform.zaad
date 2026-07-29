@@ -30,7 +30,7 @@ export default async function DeviationPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  const { year, period } = parseTrackParams(searchParams);
+  const { year, period } = await parseTrackParams(searchParams);
   const scope = scopedKpiWhere(user);
 
   const [cards, lateActions] = await Promise.all([

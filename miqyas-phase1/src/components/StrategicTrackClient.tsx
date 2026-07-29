@@ -28,49 +28,50 @@ function formatDeviation(pct: number | null | undefined): string {
 
 function KpiMeasurementFields({ row }: { row: StrategicKpiRow }) {
   return (
-    <div
-      className="kpi-fields"
-      style={{ gridTemplateColumns: "repeat(4, 1fr)" }}
-    >
-      <div className="field">
-        <div className="field-lbl">خط الأساس</div>
-        <div className="field-val">{row.baseline ?? "—"}</div>
-      </div>
-      <div className="field">
-        <div className="field-lbl">المستهدف السنوي</div>
-        <div className="field-val">{row.annualTarget ?? "—"}</div>
-      </div>
-      <div className="field">
-        <div className="field-lbl">مستهدف الفترة</div>
-        <div className="field-val">{row.target ?? "—"}</div>
-      </div>
-      <div className="field">
-        <div className="field-lbl">المتحقق</div>
-        <div className="field-val">{row.actual ?? "—"}</div>
-      </div>
-      <div className="field">
-        <div className="field-lbl">الإنجاز</div>
-        <div className="field-val">
-          {row.achievementPct != null ? `${row.achievementPct}%` : "—"}
+    <>
+      <div className="kpi-fields kpi-fields--core">
+        <div className="field field--core">
+          <div className="field-lbl">خط الأساس</div>
+          <div className="field-val">{row.baseline ?? "—"}</div>
+        </div>
+        <div className="field field--core">
+          <div className="field-lbl">المستهدف السنوي</div>
+          <div className="field-val">{row.annualTarget ?? "—"}</div>
+        </div>
+        <div className="field field--core">
+          <div className="field-lbl">المستهدف الربعي</div>
+          <div className="field-val">{row.target ?? "—"}</div>
+        </div>
+        <div className="field field--core">
+          <div className="field-lbl">المتحقق الفعلي</div>
+          <div className="field-val">{row.actual ?? "—"}</div>
+        </div>
+        <div className="field field--core">
+          <div className="field-lbl">نسبة الإنجاز</div>
+          <div className="field-val">
+            {row.achievementPct != null ? `${row.achievementPct}%` : "—"}
+          </div>
         </div>
       </div>
-      <div className="field">
-        <div className="field-lbl">الانحراف</div>
-        <div className="field-val">{formatDeviation(row.deviationPct)}</div>
-      </div>
-      <div className="field">
-        <div className="field-lbl">الحالة</div>
-        <div className="field-val" style={{ fontSize: ".68rem" }}>
-          <Status5Badge status={row.status5} />
+      <div className="kpi-fields kpi-fields--meta">
+        <div className="field">
+          <div className="field-lbl">الانحراف</div>
+          <div className="field-val">{formatDeviation(row.deviationPct)}</div>
+        </div>
+        <div className="field">
+          <div className="field-lbl">الحالة</div>
+          <div className="field-val" style={{ fontSize: ".68rem" }}>
+            <Status5Badge status={row.status5} />
+          </div>
+        </div>
+        <div className="field">
+          <div className="field-lbl">المالك</div>
+          <div className="field-val" style={{ fontSize: ".72rem" }}>
+            {row.ownerLabel || row.departmentName || "—"}
+          </div>
         </div>
       </div>
-      <div className="field">
-        <div className="field-lbl">المالك</div>
-        <div className="field-val" style={{ fontSize: ".72rem" }}>
-          {row.ownerLabel || row.departmentName || "—"}
-        </div>
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -140,6 +141,11 @@ export default function StrategicTrackClient({
       lbl: STATUS5_SHORT.not_achieved,
       accent: STATUS5_STAT_ACCENT.not_achieved,
     },
+    {
+      num: summary.status5Counts.pending,
+      lbl: STATUS5_SHORT.pending,
+      accent: STATUS5_STAT_ACCENT.pending,
+    },
   ];
 
   return (
@@ -176,7 +182,7 @@ export default function StrategicTrackClient({
 
       <div className="card" style={{ marginBottom: "1rem" }}>
         <h3 style={{ marginBottom: ".75rem" }}>مقارنة أداء المحاور الاستراتيجية</h3>
-        <BarChartWithTarget items={barItems} targetValue={100} />
+        <BarChartWithTarget items={barItems} targetValue={100} keepZeros />
       </div>
 
       {filteredAxes.length === 0 && (
@@ -249,9 +255,11 @@ export default function StrategicTrackClient({
                 <tr>
                   <th>الرمز</th>
                   <th>المؤشر</th>
-                  <th>المستهدف</th>
-                  <th>الفعلي</th>
-                  <th>الإنجاز</th>
+                  <th>خط الأساس</th>
+                  <th>المستهدف السنوي</th>
+                  <th>المستهدف الربعي</th>
+                  <th>المتحقق الفعلي</th>
+                  <th>نسبة الإنجاز</th>
                   <th>الانحراف</th>
                   <th>الحالة</th>
                   <th></th>
@@ -262,6 +270,8 @@ export default function StrategicTrackClient({
                   <tr key={r.kpiId}>
                     <td>{r.code}</td>
                     <td>{r.name}</td>
+                    <td>{r.baseline ?? "—"}</td>
+                    <td>{r.annualTarget ?? "—"}</td>
                     <td>{r.target ?? "—"}</td>
                     <td>{r.actual ?? "—"}</td>
                     <td>{r.achievementPct != null ? `${r.achievementPct}%` : "—"}</td>

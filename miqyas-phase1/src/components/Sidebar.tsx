@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { LogOut } from "lucide-react";
 import { buildNavSections } from "@/lib/nav";
+import type { Role } from "@prisma/client";
 import { ROLE_LABEL } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
 
@@ -15,18 +16,14 @@ import { ICON_PROPS } from "@/lib/icon-props";
 export default function Sidebar({
   user,
   showApprovals,
-  isAdmin,
-  showExecutive,
   showUat = false,
 }: {
-  user: { name: string; role: string };
+  user: { name: string; role: Role };
   showApprovals: boolean;
-  isAdmin: boolean;
-  showExecutive?: boolean;
   showUat?: boolean;
 }) {
   const pathname = usePathname();
-  const sections = buildNavSections(!!showExecutive, showApprovals, isAdmin, showUat);
+  const sections = buildNavSections(user.role, { showApprovals, showUat });
 
   return (
     <aside className="nav-drawer" style={{ position: "relative", height: "auto", minHeight: "100vh" }}>

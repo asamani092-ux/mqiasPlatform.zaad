@@ -153,6 +153,7 @@ model Kpi {
   entries         KpiEntry[]
   alerts          EarlyWarningAlert[]
   deviationCards  DeviationCard[]
+  knowledgeAssets KnowledgeAsset[]
 }
 
 // الفترة: Q1..Q4 / H1,H2 / Y
@@ -354,8 +355,10 @@ model GovernanceObservation {
 
 // ── المعرفة المؤسسية ────────────────────────────────────────────
 enum AssetStatus {
+  ACTIVE
   DRAFT
-  APPROVED
+  UNDER_REVIEW
+  ARCHIVED
 }
 
 model KnowledgeAsset {
@@ -363,6 +366,7 @@ model KnowledgeAsset {
   title        String
   assetType    String? // دليل، سياسة، درس مستفاد...
   departmentId Int?
+  kpiId        Int?
   status       AssetStatus @default(DRAFT)
   isUsed       Boolean     @default(false)
   year         Int
@@ -370,6 +374,7 @@ model KnowledgeAsset {
   createdAt    DateTime    @default(now())
 
   department Department? @relation(fields: [departmentId], references: [id])
+  kpi        Kpi?        @relation(fields: [kpiId], references: [id], onDelete: SetNull)
 }
 
 // ── الإشعارات ───────────────────────────────────────────────────

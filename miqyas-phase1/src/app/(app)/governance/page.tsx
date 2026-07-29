@@ -15,24 +15,17 @@ export default async function GovernancePage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  const { year, period } = parseTrackParams(searchParams);
+  const { year, period } = await parseTrackParams(searchParams);
 
-  const [stats, requirements, observations] = await Promise.all([
+  const [stats, requirements] = await Promise.all([
     governanceStats(year, period),
     db.governanceRequirement.findMany({ where: { year }, orderBy: { id: "asc" } }),
-    db.governanceObservation.findMany({ orderBy: { createdAt: "desc" } }),
   ]);
-
-  const serializedObs = observations.map((o) => ({
-    ...o,
-    closedAt: o.closedAt?.toISOString() ?? null,
-  }));
 
   return (
     <GovernanceClient
       initialStats={stats}
       initialRequirements={requirements}
-      initialObservations={serializedObs}
       year={year}
       period={period}
       canManage={can.manageGovernance(user)}

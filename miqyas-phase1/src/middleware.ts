@@ -5,17 +5,45 @@ export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
+    const role = token?.role;
+    const dash = new URL("/dashboard", req.url);
 
-    if (path.startsWith("/admin") && token?.role !== "SYSTEM_ADMIN") {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+    if (path.startsWith("/admin") && role !== "SYSTEM_ADMIN") {
+      return NextResponse.redirect(dash);
     }
 
     if (
       path.startsWith("/executive") &&
-      token?.role !== "SYSTEM_ADMIN" &&
-      token?.role !== "EXECUTIVE"
+      role !== "SYSTEM_ADMIN" &&
+      role !== "EXECUTIVE"
     ) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      return NextResponse.redirect(dash);
+    }
+
+    if (
+      (path.startsWith("/strategic") || path.startsWith("/governance")) &&
+      role !== "SYSTEM_ADMIN" &&
+      role !== "EXECUTIVE"
+    ) {
+      return NextResponse.redirect(dash);
+    }
+
+    if (
+      path.startsWith("/knowledge") &&
+      role !== "SYSTEM_ADMIN" &&
+      role !== "EXECUTIVE" &&
+      role !== "DEPT_MANAGER"
+    ) {
+      return NextResponse.redirect(dash);
+    }
+
+    if (
+      (path.startsWith("/operational") ||
+        path.startsWith("/early-warning") ||
+        path.startsWith("/deviation")) &&
+      role === "EMPLOYEE"
+    ) {
+      return NextResponse.redirect(dash);
     }
 
     return NextResponse.next();

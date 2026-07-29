@@ -15,7 +15,7 @@ export default async function DashboardPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  const { year, period } = parseTrackParams(searchParams);
+  const { year, period } = await parseTrackParams(searchParams);
 
   const [overview, entries, departments] = await Promise.all([
     getDashboardOverview(user, year, period),
@@ -24,6 +24,7 @@ export default async function DashboardPage({
       select: { status: true },
     }),
     db.department.findMany({
+      where: { deptNo: { lte: 6 } },
       orderBy: { deptNo: "asc" },
       select: {
         id: true,

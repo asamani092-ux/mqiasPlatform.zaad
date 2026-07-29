@@ -22,8 +22,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   };
   const delegationOn = (await getSetting("section_head_can_approve")) === "1";
   const showApprovals = can.approveEntries(sessionUser, delegationOn);
-  const isAdmin = can.manageKpis(sessionUser);
-  const showExecutive = can.viewExecutive(sessionUser);
   const showUat = isUatEnabled();
 
   return (
@@ -31,8 +29,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AppShell
         user={{ name: user.name, role: user.role }}
         showApprovals={showApprovals}
-        isAdmin={isAdmin}
-        showExecutive={showExecutive}
         showUat={showUat}
       >
         {children}

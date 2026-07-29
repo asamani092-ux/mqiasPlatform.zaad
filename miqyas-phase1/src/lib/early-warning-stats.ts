@@ -1,18 +1,22 @@
 import { CHART_COLORS } from "@/lib/chart-colors";
 
+export type RiskLevelKey = "HIGH" | "MEDIUM" | "LOW";
+
+/** عتبة الإنذار المبكر الحي: إنجاز أقل من 85% */
+export const EARLY_WARNING_ACHIEVEMENT_THRESHOLD = 85;
+
+/** صف إنذار مبكر حي — مؤشرات APPROVED تحت عتبة الإنجاز */
 export type EarlyWarningRow = {
-  id: number;
   kpiId: number;
-  kpiCode: string;
-  kpiName: string;
-  actualToDate: number;
-  expectedToDate: number;
+  code: string;
+  name: string;
+  target: number;
+  actual: number;
+  achievementPct: number;
   gapPct: number;
-  riskLevel: "HIGH" | "MEDIUM" | "LOW";
+  riskLevel: RiskLevelKey;
   riskLabel: string;
-  recipients: string;
-  emailSent: boolean;
-  createdAt: string;
+  deviationCardId: number | null;
 };
 
 export type EarlyWarningSummary = {
@@ -21,16 +25,42 @@ export type EarlyWarningSummary = {
   mediumCount: number;
   lowCount: number;
   distinctKpiCount: number;
-  gapThresholdPct: string;
 };
 
-const RISK_LABEL: Record<string, string> = {
+export const RISK_LABEL: Record<RiskLevelKey, string> = {
   LOW: "منخفض",
   MEDIUM: "متوسط",
   HIGH: "مرتفع",
 };
 
-const RISK_ORDER: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+/** gap = 100 − achievement — HIGH ≥30، MEDIUM ≥15، وإلا LOW */
+export function riskFromGap(gapPct: number): RiskLevelKey {
+  if (gapPct >= 30) return "HIGH";
+  if (gapPct >= 15) return "MEDIUM";
+  return "LOW";
+}
+
+export function isBelowEarlyWarningThreshold(
+  achievementPct: number | null,
+  actual: number | null,
+  target: number | null,
+): boolean {
+  if (actual == null || target == null || target <= 0) return false;
+  if (achievementPct != null && achievementPct < EARLY_WARNING_ACHIEVEMENT_THRESHOLD) {
+    return true;
+  }
+  return actual / target < EARLY_WARNING_ACHIEVEMENT_THRESHOLD / 100;
+}
+
+export function computeGapPct(achievementPct: number): number {
+  return round1(100 - achievementPct);
+}
+
+const RISK_ORDER: Record<RiskLevelKey, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 };
 
 export const RISK_BADGE: Record<string, string> = {
   HIGH: "badge-danger",
@@ -38,14 +68,14 @@ export const RISK_BADGE: Record<string, string> = {
   LOW: "badge-success",
 };
 
-export const RISK_CHART_COLOR: Record<string, string> = {
+export const RISK_CHART_COLOR: Record<RiskLevelKey, string> = {
   HIGH: CHART_COLORS.danger,
   MEDIUM: CHART_COLORS.primary,
   LOW: CHART_COLORS.success,
 };
 
 /** Big O: O(n) time, O(n) space */
-export function summarizeEarlyWarning(rows: EarlyWarningRow[]): Omit<EarlyWarningSummary, "gapThresholdPct"> {
+export function summarizeEarlyWarning(rows: EarlyWarningRow[]): EarlyWarningSummary {
   const kpiIds = new Set<number>();
   let highCount = 0;
   let mediumCount = 0;
@@ -93,13 +123,11 @@ export function riskDonutSegments(rows: EarlyWarningRow[]) {
     .filter((s) => s.value > 0);
 }
 
-/** Big O: O(n log n) time, O(n) space */
+/** Big O: O(n log n) — أخطر أولاً ثم أكبر فجوة */
 export function sortAlertsByRisk(rows: EarlyWarningRow[]): EarlyWarningRow[] {
   return [...rows].sort((a, b) => {
     const dr = (RISK_ORDER[b.riskLevel] ?? 0) - (RISK_ORDER[a.riskLevel] ?? 0);
     if (dr !== 0) return dr;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return b.gapPct - a.gapPct;
   });
 }
-
-export { RISK_LABEL };

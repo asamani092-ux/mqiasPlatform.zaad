@@ -43,6 +43,8 @@ const createSchema = z.discriminatedUnion("type", [
     year: z.number().int(),
     owner: z.string().max(200).optional().nullable(),
     notes: z.string().max(2000).optional().nullable(),
+    status: z.enum(["COMPLIANT", "PARTIAL", "NON_COMPLIANT", "PENDING"]).optional(),
+    compliancePct: z.number().min(0).max(100).optional(),
   }),
   z.object({
     type: z.literal("observation"),
@@ -56,6 +58,7 @@ const updateSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("requirement"),
     id: z.number().int().positive(),
+    code: z.string().min(1).max(50).optional(),
     status: z.enum(["COMPLIANT", "PARTIAL", "NON_COMPLIANT", "PENDING"]).optional(),
     compliancePct: z.number().min(0).max(100).optional(),
     owner: z.string().max(200).optional().nullable(),
@@ -73,6 +76,11 @@ const updateSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
+const deleteSchema = z.object({
+  type: z.enum(["requirement", "observation"]),
+  id: z.number().int().positive(),
+});
+
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
@@ -89,6 +97,8 @@ export async function POST(req: NextRequest) {
           year: body.year,
           owner: body.owner,
           notes: body.notes,
+          status: body.status ?? "PENDING",
+          compliancePct: body.compliancePct ?? 0,
         },
       });
       await audit(parseInt(user.id, 10), "CREATE_GOV_REQUIREMENT", "GovernanceRequirement", req_.id);
@@ -121,6 +131,7 @@ export async function PUT(req: NextRequest) {
       const item = await db.governanceRequirement.update({
         where: { id: body.id },
         data: {
+          code: body.code,
           status: body.status,
           compliancePct: body.compliancePct,
           owner: body.owner,
@@ -152,6 +163,33 @@ export async function PUT(req: NextRequest) {
     });
     await audit(parseInt(user.id, 10), "UPDATE_GOV_OBSERVATION", "GovernanceObservation", item.id, body);
     return NextResponse.json({ item });
+  } catch (e) {
+    if (e instanceof z.ZodError) return jsonError("بيانات غير صالحة", 400);
+    return handleApiError(e);
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await requireUser();
+    if (!can.manageGovernance(user)) return jsonError("غير مصرح", 403);
+
+    const idParam = req.nextUrl.searchParams.get("id");
+    const typeParam = req.nextUrl.searchParams.get("type") ?? "requirement";
+    const body = deleteSchema.parse({
+      type: typeParam,
+      id: parseInt(idParam ?? "", 10),
+    });
+
+    if (body.type === "requirement") {
+      await db.governanceRequirement.delete({ where: { id: body.id } });
+      await audit(parseInt(user.id, 10), "DELETE_GOV_REQUIREMENT", "GovernanceRequirement", body.id);
+      return NextResponse.json({ ok: true });
+    }
+
+    await db.governanceObservation.delete({ where: { id: body.id } });
+    await audit(parseInt(user.id, 10), "DELETE_GOV_OBSERVATION", "GovernanceObservation", body.id);
+    return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof z.ZodError) return jsonError("بيانات غير صالحة", 400);
     return handleApiError(e);

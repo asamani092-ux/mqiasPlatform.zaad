@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FocusEvent } from "react";
 import { currentQuarter } from "@/lib/kpi";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
 
@@ -40,6 +40,21 @@ export default function SettingsClient() {
     return s?.value || fallback;
   }
 
+  function onYearBlur(e: FocusEvent<HTMLInputElement>) {
+    const next = e.target.value.trim();
+    const current = getValue("current_year", String(defaults.year));
+    if (!next || next === current) return;
+    if (
+      !window.confirm(
+        "لن تُحذف البيانات التاريخية؛ يتغيّر العرض الافتراضي فقط. هل تريد المتابعة؟",
+      )
+    ) {
+      e.target.value = current;
+      return;
+    }
+    save("current_year", next);
+  }
+
   return (
     <>
       <div className="topbar">
@@ -61,7 +76,7 @@ export default function SettingsClient() {
               style={{ maxWidth: 200 }}
               defaultValue={getValue("current_year", String(defaults.year))}
               key={`year-${getValue("current_year", String(defaults.year))}`}
-              onBlur={(e) => save("current_year", e.target.value)}
+              onBlur={onYearBlur}
             />
           </div>
         </div>

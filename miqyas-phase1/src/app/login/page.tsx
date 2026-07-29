@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -10,20 +10,32 @@ type SubmitState = "idle" | "loading" | "success";
 
 export default function LoginPage() {
   const router = useRouter();
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
 
+  function syncFromDom() {
+    const domEmail = emailRef.current?.value?.trim() ?? "";
+    const domPassword = passwordRef.current?.value ?? "";
+    if (domEmail && domEmail !== email) setEmail(domEmail);
+    if (domPassword && domPassword !== password) setPassword(domPassword);
+    return { email: domEmail || email, password: domPassword || password };
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setSubmitState("loading");
 
+    const creds = syncFromDom();
+
     const result = await signIn("credentials", {
-      email,
-      password,
+      email: creds.email,
+      password: creds.password,
       rememberMe: rememberMe ? "true" : "false",
       redirect: false,
     });
@@ -63,15 +75,18 @@ export default function LoginPage() {
 
           {error && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{error}</div>}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="on">
             <div style={{ marginBottom: "1rem" }}>
               <label className="label-field" htmlFor="email">البريد الإلكتروني</label>
               <input
+                ref={emailRef}
                 id="email"
+                name="email"
                 type="email"
                 className="input-field"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
                 required
                 autoComplete="email"
                 dir="ltr"
@@ -80,11 +95,20 @@ export default function LoginPage() {
             <div style={{ marginBottom: "1rem" }}>
               <label className="label-field" htmlFor="password">كلمة المرور</label>
               <input
+                ref={passwordRef}
                 id="password"
+                name="password"
                 type="password"
                 className="input-field"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onInput={(e) => {
+                  const next = (e.target as HTMLInputElement).value;
+                  setPassword(next);
+                  // مزامنة الإيميل من الـ DOM إن عبّأه المتصفح دون onChange
+                  const domEmail = emailRef.current?.value?.trim() ?? "";
+                  if (domEmail && !email) setEmail(domEmail);
+                }}
                 required
                 autoComplete="current-password"
                 dir="ltr"
@@ -111,6 +135,7 @@ export default function LoginPage() {
               >
                 <input
                   type="checkbox"
+                  name="rememberMe"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                 />

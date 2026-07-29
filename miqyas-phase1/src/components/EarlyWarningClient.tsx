@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { Mail, MailCheck } from "lucide-react";
+import Link from "next/link";
 import PeriodSelector from "@/components/PeriodSelector";
 import DonutChart from "@/components/charts/DonutChart";
-import KpiDetailDrawer from "@/components/KpiDetailDrawer";
 import {
+  EARLY_WARNING_ACHIEVEMENT_THRESHOLD,
   RISK_BADGE,
   riskDonutSegments,
   type EarlyWarningRow,
   type EarlyWarningSummary,
 } from "@/lib/early-warning-stats";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
-import { ICON_PROPS } from "@/lib/icon-props";
+
+function fmtNum(n: number): string {
+  return n.toLocaleString("ar-SA", { maximumFractionDigits: 1 });
+}
 
 export default function EarlyWarningClient({
   rows,
@@ -25,15 +27,14 @@ export default function EarlyWarningClient({
   year: number;
   period: Period;
 }) {
-  const [drawerId, setDrawerId] = useState<number | null>(null);
   const donutSegments = riskDonutSegments(rows);
+  const deviationHref = `/deviation?year=${year}&period=${period}`;
 
   const statCards = [
-    { num: summary.activeCount, lbl: "التنبيهات النشطة", accent: "stat-card--danger" },
+    { num: summary.activeCount, lbl: "المؤشرات تحت العتبة", accent: "stat-card--danger" },
     { num: summary.highCount, lbl: "مرتفع", accent: "stat-card--danger" },
     { num: summary.mediumCount, lbl: "متوسط", accent: "stat-card--warning" },
     { num: summary.lowCount, lbl: "منخفض", accent: "stat-card--success" },
-    { num: summary.distinctKpiCount, lbl: "المؤشرات المعرضة للخطر", accent: "stat-card--secondary" },
   ];
 
   return (
@@ -41,7 +42,9 @@ export default function EarlyWarningClient({
       <div className="topbar">
         <div>
           <h1>مسار الإنذار المبكر</h1>
-          <div className="text-muted">تنبيهات {PERIOD_LABEL[period]} {year}</div>
+          <div className="text-muted">
+            مؤشرات معتمدة دون {EARLY_WARNING_ACHIEVEMENT_THRESHOLD}% — {PERIOD_LABEL[period]} {year}
+          </div>
         </div>
         <PeriodSelector year={year} period={period} />
       </div>
@@ -56,7 +59,7 @@ export default function EarlyWarningClient({
       </div>
 
       <div className="card" style={{ marginBottom: "1rem" }}>
-        <h3 style={{ marginBottom: ".75rem" }}>توزيع التنبيهات حسب مستوى الخطر</h3>
+        <h3 style={{ marginBottom: ".75rem" }}>توزيع المؤشرات حسب مستوى الخطر</h3>
         <DonutChart
           segments={donutSegments.map((s) => ({
             name: s.name,
@@ -64,60 +67,55 @@ export default function EarlyWarningClient({
             color: s.color,
           }))}
           centerLabel={summary.activeCount > 0 ? String(summary.activeCount) : "—"}
-          centerSubLabel="تنبيه نشط"
+          centerSubLabel="مؤشر معرض"
         />
       </div>
 
       <div className="card alert alert-info" style={{ marginBottom: "1rem" }}>
-        يُفعّل الإنذار في بداية الشهر الثالث من كل ربع (مارس / يونيو / سبتمبر / ديسمبر) عند
-        تجاوز فجوة الأداء عن {summary.gapThresholdPct}% من المستهدف المتوقع حتى تاريخ القراءة
-        (قابل للتعديل من إعدادات النظام).
+        تُعرض المؤشرات ذات القياسات المعتمدة (APPROVED) للفترة الحالية عندما تكون نسبة الإنجاز أقل من{" "}
+        {EARLY_WARNING_ACHIEVEMENT_THRESHOLD}% (أو المتحقق/المستهدف &lt; 0.85). مستوى الخطر: مرتفع عند فجوة
+        ≥30، متوسط ≥15، ومنخفض فيما عدا ذلك (الفجوة = 100 − الإنجاز). إشعارات الكرون تبقى مسارًا خلفيًا
+        منفصلًا.
       </div>
 
       <div className="card" style={{ overflowX: "auto" }}>
         <table className="tmkeen-table">
           <thead>
             <tr>
+              <th>الرمز</th>
               <th>المؤشر</th>
-              <th>المتحقق حتى تاريخه</th>
-              <th>المستهدف المتوقع حتى تاريخه</th>
+              <th>المستهدف</th>
+              <th>المتحقق</th>
+              <th>الإنجاز %</th>
               <th>الفجوة %</th>
               <th>مستوى الخطر</th>
-              <th>المستلمون</th>
-              <th>تاريخ التنبيه</th>
-              <th>حالة البريد</th>
+              <th>بطاقة الانحراف</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr
-                key={r.id}
-                style={{ cursor: "pointer" }}
-                onClick={() => setDrawerId(r.kpiId)}
-              >
+              <tr key={r.kpiId}>
                 <td>
-                  {r.kpiCode} — {r.kpiName}
+                  <span className="badge-primary">{r.code}</span>
                 </td>
-                <td>{r.actualToDate}</td>
-                <td>{r.expectedToDate}</td>
-                <td>{r.gapPct}%</td>
+                <td>{r.name}</td>
+                <td>{fmtNum(r.target)}</td>
+                <td>{fmtNum(r.actual)}</td>
+                <td>{fmtNum(r.achievementPct)}%</td>
+                <td>{fmtNum(r.gapPct)}%</td>
                 <td>
                   <span className={RISK_BADGE[r.riskLevel] || "badge-secondary"}>
                     {r.riskLabel}
                   </span>
                 </td>
-                <td style={{ fontSize: ".75rem", maxWidth: "12rem" }}>{r.recipients}</td>
-                <td>{new Date(r.createdAt).toLocaleDateString("ar-SA")}</td>
                 <td>
-                  {r.emailSent ? (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: ".25rem" }}>
-                      <MailCheck {...ICON_PROPS} style={{ color: "var(--tmkeen-success)" }} />
-                      مُرسل
-                    </span>
+                  {r.deviationCardId != null ? (
+                    <Link href={deviationHref} className="btn-secondary btn-sm">
+                      بطاقة الانحراف
+                    </Link>
                   ) : (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: ".25rem" }}>
-                      <Mail {...ICON_PROPS} style={{ color: "var(--tmkeen-brand-gray)" }} />
-                      لم يُرسل
+                    <span className="text-muted" style={{ fontSize: ".78rem" }}>
+                      لا توجد بطاقة
                     </span>
                   )}
                 </td>
@@ -127,12 +125,10 @@ export default function EarlyWarningClient({
         </table>
         {rows.length === 0 && (
           <p className="text-muted" style={{ padding: "1rem" }}>
-            لا توجد تنبيهات لهذه الفترة.
+            لا توجد مؤشرات معتمدة تحت عتبة الإنذار لهذه الفترة.
           </p>
         )}
       </div>
-
-      <KpiDetailDrawer kpiId={drawerId} year={year} period={period} onClose={() => setDrawerId(null)} />
     </>
   );
 }

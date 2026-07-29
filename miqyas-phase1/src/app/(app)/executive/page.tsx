@@ -16,7 +16,7 @@ export default async function ExecutivePage({
   if (!user) redirect("/login");
   if (!can.viewExecutive(user)) redirect("/dashboard");
 
-  const { year, period } = parseTrackParams(searchParams);
+  const { year, period } = await parseTrackParams(searchParams);
   const snapshot = await getExecutiveSnapshot({ year, period });
 
   return <ExecutiveClient snapshot={snapshot} year={year} period={period} />;

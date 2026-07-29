@@ -8,28 +8,25 @@ import { LogOut, Menu, X } from "lucide-react";
 import BrandMark from "@/components/BrandMark";
 import NotifBell from "@/components/NotifBell";
 import { buildNavSections } from "@/lib/nav";
+import type { Role } from "@prisma/client";
 import { ROLE_LABEL } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
 
 export default function AppShell({
   user,
   showApprovals,
-  isAdmin,
-  showExecutive,
   showUat = false,
   children,
 }: {
-  user: { name: string; role: string };
+  user: { name: string; role: Role };
   showApprovals: boolean;
-  isAdmin: boolean;
-  showExecutive?: boolean;
   showUat?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const sections = buildNavSections(!!showExecutive, showApprovals, isAdmin, showUat);
+  const sections = buildNavSections(user.role, { showApprovals, showUat });
 
   useEffect(() => {
     setOpen(false);

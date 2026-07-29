@@ -67,10 +67,12 @@ export default function ForgotPasswordPage() {
               <label className="label-field" htmlFor="email">البريد الإلكتروني</label>
               <input
                 id="email"
+                name="email"
                 type="email"
                 className="input-field"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
                 required
                 autoComplete="email"
                 dir="ltr"

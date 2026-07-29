@@ -127,7 +127,7 @@ export default function DashboardClient({
 
       <div className="card" style={{ marginBottom: "1rem" }}>
         <h3 style={{ marginBottom: ".75rem" }}>مؤشر الأداء التراكمي للمسارات</h3>
-        <BarChartWithTarget items={barItems} targetValue={100} />
+        <BarChartWithTarget items={barItems} targetValue={100} keepZeros />
       </div>
 
       <div className="card" style={{ marginBottom: "1rem" }}>

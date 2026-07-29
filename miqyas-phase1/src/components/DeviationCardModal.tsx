@@ -50,49 +50,67 @@ export default function DeviationCardModal({
   const [editReasons, setEditReasons] = useState(card.reasons);
   const [newAction, setNewAction] = useState({ description: "", responsibleName: "", dueDate: "" });
   const [msg, setMsg] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setEditReasons(card.reasons);
   }, [card]);
 
   async function updateCard(status?: string) {
-    const res = await fetch(`/api/deviation/${card.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, reasons: editReasons }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setMsg("تم التحديث");
-      await onUpdated();
-    } else {
-      setMsg(data.error || "فشل التحديث");
+    setSaving(true);
+    setMsg("");
+    try {
+      const res = await fetch(`/api/deviation/${card.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, reasons: editReasons }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMsg("تم التحديث");
+        await onUpdated();
+      } else {
+        setMsg(data.error || "فشل التحديث");
+      }
+    } finally {
+      setSaving(false);
     }
   }
 
   async function addAction() {
     if (!newAction.description.trim() || !newAction.dueDate) return;
-    const res = await fetch(`/api/deviation/${card.id}/actions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newAction),
-    });
-    if (res.ok) {
-      setNewAction({ description: "", responsibleName: "", dueDate: "" });
-      await onUpdated();
-    } else {
-      const data = await res.json();
-      setMsg(data.error || "فشل إضافة الإجراء");
+    setSaving(true);
+    setMsg("");
+    try {
+      const res = await fetch(`/api/deviation/${card.id}/actions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newAction),
+      });
+      if (res.ok) {
+        setNewAction({ description: "", responsibleName: "", dueDate: "" });
+        await onUpdated();
+      } else {
+        const data = await res.json();
+        setMsg(data.error || "فشل إضافة الإجراء");
+      }
+    } finally {
+      setSaving(false);
     }
   }
 
   async function updateAction(actionId: number, status: string) {
-    await fetch(`/api/deviation/${card.id}/actions/${actionId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    await onUpdated();
+    setSaving(true);
+    try {
+      await fetch(`/api/deviation/${card.id}/actions/${actionId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      await onUpdated();
+    } finally {
+      setSaving(false);
+    }
   }
 
   function exportPdf() {
@@ -105,7 +123,7 @@ export default function DeviationCardModal({
   return (
     <div className="modal-overlay no-print-overlay" onClick={onClose}>
       <div
-        className="modal-panel card wide print-modal deviation-card-modal"
+        className="modal-panel card wide print-modal printable-region deviation-card-modal"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head no-print">
@@ -146,6 +164,7 @@ export default function DeviationCardModal({
                   rows={3}
                   value={editReasons}
                   onChange={(e) => setEditReasons(e.target.value)}
+                  disabled={saving}
                 />
               ) : (
                 <div className="field-cell-value">{card.reasons}</div>
@@ -181,6 +200,7 @@ export default function DeviationCardModal({
                         className="input-field"
                         style={{ width: "auto", fontSize: ".75rem" }}
                         value={a.status}
+                        disabled={saving}
                         onChange={(e) => updateAction(a.id, e.target.value)}
                       >
                         {Object.entries(ACTION_STATUS_LABEL).map(([k, v]) => (
@@ -208,6 +228,7 @@ export default function DeviationCardModal({
                   className="input-field"
                   placeholder="وصف الإجراء"
                   value={newAction.description}
+                  disabled={saving}
                   onChange={(e) => setNewAction({ ...newAction, description: e.target.value })}
                 />
               </div>
@@ -217,6 +238,7 @@ export default function DeviationCardModal({
                   className="input-field"
                   placeholder="المسؤول"
                   value={newAction.responsibleName}
+                  disabled={saving}
                   onChange={(e) => setNewAction({ ...newAction, responsibleName: e.target.value })}
                 />
               </div>
@@ -226,6 +248,7 @@ export default function DeviationCardModal({
                   className="input-field"
                   type="date"
                   value={newAction.dueDate}
+                  disabled={saving}
                   onChange={(e) => setNewAction({ ...newAction, dueDate: e.target.value })}
                 />
               </div>
@@ -236,30 +259,50 @@ export default function DeviationCardModal({
         <div className="modal-footer no-print">
           {canManage && (
             <>
-              <button type="button" className="btn-secondary btn-sm" onClick={() => updateCard()}>
+              <button
+                type="button"
+                className="btn-primary btn-sm"
+                disabled={saving}
+                onClick={() => updateCard()}
+              >
                 حفظ الأسباب
               </button>
               {card.status !== "IN_PROGRESS" && card.status !== "CLOSED" && (
-                <button type="button" className="btn-secondary btn-sm" onClick={() => updateCard("IN_PROGRESS")}>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  disabled={saving}
+                  onClick={() => updateCard("IN_PROGRESS")}
+                >
                   بدء المعالجة
                 </button>
               )}
               {card.status !== "CLOSED" && (
-                <button type="button" className="btn-secondary btn-sm" onClick={() => updateCard("CLOSED")}>
+                <button
+                  type="button"
+                  className="btn-danger btn-sm"
+                  disabled={saving}
+                  onClick={() => updateCard("CLOSED")}
+                >
                   إغلاق البطاقة
                 </button>
               )}
-              <button type="button" className="btn-primary btn-sm" onClick={addAction}>
+              <button
+                type="button"
+                className="btn-primary btn-sm"
+                disabled={saving}
+                onClick={addAction}
+              >
                 إضافة إجراء
               </button>
             </>
           )}
-          <button type="button" className="btn-secondary btn-sm" onClick={onClose}>
-            إغلاق
-          </button>
-          <button type="button" className="btn-primary btn-sm" onClick={exportPdf}>
+          <button type="button" className="btn-primary btn-sm" disabled={saving} onClick={exportPdf}>
             <Download {...ICON_PROPS} />
             تصدير PDF
+          </button>
+          <button type="button" className="btn-secondary btn-sm" disabled={saving} onClick={onClose}>
+            إغلاق
           </button>
         </div>
       </div>

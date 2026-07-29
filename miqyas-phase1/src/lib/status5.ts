@@ -88,13 +88,14 @@ export function countStatus5<T extends { status5: Status5 }>(rows: T[]): Record<
   return counts;
 }
 
-/** Big O: O(n) time, O(1) space */
+/** Big O: O(n) time, O(1) space — each KPI capped at 100% before averaging */
 export function averageAchievementPct(
   rows: { achievementPct: number | null }[],
 ): number | null {
   const vals = rows
     .map((r) => r.achievementPct)
-    .filter((v): v is number => v != null);
+    .filter((v): v is number => v != null)
+    .map((pct) => Math.min(pct, 100));
   if (!vals.length) return null;
   return Math.round((vals.reduce((s, v) => s + v, 0) / vals.length) * 10) / 10;
 }
@@ -131,4 +132,5 @@ export const STATUS5_FILTER_OPTIONS: { key: Status5 | "all"; label: string }[] =
   { key: "achieved", label: "متحقق" },
   { key: "partial", label: "جزئي" },
   { key: "not_achieved", label: "غير متحقق" },
+  { key: "pending", label: "في الانتظار" },
 ];
