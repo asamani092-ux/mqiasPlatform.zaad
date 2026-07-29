@@ -4,10 +4,14 @@ import { db } from "@/lib/db";
 export async function governanceStats(year: number, period: Period) {
   const requirements = await db.governanceRequirement.findMany({ where: { year } });
   const totalRequirements = requirements.length;
-  const appliedCount = requirements.filter((r) => r.status === "APPLIED").length;
-  const notAppliedCount = totalRequirements - appliedCount;
+  const compliantCount = requirements.filter((r) => r.status === "COMPLIANT").length;
+  const notCompliantCount = requirements.filter((r) => r.status === "NON_COMPLIANT").length;
   const compliancePct =
-    totalRequirements > 0 ? Math.round((appliedCount / totalRequirements) * 1000) / 10 : 0;
+    totalRequirements > 0
+      ? Math.round(
+          (requirements.reduce((sum, r) => sum + r.compliancePct, 0) / totalRequirements) * 10
+        ) / 10
+      : 0;
 
   const openObservations = await db.governanceObservation.count({ where: { status: "OPEN" } });
   const closedInPeriod = await db.governanceObservation.count({
@@ -20,9 +24,9 @@ export async function governanceStats(year: number, period: Period) {
 
   return {
     totalRequirements,
-    appliedCount,
+    compliantCount,
     compliancePct,
-    notAppliedCount,
+    notCompliantCount,
     openObservations,
     closedInPeriod,
   };

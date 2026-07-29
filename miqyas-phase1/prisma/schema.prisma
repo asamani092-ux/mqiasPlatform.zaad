@@ -315,19 +315,24 @@ model CorrectiveAction {
 }
 
 // ── الحوكمة ─────────────────────────────────────────────────────
-enum ComplianceStatus {
-  APPLIED
-  NOT_APPLIED
+enum GovernanceStatus {
+  COMPLIANT
+  PARTIAL
+  NON_COMPLIANT
+  PENDING
 }
 
 model GovernanceRequirement {
-  id        Int              @id @default(autoincrement())
-  title     String
-  category  String?
-  year      Int
-  status    ComplianceStatus @default(NOT_APPLIED)
-  notes     String?
-  updatedAt DateTime         @updatedAt
+  id             Int              @id @default(autoincrement())
+  code           String           @unique
+  title          String
+  category       String?
+  year           Int
+  owner          String?
+  status         GovernanceStatus @default(PENDING)
+  compliancePct  Float            @default(0)
+  notes          String?
+  updatedAt      DateTime         @updatedAt
 }
 
 enum ObservationStatus {
@@ -431,4 +436,15 @@ model LoginAttempt {
   user User? @relation(fields: [userId], references: [id])
 
   @@index([email, createdAt])
+}
+
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  email     String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
 }

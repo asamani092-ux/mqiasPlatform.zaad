@@ -14,10 +14,34 @@ import { PERIOD_LABEL, type Period } from "@/lib/types";
 
 type Requirement = {
   id: number;
+  code: string;
   title: string;
   category: string | null;
   year: number;
+  owner: string | null;
   status: string;
+  compliancePct: number;
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  COMPLIANT: "ممتثل",
+  PARTIAL: "جزئي",
+  NON_COMPLIANT: "غير ممتثل",
+  PENDING: "قيد المراجعة",
+};
+
+const STATUS_BADGE: Record<string, string> = {
+  COMPLIANT: "badge-success",
+  PARTIAL: "badge-warning",
+  NON_COMPLIANT: "badge-danger",
+  PENDING: "badge-secondary",
+};
+
+const STATUS_CYCLE: Record<string, string> = {
+  PENDING: "COMPLIANT",
+  COMPLIANT: "PARTIAL",
+  PARTIAL: "NON_COMPLIANT",
+  NON_COMPLIANT: "PENDING",
 };
 
 type Observation = {
@@ -70,14 +94,14 @@ export default function GovernanceClient({
     load();
   }, [load]);
 
-  async function toggleRequirement(id: number, status: string) {
+  async function cycleRequirementStatus(id: number, status: string) {
     const res = await fetch("/api/governance", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "requirement",
         id,
-        status: status === "APPLIED" ? "NOT_APPLIED" : "APPLIED",
+        status: STATUS_CYCLE[status] ?? "PENDING",
       }),
     });
     if (res.ok) await load();
@@ -108,9 +132,9 @@ export default function GovernanceClient({
 
   const statCards = [
     { num: stats.totalRequirements, lbl: GOVERNANCE_STAT_LABELS.totalRequirements, accent: "" },
-    { num: stats.appliedCount, lbl: GOVERNANCE_STAT_LABELS.appliedCount, accent: "stat-card--success" },
+    { num: stats.compliantCount, lbl: GOVERNANCE_STAT_LABELS.compliantCount, accent: "stat-card--success" },
     { num: `${stats.compliancePct}%`, lbl: GOVERNANCE_STAT_LABELS.compliancePct, accent: "stat-card--secondary" },
-    { num: stats.notAppliedCount, lbl: GOVERNANCE_STAT_LABELS.notAppliedCount, accent: "stat-card--warning" },
+    { num: stats.notCompliantCount, lbl: GOVERNANCE_STAT_LABELS.notCompliantCount, accent: "stat-card--warning" },
     { num: stats.openObservations, lbl: GOVERNANCE_STAT_LABELS.openObservations, accent: "stat-card--danger" },
     { num: stats.closedInPeriod, lbl: GOVERNANCE_STAT_LABELS.closedInPeriod, accent: "stat-card--warning" },
   ];
@@ -153,7 +177,7 @@ export default function GovernanceClient({
           />
         </div>
         <div className="card">
-          <h3 style={{ marginBottom: ".75rem" }}>المطبّق مقابل غير المطبّق</h3>
+          <h3 style={{ marginBottom: ".75rem" }}>الممتثل مقابل غير الممتثل</h3>
           <CompareBarChart items={compareBars} />
         </div>
       </div>
@@ -181,28 +205,34 @@ export default function GovernanceClient({
           <table className="tmkeen-table">
             <thead>
               <tr>
+                <th>الرمز</th>
                 <th>العنوان</th>
                 <th>التصنيف</th>
+                <th>المسؤول</th>
+                <th>نسبة الامتثال</th>
                 <th>الحالة</th>
               </tr>
             </thead>
             <tbody>
               {requirements.map((r) => (
                 <tr key={r.id}>
+                  <td>{r.code}</td>
                   <td>{r.title}</td>
                   <td>{r.category || "—"}</td>
+                  <td>{r.owner || "—"}</td>
+                  <td>{r.compliancePct}%</td>
                   <td>
                     {canManage ? (
                       <button
                         type="button"
-                        className={r.status === "APPLIED" ? "badge-success" : "badge-danger"}
-                        onClick={() => toggleRequirement(r.id, r.status)}
+                        className={STATUS_BADGE[r.status] ?? "badge-secondary"}
+                        onClick={() => cycleRequirementStatus(r.id, r.status)}
                       >
-                        {r.status === "APPLIED" ? "مطبّق" : "غير مطبّق"}
+                        {STATUS_LABEL[r.status] ?? r.status}
                       </button>
                     ) : (
-                      <span className={r.status === "APPLIED" ? "badge-success" : "badge-danger"}>
-                        {r.status === "APPLIED" ? "مطبّق" : "غير مطبّق"}
+                      <span className={STATUS_BADGE[r.status] ?? "badge-secondary"}>
+                        {STATUS_LABEL[r.status] ?? r.status}
                       </span>
                     )}
                   </td>

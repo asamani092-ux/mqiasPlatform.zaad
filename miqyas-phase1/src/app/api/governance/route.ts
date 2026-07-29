@@ -37,9 +37,11 @@ export async function GET(req: NextRequest) {
 const createSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("requirement"),
+    code: z.string().min(1).max(50),
     title: z.string().min(2).max(500),
     category: z.string().max(200).optional().nullable(),
     year: z.number().int(),
+    owner: z.string().max(200).optional().nullable(),
     notes: z.string().max(2000).optional().nullable(),
   }),
   z.object({
@@ -54,7 +56,9 @@ const updateSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("requirement"),
     id: z.number().int().positive(),
-    status: z.enum(["APPLIED", "NOT_APPLIED"]).optional(),
+    status: z.enum(["COMPLIANT", "PARTIAL", "NON_COMPLIANT", "PENDING"]).optional(),
+    compliancePct: z.number().min(0).max(100).optional(),
+    owner: z.string().max(200).optional().nullable(),
     notes: z.string().max(2000).optional().nullable(),
     title: z.string().min(2).max(500).optional(),
     category: z.string().max(200).optional().nullable(),
@@ -79,9 +83,11 @@ export async function POST(req: NextRequest) {
     if (body.type === "requirement") {
       const req_ = await db.governanceRequirement.create({
         data: {
+          code: body.code,
           title: body.title,
           category: body.category,
           year: body.year,
+          owner: body.owner,
           notes: body.notes,
         },
       });
@@ -116,6 +122,8 @@ export async function PUT(req: NextRequest) {
         where: { id: body.id },
         data: {
           status: body.status,
+          compliancePct: body.compliancePct,
+          owner: body.owner,
           notes: body.notes,
           title: body.title,
           category: body.category,
