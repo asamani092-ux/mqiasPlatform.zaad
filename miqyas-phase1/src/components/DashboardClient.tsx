@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Pencil, Check, X } from "lucide-react";
 import DonutChart from "@/components/charts/DonutChart";
 import BarChartWithTarget from "@/components/charts/BarChartWithTarget";
