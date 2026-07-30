@@ -139,6 +139,10 @@ export default function AppShell({
         </div>
       )}
 
+      <div className="demo-data-banner no-print" role="status">
+        بيئة تجربة — أسماء المؤشرات والإدارات من المرجع؛ المستهدفات والفعلي والإنجاز بيانات افتراضية وليست من ملف القياس الرسمي
+      </div>
+
       <main className="app-main">{children}</main>
     </div>
   );
