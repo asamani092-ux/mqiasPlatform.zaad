@@ -256,7 +256,8 @@ export default function AdminKpisClient({
               رمزالمؤشر · المؤشر · نوع المؤشر · وحدة القياس · الإدارة المالكة · المستهدف · المتحقق الفعلي · حالة الاعتماد · ماذا حصل؟ · كيف حصل؟
             </p>
             <p className="text-muted" style={{ fontSize: ".82rem" }}>
-              ملف عيّنة للاختبار: <code>data/performance-2026.xlsx</code>
+              بذرة التجربة (<code>npm run seed:excel</code>) تأخذ من الملف أسماء المؤشرات والإدارات فقط،
+              وتولّد المستهدفات/الفعلي افتراضياً — لا تعتمد النتائج الظاهرة كقياس رسمي.
             </p>
           </div>
           <ImportClient embedded />
