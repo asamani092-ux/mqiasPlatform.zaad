@@ -41,12 +41,11 @@ export default function DonutChart({
   progressPct?: number | null;
   height?: number;
 }) {
-  const positive = segments.filter((s) => s.value > 0);
-  const weightTotal = positive.reduce((s, d) => s + d.value, 0);
-
-  const { pieData, legendData, chartKey } = useMemo(() => {
-    if (!positive.length || weightTotal <= 0) {
-      return { pieData: [] as DonutSegment[], legendData: [] as DonutSegment[], chartKey: "empty" };
+  const { pieData, legendData, weightTotal } = useMemo(() => {
+    const positive = segments.filter((s) => s.value > 0);
+    const total = positive.reduce((s, d) => s + d.value, 0);
+    if (!positive.length || total <= 0) {
+      return { pieData: [] as DonutSegment[], legendData: [] as DonutSegment[], weightTotal: 0 };
     }
 
     const capped =
@@ -55,17 +54,12 @@ export default function DonutChart({
         : null;
 
     if (capped == null) {
-      return {
-        pieData: positive,
-        legendData: positive,
-        chartKey: positive.map((s) => `${s.name}:${s.value}`).join("|"),
-      };
+      return { pieData: positive, legendData: positive, weightTotal: total };
     }
 
-    // توزيع الأوزان داخل قوس الإنجاز فقط؛ الباقي رمادي حتى 100
     const scaled = positive.map((s) => ({
       ...s,
-      value: (s.value / weightTotal) * capped,
+      value: (s.value / total) * capped,
     }));
     const remainder = Math.max(0, 100 - capped);
     const pie =
@@ -80,12 +74,8 @@ export default function DonutChart({
           ]
         : scaled;
 
-    return {
-      pieData: pie,
-      legendData: positive,
-      chartKey: `p${capped}|${scaled.map((s) => `${s.name}:${s.value.toFixed(2)}`).join("|")}`,
-    };
-  }, [positive, weightTotal, progressPct]);
+    return { pieData: pie, legendData: positive, weightTotal: total };
+  }, [segments, progressPct]);
 
   if (!pieData.length) {
     return (
@@ -102,7 +92,7 @@ export default function DonutChart({
     <div className="donut-chart" style={{ width: "100%", minHeight: height }}>
       <div className="donut-chart-plot" style={{ height: pieHeight, position: "relative" }}>
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart key={chartKey}>
+          <PieChart>
             <Pie
               data={pieData}
               dataKey="value"
@@ -114,8 +104,7 @@ export default function DonutChart({
               paddingAngle={progressPct != null ? 1.5 : 2}
               stroke={CHART_COLORS.surface}
               strokeWidth={2}
-              isAnimationActive
-              animationDuration={600}
+              isAnimationActive={false}
             >
               {pieData.map((entry, i) => (
                 <Cell
@@ -126,7 +115,9 @@ export default function DonutChart({
             </Pie>
             <Tooltip
               formatter={(value, name) => {
-                if (name === REMAINDER_NAME) return [`${Number(value ?? 0).toFixed(1)}%`, "المتبقي للمستهدف"];
+                if (name === REMAINDER_NAME) {
+                  return [`${Number(value ?? 0).toFixed(1)}%`, "المتبقي للمستهدف"];
+                }
                 const n = Number(value ?? 0);
                 if (progressPct != null) return [`${n.toFixed(1)} نقطة`, String(name)];
                 const share = weightTotal > 0 ? Math.round((n / weightTotal) * 100) : 0;

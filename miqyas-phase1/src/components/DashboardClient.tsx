@@ -59,11 +59,15 @@ export default function DashboardClient({
     { num: overview.approvedEntriesCount, lbl: "إجمالي المؤشرات المعتمدة", accent: "" },
   ];
 
-  const donutSegments = overview.donutSegments.map((s, i) => ({
-    name: s.name,
-    value: s.value,
-    color: DONUT_COLORS[i % DONUT_COLORS.length],
-  }));
+  const donutSegments = useMemo(
+    () =>
+      overview.donutSegments.map((s, i) => ({
+        name: s.name,
+        value: s.value,
+        color: DONUT_COLORS[i % DONUT_COLORS.length],
+      })),
+    [overview.donutSegments]
+  );
 
   function toggleExpanded(id: number) {
     setExpanded((prev) => {
