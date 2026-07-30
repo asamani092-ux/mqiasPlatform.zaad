@@ -136,6 +136,7 @@ export default function DashboardClient({
           segments={donutSegments}
           centerLabel={overview.overallPct != null ? `${overview.overallPct}%` : "—"}
           centerSubLabel="الإنجاز الكلي"
+          progressPct={overview.overallPct}
         />
       </div>
 
