@@ -67,15 +67,18 @@ export default function AppShell({
           </div>
           <button
             type="button"
-            className="btn-secondary btn-sm"
+            className="btn-secondary btn-sm app-logout-btn"
             disabled={signingOut}
+            aria-label={signingOut ? "جاري الخروج" : "خروج"}
             onClick={() => {
               setSigningOut(true);
               void signOut({ callbackUrl: "/login" });
             }}
           >
             <LogOut {...ICON_PROPS} />
-            {signingOut ? "جاري الخروج..." : "خروج"}
+            <span className="app-logout-label">
+              {signingOut ? "جاري الخروج..." : "خروج"}
+            </span>
           </button>
         </div>
       </header>
