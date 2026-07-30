@@ -337,6 +337,7 @@ a:visited {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.3rem;
   position: relative;
   padding: 0.5rem 0.65rem;
   border-radius: var(--tmkeen-radius-lg);
@@ -347,9 +348,118 @@ a:visited {
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.icon-btn:hover {
+.icon-btn:hover:not(:disabled) {
   background: var(--tmkeen-surface-muted);
   border-color: color-mix(in srgb, var(--tmkeen-primary) 25%, var(--tmkeen-surface-border));
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon-btn--sm {
+  padding: 0.35rem 0.45rem;
+}
+
+.icon-btn--primary {
+  background: var(--tmkeen-primary);
+  border-color: var(--tmkeen-primary);
+  color: #fff;
+}
+
+.icon-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--tmkeen-primary) 88%, #000);
+  border-color: transparent;
+  color: #fff;
+}
+
+.icon-btn--danger {
+  color: var(--tmkeen-danger, #b42318);
+  border-color: color-mix(in srgb, var(--tmkeen-danger, #b42318) 35%, var(--tmkeen-surface-border));
+}
+
+.icon-btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--tmkeen-danger, #b42318) 10%, var(--tmkeen-surface));
+}
+
+.icon-btn-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+}
+
+.filter-bar-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 0.85rem;
+  align-items: flex-end;
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.filter-field {
+  min-width: 8.5rem;
+}
+
+.filter-field .input-field,
+.filter-field select.input-field {
+  width: 100%;
+  min-width: 9rem;
+}
+
+.action-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.action-toolbar--start {
+  justify-content: flex-start;
+}
+
+.action-toolbar--end {
+  justify-content: flex-end;
+}
+
+.action-toolbar--between {
+  justify-content: space-between;
+}
+
+.track-help-list {
+  margin: 0.75rem 0 0;
+  padding-inline-start: 1.25rem;
+  line-height: 1.7;
+}
+
+.track-help-list li {
+  margin-bottom: 0.35rem;
+}
+
+[id^="critical"],
+[id^="deviated"],
+[id^="alerts"],
+[id^="risk"],
+[id^="measured"],
+.executive-anchor {
+  scroll-margin-top: 5.5rem;
 }
 
 .notif-bell-wrap {
@@ -437,6 +547,14 @@ a:visited {
   text-align: start !important;
   border: 1px solid var(--tmkeen-surface-border) !important;
   box-shadow: 0 4px 12px color-mix(in srgb, var(--tmkeen-foreground) 8%, transparent) !important;
+}
+
+.app-toast-title {
+  font-weight: 700 !important;
+}
+
+.app-toast-desc {
+  font-size: 0.82rem !important;
 }
 
 .topbar {
@@ -866,7 +984,9 @@ a:visited {
   .nav-drawer-overlay,
   .no-print,
   .no-print-overlay,
-  .modal-actions {
+  .modal-actions,
+  .modal-footer,
+  button.no-print {
     display: none !important;
   }
 
@@ -908,40 +1028,63 @@ a:visited {
     border: none;
     margin: 0;
     background: var(--tmkeen-surface) !important;
-    padding: 0.5rem !important;
-    font-size: 0.78rem !important;
+    padding: 0.25rem !important;
+    font-size: 0.68rem !important;
+    line-height: 1.35 !important;
   }
 
   .print-modal .modal-body,
-  .print-modal .modal-head {
-    padding: 0.5rem 0.65rem !important;
+  .print-modal .modal-head,
+  .print-modal .print-compact {
+    padding: 0.25rem 0.4rem !important;
   }
 
   .print-modal h3,
   .print-modal h4,
   .print-modal .section-h {
-    font-size: 0.9rem !important;
-    margin: 0.35rem 0 !important;
+    font-size: 0.78rem !important;
+    margin: 0.2rem 0 !important;
   }
 
   .print-modal .field-grid {
-    gap: 0.35rem !important;
-    margin-bottom: 0.5rem !important;
+    gap: 0.2rem !important;
+    margin-bottom: 0.3rem !important;
   }
 
   .print-modal .field-cell {
-    padding: 0.35rem 0.5rem !important;
+    padding: 0.2rem 0.35rem !important;
+  }
+
+  .print-modal .field-cell-label {
+    font-size: 0.62rem !important;
+  }
+
+  .print-modal .field-cell-value {
+    font-size: 0.7rem !important;
   }
 
   .print-modal .tmkeen-table th,
   .print-modal .tmkeen-table td {
-    padding: 0.25rem 0.4rem !important;
-    font-size: 0.72rem !important;
+    padding: 0.15rem 0.3rem !important;
+    font-size: 0.62rem !important;
   }
 
   .print-modal .chart-wrap {
-    max-height: 160px !important;
-    margin-bottom: 0.5rem !important;
+    max-height: 110px !important;
+    margin-bottom: 0.3rem !important;
+  }
+
+  .print-modal .section-h,
+  .print-modal .field-grid,
+  .print-modal .chart-wrap,
+  .print-modal table,
+  .print-modal .field-cell {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-modal {
+    page-break-after: avoid;
   }
 
   .modal-overlay {

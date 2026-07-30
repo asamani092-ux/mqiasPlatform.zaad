@@ -123,17 +123,17 @@ export default function KpiAnalysisModal({
             <h3 style={{ marginBottom: ".25rem" }}>{row.name}</h3>
             <div className="text-muted">{row.code}</div>
           </div>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="إغلاق">
+          <button type="button" className="icon-btn no-print" onClick={onClose} aria-label="إغلاق">
             <X {...ICON_PROPS} />
           </button>
         </div>
 
-        <div className="modal-body">
+        <div className="modal-body print-compact">
           {loading ? (
             <p className="text-muted">جاري تحميل التحليل...</p>
           ) : (
             <>
-              <div className="field-grid" style={{ marginBottom: "1rem" }}>
+              <div className="field-grid" style={{ marginBottom: ".65rem" }}>
                 <div className="field-cell">
                   <div className="field-cell-label">خط الأساس</div>
                   <div className="field-cell-value">{row.baseline ?? "—"}</div>
@@ -163,11 +163,11 @@ export default function KpiAnalysisModal({
               </div>
 
               {(description || requiredData || recommendation) && (
-                <div className="field-grid" style={{ marginBottom: "1rem" }}>
+                <div className="field-grid" style={{ marginBottom: ".65rem" }}>
                   {description && (
                     <div className="field-cell" style={{ gridColumn: "1 / -1" }}>
                       <div className="field-cell-label">الوصف / آلية الاحتساب</div>
-                      <div className="field-cell-value" style={{ fontSize: ".85rem", fontWeight: 500 }}>
+                      <div className="field-cell-value" style={{ fontSize: ".8rem", fontWeight: 500 }}>
                         {description}
                       </div>
                     </div>
@@ -175,7 +175,7 @@ export default function KpiAnalysisModal({
                   {requiredData && (
                     <div className="field-cell" style={{ gridColumn: "1 / -1" }}>
                       <div className="field-cell-label">البيانات المطلوبة</div>
-                      <div className="field-cell-value" style={{ fontSize: ".85rem", fontWeight: 500 }}>
+                      <div className="field-cell-value" style={{ fontSize: ".8rem", fontWeight: 500 }}>
                         {requiredData}
                       </div>
                     </div>
@@ -183,7 +183,7 @@ export default function KpiAnalysisModal({
                   {recommendation && (
                     <div className="field-cell" style={{ gridColumn: "1 / -1" }}>
                       <div className="field-cell-label">التوصيات</div>
-                      <div className="field-cell-value" style={{ fontSize: ".85rem", fontWeight: 500 }}>
+                      <div className="field-cell-value" style={{ fontSize: ".8rem", fontWeight: 500 }}>
                         {recommendation}
                       </div>
                     </div>
@@ -198,7 +198,7 @@ export default function KpiAnalysisModal({
               />
 
               {showStrategicLink && row.strategicGoalCode && (
-                <div className="field-cell" style={{ marginBottom: "1rem" }}>
+                <div className="field-cell" style={{ marginBottom: ".65rem" }}>
                   <div className="field-cell-label">الارتباط بالهدف الاستراتيجي</div>
                   <div className="field-cell-value">
                     {row.strategicGoalCode}
@@ -216,7 +216,7 @@ export default function KpiAnalysisModal({
               </div>
 
               <h4 className="section-h">التحليل المقارن للأداء الربعي</h4>
-              <table className="tmkeen-table" style={{ marginBottom: "1rem" }}>
+              <table className="tmkeen-table" style={{ marginBottom: ".5rem" }}>
                 <thead>
                   <tr>
                     <th>الربع</th>
@@ -241,10 +241,10 @@ export default function KpiAnalysisModal({
         </div>
 
         <div className="modal-footer no-print">
-          <button type="button" className="btn-secondary btn-sm" onClick={onClose}>
+          <button type="button" className="btn-secondary btn-sm no-print" onClick={onClose}>
             إغلاق
           </button>
-          <button type="button" className="btn-primary btn-sm" onClick={exportPdf}>
+          <button type="button" className="btn-primary btn-sm no-print" onClick={exportPdf}>
             <Download {...ICON_PROPS} />
             تصدير PDF
           </button>

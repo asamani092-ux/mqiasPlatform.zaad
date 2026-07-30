@@ -4,12 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import PeriodSelector from "@/components/PeriodSelector";
 import DonutChart from "@/components/charts/DonutChart";
+import { TrackTitleRow } from "@/components/ui/TrackHelpButton";
 import {
   complianceDonutSegments,
   GOVERNANCE_STAT_LABELS,
   GOVERNANCE_STATUS_LABEL,
   type GovernanceStats,
 } from "@/lib/governance-stats";
+import { GOVERNANCE_HELP } from "@/lib/track-help";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
 
@@ -208,15 +210,12 @@ export default function GovernanceClient({
 
   return (
     <>
-      <div className="topbar">
-        <div>
-          <h1>مسار الحوكمة</h1>
-          <div className="text-muted">
-            درجة الجاهزية ومعايير الالتزام — {PERIOD_LABEL[period]} {year}
-          </div>
-        </div>
-        <PeriodSelector year={year} period={period} />
-      </div>
+      <TrackTitleRow
+        title="مسار الحوكمة"
+        subtitle={`درجة الجاهزية ومعايير الالتزام — ${PERIOD_LABEL[period]} ${year}`}
+        help={GOVERNANCE_HELP}
+        extra={<PeriodSelector year={year} period={period} />}
+      />
 
       {msg && (
         <div className="alert alert-warn" style={{ marginBottom: "1rem" }}>

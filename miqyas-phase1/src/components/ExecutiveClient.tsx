@@ -55,7 +55,7 @@ export default function ExecutiveClient({
   const statCards = [
     { id: "all", num: headline.totalKpis, lbl: "إجمالي المؤشرات", accent: "" },
     { id: "critical", num: `${headline.pctCritical}%`, lbl: "مؤشرات حرجة", accent: "stat-card--danger" },
-    { id: "atrisk", num: `${headline.pctAtRisk}%`, lbl: "معرضة للخطر", accent: "stat-card--warning" },
+    { id: "alerts", num: `${headline.pctAtRisk}%`, lbl: "معرضة للخطر", accent: "stat-card--warning" },
     { id: "cards", num: headline.openCards, lbl: "بطاقات انحراف مفتوحة", accent: "stat-card--warning" },
     { id: "late", num: headline.lateActions, lbl: "إجراءات متأخرة", accent: "stat-card--danger" },
   ];
@@ -77,6 +77,10 @@ export default function ExecutiveClient({
             href={`#${s.id}`}
             className={`card stat-card ${s.accent}`.trim()}
             style={{ textDecoration: "none", color: "inherit" }}
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
           >
             <div className="stat-num">{s.num}</div>
             <div className="stat-lbl">{s.lbl}</div>
@@ -84,7 +88,7 @@ export default function ExecutiveClient({
         ))}
       </div>
 
-      <div className="card" style={{ marginBottom: "1rem" }}>
+      <div id="all" className="card executive-anchor" style={{ marginBottom: "1rem" }}>
         <h3 style={{ marginBottom: ".75rem" }}>توزيع حالات المؤشرات (5 حالات)</h3>
         <DonutChart
           segments={donutSegments}
@@ -97,7 +101,7 @@ export default function ExecutiveClient({
         />
       </div>
 
-      <div id="critical" className="card" style={{ marginBottom: "1rem" }}>
+      <div id="critical" className="card executive-anchor" style={{ marginBottom: "1rem" }}>
         <h3 style={{ marginBottom: ".75rem" }}>المؤشرات المنحرفة</h3>
         {visibleDeviatedKpis.length === 0 ? (
           <p className="text-muted">
@@ -131,7 +135,7 @@ export default function ExecutiveClient({
         )}
       </div>
 
-      <div id="late" className="card" style={{ marginBottom: "1rem" }}>
+      <div id="late" className="card executive-anchor" style={{ marginBottom: "1rem" }}>
         <h3 style={{ marginBottom: ".75rem" }}>الإجراءات التصحيحية المتأخرة</h3>
         {lateActions.length === 0 ? (
           <p className="text-muted">لا توجد إجراءات متأخرة — جميع المعالجات ضمن الإطار الزمني.</p>
@@ -156,7 +160,7 @@ export default function ExecutiveClient({
         )}
       </div>
 
-      <div id="cards" className="card" style={{ marginBottom: "1rem" }}>
+      <div id="cards" className="card executive-anchor" style={{ marginBottom: "1rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: ".5rem", marginBottom: ".75rem" }}>
           <h3 style={{ margin: 0 }}>بطاقات متابعة مفتوحة (إجراءات تصحيحية)</h3>
           <Link href="/deviation" className="btn-secondary btn-sm">عرض بطاقات الانحراف</Link>
@@ -180,7 +184,7 @@ export default function ExecutiveClient({
         )}
       </div>
 
-      <div id="alerts" className="card">
+      <div id="alerts" className="card executive-anchor">
         <h3 style={{ marginBottom: ".75rem" }}>الإنذارات النشطة</h3>
         <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
           <span className="badge-danger">مرتفع: {activeAlerts.HIGH}</span>

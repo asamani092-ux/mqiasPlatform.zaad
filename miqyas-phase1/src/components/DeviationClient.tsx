@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react";
 import PeriodSelector from "@/components/PeriodSelector";
 import DonutChart from "@/components/charts/DonutChart";
 import DeviationCardModal, { type DeviationCardDetail } from "@/components/DeviationCardModal";
+import { TrackTitleRow } from "@/components/ui/TrackHelpButton";
 import {
   CARD_STATUS_BADGE,
   CARD_STATUS_LABEL,
@@ -13,6 +14,7 @@ import {
   summarizeDeviationCards,
   type DeviationSummary,
 } from "@/lib/deviation-stats";
+import { DEVIATION_HELP } from "@/lib/track-help";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
 
@@ -96,21 +98,22 @@ export default function DeviationClient({
 
   return (
     <>
-      <div className="topbar">
-        <div>
-          <h1>مسار بطاقة انحراف المؤشر</h1>
-          <div className="text-muted">توثيق الانحرافات وإجراءات المعالجة — {PERIOD_LABEL[period]} {year}</div>
-        </div>
-        <div style={{ display: "flex", gap: ".5rem", alignItems: "center", flexWrap: "wrap" }}>
-          {isAdmin && (
-            <button type="button" className="btn-primary btn-sm" onClick={generateCards}>
-              <Sparkles {...ICON_PROPS} />
-              توليد بطاقات الانحراف
-            </button>
-          )}
-          <PeriodSelector year={year} period={period} />
-        </div>
-      </div>
+      <TrackTitleRow
+        title="مسار بطاقة انحراف المؤشر"
+        subtitle={`توثيق الانحرافات وإجراءات المعالجة — ${PERIOD_LABEL[period]} ${year}`}
+        help={DEVIATION_HELP}
+        extra={
+          <div style={{ display: "flex", gap: ".5rem", alignItems: "center", flexWrap: "wrap" }}>
+            {isAdmin && (
+              <button type="button" className="btn-primary btn-sm" onClick={generateCards}>
+                <Sparkles {...ICON_PROPS} />
+                توليد بطاقات الانحراف
+              </button>
+            )}
+            <PeriodSelector year={year} period={period} />
+          </div>
+        }
+      />
 
       {isAdmin && (
         <p className="text-muted" style={{ marginBottom: "1rem", fontSize: ".85rem" }}>

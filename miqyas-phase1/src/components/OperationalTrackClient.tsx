@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BarChart3, Info, X } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import PeriodSelector from "@/components/PeriodSelector";
 import BarChartWithTarget from "@/components/charts/BarChartWithTarget";
 import KpiAnalysisModal from "@/components/KpiAnalysisModal";
 import { Status5Badge } from "@/components/Status5Badge";
+import { TrackTitleRow } from "@/components/ui/TrackHelpButton";
 import {
   departmentBarData,
   groupByDepartment,
@@ -19,11 +20,9 @@ import {
   STATUS5_STAT_ACCENT,
   type Status5,
 } from "@/lib/status5";
+import { OPERATIONAL_HELP } from "@/lib/track-help";
 import { type Period } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
-
-const TRACK_HELP =
-  "يعرض مسار الأداء التشغيلي مؤشرات الإدارات والأقسام المرتبطة بالأهداف التشغيلية، مع نسب الإنجاز والانحراف والحالة الخماسية من القياسات المعتمدة فقط. استخدم البحث وفلتر الإدارة لاستعراض الجدول، ثم افتح «تحليل» لعرض التفاصيل والاتجاه الربعي.";
 
 function formatDeviation(pct: number | null | undefined): string {
   if (pct == null) return "—";
@@ -92,7 +91,6 @@ export default function OperationalTrackClient({
 }) {
   const [filter, setFilter] = useState<Status5 | "all">("all");
   const [analysisRow, setAnalysisRow] = useState<OperationalKpiRow | null>(null);
-  const [helpOpen, setHelpOpen] = useState(false);
   const [tableSearch, setTableSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState<number | "">("");
 
@@ -169,23 +167,12 @@ export default function OperationalTrackClient({
 
   return (
     <>
-      <div className="topbar">
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: ".65rem", flexWrap: "wrap" }}>
-            <h1 style={{ margin: 0 }}>مسار الأداء التشغيلي</h1>
-            <button
-              type="button"
-              className="btn-secondary btn-sm"
-              onClick={() => setHelpOpen(true)}
-            >
-              <Info {...ICON_PROPS} />
-              شرح المسار
-            </button>
-          </div>
-          <div className="text-muted">مؤشرات الأداء التشغيلي — قيم معتمدة فقط</div>
-        </div>
-        <PeriodSelector year={year} period={period} />
-      </div>
+      <TrackTitleRow
+        title="مسار الأداء التشغيلي"
+        subtitle="مؤشرات الأداء التشغيلي — قيم معتمدة فقط"
+        help={OPERATIONAL_HELP}
+        extra={<PeriodSelector year={year} period={period} />}
+      />
 
       <div className="tab-bar" style={{ marginBottom: "1rem" }}>
         {STATUS5_FILTER_OPTIONS.map((opt) => (
@@ -359,32 +346,6 @@ export default function OperationalTrackClient({
           </div>
         )}
       </div>
-
-      {helpOpen && (
-        <div className="modal-overlay" onClick={() => setHelpOpen(false)}>
-          <div className="modal-panel card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>شرح مسار الأداء التشغيلي</h3>
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={() => setHelpOpen(false)}
-                aria-label="إغلاق"
-              >
-                <X {...ICON_PROPS} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <p style={{ margin: 0, lineHeight: 1.7 }}>{TRACK_HELP}</p>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn-primary btn-sm" onClick={() => setHelpOpen(false)}>
-                حسناً
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {analysisRow && (
         <KpiAnalysisModal

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import PeriodSelector from "@/components/PeriodSelector";
 import DonutChart from "@/components/charts/DonutChart";
+import { TrackTitleRow } from "@/components/ui/TrackHelpButton";
 import {
   ASSET_STATUS_BADGE,
   ASSET_STATUS_LABEL,
@@ -14,6 +15,7 @@ import {
   type KnowledgeStats,
 } from "@/lib/knowledge-stats";
 import { ASSET_TYPES } from "@/lib/knowledge-constants";
+import { KNOWLEDGE_HELP } from "@/lib/track-help";
 import { ICON_PROPS } from "@/lib/icon-props";
 import type { Period } from "@/lib/types";
 
@@ -194,15 +196,12 @@ export default function KnowledgeClient({
 
   return (
     <>
-      <div className="topbar">
-        <div>
-          <h1>مسار المعرفة المؤسسية</h1>
-          <div className="text-muted">أصول المعرفة والدروس المستفادة</div>
-        </div>
-        <div style={{ display: "flex", gap: ".5rem", alignItems: "center", flexWrap: "wrap" }}>
-          <PeriodSelector year={year} period={period} />
-        </div>
-      </div>
+      <TrackTitleRow
+        title="مسار المعرفة المؤسسية"
+        subtitle="أصول المعرفة والدروس المستفادة"
+        help={KNOWLEDGE_HELP}
+        extra={<PeriodSelector year={year} period={period} />}
+      />
 
       {msg && (
         <div className="alert alert-warn" style={{ marginBottom: "1rem" }}>

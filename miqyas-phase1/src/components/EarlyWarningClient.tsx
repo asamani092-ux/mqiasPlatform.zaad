@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import PeriodSelector from "@/components/PeriodSelector";
 import DonutChart from "@/components/charts/DonutChart";
 import DeviationCardModal, { type DeviationCardDetail } from "@/components/DeviationCardModal";
+import { TrackTitleRow } from "@/components/ui/TrackHelpButton";
 import {
   EARLY_WARNING_ACHIEVEMENT_THRESHOLD,
   RISK_BADGE,
@@ -11,6 +12,7 @@ import {
   type EarlyWarningRow,
   type EarlyWarningSummary,
 } from "@/lib/early-warning-stats";
+import { EARLY_WARNING_HELP } from "@/lib/track-help";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
 
 function fmtNum(n: number): string {
@@ -125,15 +127,12 @@ export default function EarlyWarningClient({
 
   return (
     <>
-      <div className="topbar">
-        <div>
-          <h1>مسار الإنذار المبكر</h1>
-          <div className="text-muted">
-            مؤشرات معتمدة دون {EARLY_WARNING_ACHIEVEMENT_THRESHOLD}% — {PERIOD_LABEL[period]} {year}
-          </div>
-        </div>
-        <PeriodSelector year={year} period={period} />
-      </div>
+      <TrackTitleRow
+        title="مسار الإنذار المبكر"
+        subtitle={`مؤشرات معتمدة دون ${EARLY_WARNING_ACHIEVEMENT_THRESHOLD}% — ${PERIOD_LABEL[period]} ${year}`}
+        help={EARLY_WARNING_HELP}
+        extra={<PeriodSelector year={year} period={period} />}
+      />
 
       {msg && (
         <div className="alert alert-warn" style={{ marginBottom: "1rem" }}>
