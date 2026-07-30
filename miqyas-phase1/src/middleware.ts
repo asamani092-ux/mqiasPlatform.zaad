@@ -54,8 +54,13 @@ export default withAuth(
       return NextResponse.redirect(dash);
     }
 
-    if (path.startsWith("/dept-follow") && role !== "SYSTEM_ADMIN" && role !== "DEPT_MANAGER") {
-      return NextResponse.redirect(dash);
+    if (path.startsWith("/dept-follow")) {
+      if (role === "SYSTEM_ADMIN") {
+        return NextResponse.redirect(new URL("/approvals", req.url));
+      }
+      if (role !== "DEPT_MANAGER") {
+        return NextResponse.redirect(dash);
+      }
     }
 
     return NextResponse.next();

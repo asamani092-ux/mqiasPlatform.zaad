@@ -30,7 +30,8 @@ type Kpi = {
   strategicGoalId: number | null;
   operationalGoalId: number | null;
   active: boolean;
-  department?: { name: string } | null;
+  department?: { id: number; name: string } | null;
+  owner?: { id: number; name: string } | null;
 };
 
 const emptyForm = {
@@ -296,7 +297,7 @@ export default function AdminKpisClient({
                 </select>
               </div>
               <div>
-                <label className="label-field">الإدارة</label>
+                <label className="label-field">الإدارة المالكة</label>
                 <select
                   className="input-field"
                   value={form.departmentId}
@@ -347,48 +348,58 @@ export default function AdminKpisClient({
             <table className="tmkeen-table">
               <thead>
                 <tr>
-                  <th>الرمز</th><th>الاسم</th><th>النوع</th><th>الدورية</th><th>الإدارة</th><th>نشط</th><th>إجراءات</th>
+                  <th>الرمز</th>
+                  <th>المؤشر</th>
+                  <th>النوع</th>
+                  <th>الإدارة المالكة</th>
+                  <th>المسؤول</th>
+                  <th>إجراءات</th>
                 </tr>
               </thead>
               <tbody>
-                {kpis.map((k) => (
+                {kpis.filter((k) => k.active).map((k) => (
                   <tr key={k.id}>
-                    <td>{k.code}</td>
+                    <td><code>{k.code}</code></td>
                     <td>{k.name}</td>
                     <td>{TYPE_LABEL[k.type as keyof typeof TYPE_LABEL]}</td>
-                    <td>{FREQUENCY_LABEL[k.frequency as keyof typeof FREQUENCY_LABEL]}</td>
-                    <td>{k.department?.name || k.ownerLabel || "—"}</td>
-                    <td>{k.active ? "نعم" : "لا"}</td>
+                    <td>{k.department?.name || "—"}</td>
+                    <td>{k.owner?.name || k.ownerLabel || "—"}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       <button type="button" className="btn-secondary btn-sm" title="تعديل المؤشر" onClick={() => startEdit(k)}>
                         تعديل
                       </button>
-                      {k.active ? (
-                        <button
-                          type="button"
-                          className="btn-secondary btn-sm"
-                          style={{ marginRight: ".3rem" }}
-                          title="تعطيل المؤشر"
-                          onClick={() => softDelete(k.id)}
-                        >
-                          تعطيل
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="btn-primary btn-sm"
-                          style={{ marginRight: ".3rem" }}
-                          title="إعادة تفعيل المؤشر"
-                          onClick={() => reactivate(k.id)}
-                        >
-                          إعادة تفعيل
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="btn-secondary btn-sm"
+                        style={{ marginRight: ".3rem" }}
+                        title="تعطيل المؤشر"
+                        onClick={() => softDelete(k.id)}
+                      >
+                        تعطيل
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            {kpis.some((k) => !k.active) && (
+              <div style={{ marginTop: ".75rem", fontSize: ".82rem" }} className="text-muted">
+                معطّلة:{" "}
+                {kpis
+                  .filter((k) => !k.active)
+                  .map((k) => (
+                    <button
+                      key={k.id}
+                      type="button"
+                      className="btn-secondary btn-sm"
+                      style={{ marginLeft: ".3rem", marginBottom: ".25rem" }}
+                      onClick={() => reactivate(k.id)}
+                    >
+                      إعادة تفعيل {k.code}
+                    </button>
+                  ))}
+              </div>
+            )}
           </div>
         </>
       )}

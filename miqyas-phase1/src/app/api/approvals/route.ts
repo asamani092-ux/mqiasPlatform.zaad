@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 const postSchema = z
   .object({
     measurementPeriodId: z.number().int().positive(),
-    action: z.enum(["final_approve", "reject_wording", "reject_evidence", "edit"]),
+    action: z.enum(["final_approve", "reject_wording", "reject_evidence", "reject_full", "edit"]),
     rejectReason: z.string().min(3).max(2000).optional(),
     suggestedWording: z.string().max(5000).optional().nullable(),
     comment: z.string().max(2000).optional(),
@@ -206,7 +206,52 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ measurement: updated });
     }
 
-    // reject_evidence
+    if (body.action === "reject_full") {
+      if (!body.rejectReason) return jsonError("سبب الرفض الكامل مطلوب", 400);
+      await db.evidence.updateMany({
+        where: { measurementPeriodId: mp.id, status: "ACTIVE" },
+        data: {
+          status: "REJECTED",
+          rejectReason: body.rejectReason,
+          rejectedById: userId,
+          rejectedAt: new Date(),
+        },
+      });
+      const updated = await db.measurementPeriod.update({
+        where: { id: mp.id },
+        data: {
+          approvalStatus: "REJECTED",
+          rejectReason: body.rejectReason,
+          suggestedWording: body.suggestedWording ?? null,
+          approvedById: userId,
+          approvedAt: new Date(),
+          initialApprovedById: null,
+          initialApprovedAt: null,
+        },
+      });
+      await syncKpiEntriesFromMeasurement(mp.id);
+      await recordApprovalEvent({
+        measurementPeriodId: mp.id,
+        actorId: userId,
+        action: "REJECT_WORDING",
+        comment: body.rejectReason,
+        payload: { full: true, suggestedWording: body.suggestedWording },
+      });
+      if (mp.requirement.ownerId) {
+        await notify({
+          userIds: [mp.requirement.ownerId],
+          type: "APPROVAL_RESULT",
+          title: "رُفض القياس بالكامل",
+          body: body.rejectReason,
+          link: "/my",
+          email: true,
+        });
+      }
+      await audit(userId, "REJECT_FULL", "MeasurementPeriod", mp.id, {});
+      return NextResponse.json({ measurement: updated });
+    }
+
+    // reject_evidence — جزئي (شواهد محددة) أو كل الشواهد إن وُجد سبب عام فقط
     if (!body.rejectReason && !(body.evidenceRejections?.length)) {
       return jsonError("حدّد سبب رفض الشواهد أو شاهدًا بعينه", 400);
     }
@@ -222,6 +267,16 @@ export async function POST(req: NextRequest) {
           },
         });
       }
+    } else if (body.rejectReason) {
+      await db.evidence.updateMany({
+        where: { measurementPeriodId: mp.id, status: "ACTIVE" },
+        data: {
+          status: "REJECTED",
+          rejectReason: body.rejectReason,
+          rejectedById: userId,
+          rejectedAt: new Date(),
+        },
+      });
     }
     const updated = await db.measurementPeriod.update({
       where: { id: mp.id },

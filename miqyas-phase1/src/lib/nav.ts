@@ -114,9 +114,9 @@ export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[]
     return sections;
   }
 
-  // SYSTEM_ADMIN
+  // SYSTEM_ADMIN — الاعتماد النهائي فقط (لا مراجعة إدارة / اعتماد مبدئي)
   sections.push({ items: [EXECUTIVE_NAV] });
-  sections.push({ label: "الرئيسية", items: [DASHBOARD_NAV, MY_NAV, DEPT_FOLLOW_NAV] });
+  sections.push({ label: "الرئيسية", items: [DASHBOARD_NAV, MY_NAV] });
   sections.push({ label: "مسارات القياس", items: TRACK_NAV });
   if (showApprovals) sections.push({ items: [APPROVALS_NAV] });
   sections.push({ label: "إدارة النظام", items: ADMIN_NAV });
