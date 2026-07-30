@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { CHART_COLORS } from "@/lib/chart-colors";
 import { STATUS5_COLOR, type Status5 } from "@/lib/status5";
+import ChartAxisTick from "@/components/charts/ChartAxisTick";
 
 export type BarTargetItem = {
   name: string;
@@ -46,20 +47,21 @@ export default function BarChartWithTarget({
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 12, right: 8, left: 0, bottom: 48 }}>
+        <BarChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 16 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.surfaceBorder} vertical={false} />
           <XAxis
             dataKey="name"
-            tick={{ fill: CHART_COLORS.brandGray, fontSize: 11 }}
             interval={0}
-            angle={-18}
-            textAnchor="end"
-            height={56}
+            tick={<ChartAxisTick maxChars={11} />}
+            tickLine={false}
+            height={64}
+            tickMargin={4}
           />
           <YAxis
             domain={[0, "auto"]}
             tick={{ fill: CHART_COLORS.brandGray, fontSize: 11 }}
             tickFormatter={(v) => `${v}%`}
+            width={42}
           />
           <Tooltip
             formatter={(v) => [`${v ?? 0}%`, "نسبة الإنجاز"]}

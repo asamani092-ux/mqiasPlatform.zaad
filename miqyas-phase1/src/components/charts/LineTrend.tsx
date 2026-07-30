@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { CHART_COLORS } from "@/lib/chart-colors";
+import ChartAxisTick from "@/components/charts/ChartAxisTick";
 
 export type TrendPoint = {
   label: string;
@@ -38,13 +39,21 @@ export default function LineTrend({
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+        <LineChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 16 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.surfaceBorder} />
-          <XAxis dataKey="label" tick={{ fill: CHART_COLORS.brandGray, fontSize: 11 }} />
+          <XAxis
+            dataKey="label"
+            interval={0}
+            tick={<ChartAxisTick maxChars={10} />}
+            tickLine={false}
+            height={56}
+            tickMargin={4}
+          />
           <YAxis
             domain={[0, "auto"]}
             tick={{ fill: CHART_COLORS.brandGray, fontSize: 11 }}
             tickFormatter={(v) => `${v}%`}
+            width={42}
           />
           <Tooltip
             formatter={(v, _n, p) => {

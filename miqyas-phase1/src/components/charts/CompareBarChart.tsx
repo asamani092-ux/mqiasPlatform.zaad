@@ -11,6 +11,7 @@ import {
   Cell,
 } from "recharts";
 import { CHART_COLORS } from "@/lib/chart-colors";
+import ChartAxisTick from "@/components/charts/ChartAxisTick";
 
 export type CompareBarItem = {
   name: string;
@@ -40,10 +41,21 @@ export default function CompareBarChart({
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+        <BarChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 16 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.surfaceBorder} vertical={false} />
-          <XAxis dataKey="name" tick={{ fill: CHART_COLORS.brandGray, fontSize: 11 }} />
-          <YAxis allowDecimals={false} tick={{ fill: CHART_COLORS.brandGray, fontSize: 11 }} />
+          <XAxis
+            dataKey="name"
+            interval={0}
+            tick={<ChartAxisTick maxChars={11} />}
+            tickLine={false}
+            height={64}
+            tickMargin={4}
+          />
+          <YAxis
+            allowDecimals={false}
+            tick={{ fill: CHART_COLORS.brandGray, fontSize: 11 }}
+            width={36}
+          />
           <Tooltip
             formatter={(v) => [`${v}${valueSuffix}`, "العدد"]}
             contentStyle={{
