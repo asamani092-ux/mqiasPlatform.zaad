@@ -1,12 +1,53 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import type { Role } from "@prisma/client";
+
+const ENTRY_ROLES: Role[] = ["EMPLOYEE", "SECTION_HEAD", "DEPT_MANAGER"];
 
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
-    const role = token?.role;
+    const role = token?.role as Role | undefined;
+    const myUrl = new URL("/my", req.url);
     const dash = new URL("/dashboard", req.url);
+
+    if (!role) return NextResponse.redirect(new URL("/login", req.url));
+
+    // أدوار الإدخال: لا يصلون لمسارات القياس/الإدارة/التنفيذية
+    if (ENTRY_ROLES.includes(role)) {
+      const allowedPrefixes = ["/my", "/api/"];
+      if (role === "DEPT_MANAGER") allowedPrefixes.push("/dept-follow");
+      if (path.startsWith("/approvals") || path.startsWith("/api/approvals")) {
+        // تُفحص الصلاحية في الصفحة/API حسب الإعدادات
+        return NextResponse.next();
+      }
+      const ok = allowedPrefixes.some(
+        (p) => path === p || path.startsWith(p + "/") || path.startsWith(p)
+      );
+      // السماح بالأصول الثابتة عبر matcher؛ هنا نعيد توجيه الصفحات فقط
+      if (
+        path.startsWith("/dashboard") ||
+        path.startsWith("/strategic") ||
+        path.startsWith("/operational") ||
+        path.startsWith("/early-warning") ||
+        path.startsWith("/deviation") ||
+        path.startsWith("/governance") ||
+        path.startsWith("/knowledge") ||
+        path.startsWith("/executive") ||
+        path.startsWith("/admin") ||
+        path.startsWith("/uat")
+      ) {
+        if (role === "DEPT_MANAGER" && path.startsWith("/dept-follow")) {
+          return NextResponse.next();
+        }
+        return NextResponse.redirect(myUrl);
+      }
+      if (path === "/" || path === "") {
+        return NextResponse.redirect(myUrl);
+      }
+      return NextResponse.next();
+    }
 
     if (path.startsWith("/admin") && role !== "SYSTEM_ADMIN") {
       return NextResponse.redirect(dash);
@@ -20,29 +61,7 @@ export default withAuth(
       return NextResponse.redirect(dash);
     }
 
-    if (
-      (path.startsWith("/strategic") || path.startsWith("/governance")) &&
-      role !== "SYSTEM_ADMIN" &&
-      role !== "EXECUTIVE"
-    ) {
-      return NextResponse.redirect(dash);
-    }
-
-    if (
-      path.startsWith("/knowledge") &&
-      role !== "SYSTEM_ADMIN" &&
-      role !== "EXECUTIVE" &&
-      role !== "DEPT_MANAGER"
-    ) {
-      return NextResponse.redirect(dash);
-    }
-
-    if (
-      (path.startsWith("/operational") ||
-        path.startsWith("/early-warning") ||
-        path.startsWith("/deviation")) &&
-      role === "EMPLOYEE"
-    ) {
+    if (path.startsWith("/dept-follow") && role !== "SYSTEM_ADMIN" && role !== "DEPT_MANAGER") {
       return NextResponse.redirect(dash);
     }
 
@@ -52,12 +71,11 @@ export default withAuth(
     callbacks: {
       authorized: ({ token }) => !!token,
     },
-  },
+  }
 );
 
 export const config = {
   matcher: [
-    // استثناء api/* حتى تُرجع المسارات JSON 401 بدل إعادة توجيه HTML لصفحة الدخول
     "/((?!login|forgot-password|reset-password|api/|_next/static|_next/image|favicon.ico|brand/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

@@ -1,18 +1,22 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
-import { currentQuarter } from "@/lib/kpi";
-import { getMyKpiEntries } from "@/lib/my-entries";
+import { getMyRequirements } from "@/lib/my-measurements";
+import { parseTrackParams } from "@/lib/track-params";
 import MyKpisClient from "@/components/MyKpisClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function MyPage() {
+export default async function MyPage({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
   const userId = parseInt(user.id, 10);
-  const { year, period } = currentQuarter();
-  const initialItems = await getMyKpiEntries(userId, year, period);
+  const { year, period } = await parseTrackParams(searchParams);
+  const initialItems = await getMyRequirements(userId, year, period);
 
   return (
     <MyKpisClient

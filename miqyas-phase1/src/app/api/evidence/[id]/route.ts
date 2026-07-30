@@ -21,20 +21,40 @@ async function canDownload(
           kpi: { select: { ownerId: true, sectionId: true } },
         },
       },
+      measurementPeriod: {
+        include: {
+          requirement: { select: { ownerId: true, sectionId: true } },
+        },
+      },
     },
   });
 
   if (!evidence) return { ok: false };
 
-  const kpi = evidence.entry.kpi;
-  if (kpi.ownerId === userId) {
-    return { ok: true, evidence: { storedName: evidence.storedName, fileName: evidence.fileName, mimeType: evidence.mimeType } };
-  }
+  const meta = {
+    storedName: evidence.storedName,
+    fileName: evidence.fileName,
+    mimeType: evidence.mimeType,
+  };
+
   if (role === "SYSTEM_ADMIN" || role === "EXECUTIVE") {
-    return { ok: true, evidence: { storedName: evidence.storedName, fileName: evidence.fileName, mimeType: evidence.mimeType } };
+    return { ok: true, evidence: meta };
   }
-  if (role === "SECTION_HEAD" && userSectionId != null && kpi.sectionId === userSectionId) {
-    return { ok: true, evidence: { storedName: evidence.storedName, fileName: evidence.fileName, mimeType: evidence.mimeType } };
+
+  const kpi = evidence.entry?.kpi;
+  if (kpi) {
+    if (kpi.ownerId === userId) return { ok: true, evidence: meta };
+    if (role === "SECTION_HEAD" && userSectionId != null && kpi.sectionId === userSectionId) {
+      return { ok: true, evidence: meta };
+    }
+  }
+
+  const req = evidence.measurementPeriod?.requirement;
+  if (req) {
+    if (req.ownerId === userId) return { ok: true, evidence: meta };
+    if (role === "SECTION_HEAD" && userSectionId != null && req.sectionId === userSectionId) {
+      return { ok: true, evidence: meta };
+    }
   }
 
   return { ok: false };

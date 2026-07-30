@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 
 const DEFAULTS: Record<string, string> = {
   section_head_can_approve: "0",
+  dept_manager_can_approve: "0",
   early_warning_gap_pct: "20",
   action_escalation_days: "0",
   current_year: String(new Date().getFullYear()),

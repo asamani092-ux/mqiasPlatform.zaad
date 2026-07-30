@@ -1,74 +1,50 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
+import PeriodSelector from "@/components/PeriodSelector";
 import {
-  PERIOD_LABEL,
-  STATUS_LABEL,
-  STATUS_BADGE,
   APPROVAL_LABEL,
   APPROVAL_BADGE,
   POLARITY_LABEL,
   type Period,
-  type KpiStatus,
 } from "@/lib/types";
+import { TYPE_LABEL } from "@/lib/kpi-schemas";
 import { ICON_PROPS } from "@/lib/icon-props";
 
-type KpiItem = {
-  kpi: {
+type MeasurementItem = {
+  requirement: {
     id: number;
     code: string;
     name: string;
     unit: string;
-    baseline: number | null;
-    annualTarget: number | null;
     polarity: string;
     frequency: string;
     requiredData: string | null;
     ownerId: number | null;
   };
-  target: { targetValue: number } | null;
-  entry: {
+  measurement: {
     id: number;
     actualValue: number;
-    achievementPct: number | null;
-    deviationValue: number | null;
-    deviationPct: number | null;
-    status: KpiStatus;
     whatHappened: string | null;
     howHappened: string | null;
-    recommendation: string | null;
+    note: string | null;
     approvalStatus: string;
     rejectReason: string | null;
     evidences: { id: number; fileName: string }[];
   } | null;
+  kpis: { id: number; code: string; type: string; name: string }[];
   periods: Period[];
 };
 
-function calcLivePct(actual: number, target: number, polarity: string): number | null {
-  if (!target) return null;
-  if (polarity === "LOWER_BETTER") {
-    if (!actual) return null;
-    return Math.round((target / actual) * 1000) / 10;
-  }
-  return Math.round((actual / target) * 1000) / 10;
-}
-
-function calcLiveStatus(pct: number | null): KpiStatus {
-  if (pct === null) return "NO_DATA";
-  if (pct >= 100) return "ACHIEVED";
-  if (pct >= 80) return "ON_TRACK";
-  if (pct >= 60) return "AT_RISK";
-  return "CRITICAL";
-}
-
-function buildDrafts(list: KpiItem[]) {
+function buildDrafts(list: MeasurementItem[]) {
   const d: Record<number, { actual: string; what: string; how: string }> = {};
   for (const item of list) {
-    d[item.kpi.id] = {
-      actual: item.entry?.actualValue?.toString() ?? "",
-      what: item.entry?.whatHappened ?? "",
-      how: item.entry?.howHappened ?? "",
+    d[item.requirement.id] = {
+      actual: item.measurement?.actualValue?.toString() ?? "",
+      what: item.measurement?.whatHappened ?? "",
+      how: item.measurement?.howHappened ?? "",
     };
   }
   return d;
@@ -81,56 +57,43 @@ export default function MyKpisClient({
 }: {
   initialYear: number;
   initialPeriod: Period;
-  initialItems: KpiItem[];
+  initialItems: MeasurementItem[];
 }) {
-  const [year, setYear] = useState(initialYear);
-  const [period, setPeriod] = useState<Period>(initialPeriod);
-  const [items, setItems] = useState<KpiItem[]>(initialItems);
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const year = initialYear;
+  const period = initialPeriod;
+  const [items, setItems] = useState<MeasurementItem[]>(initialItems);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [drafts, setDrafts] = useState(() => buildDrafts(initialItems));
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState<number | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch(`/api/my/entries?year=${year}&period=${period}`);
+  useEffect(() => {
+    setItems(initialItems);
+    setDrafts(buildDrafts(initialItems));
+  }, [initialItems]);
+
+  async function reload() {
+    const res = await fetch(`/api/my/measurements?year=${year}&period=${period}`);
     if (res.ok) {
       const data = await res.json();
-      const owned = data.items as KpiItem[];
+      const owned = data.items as MeasurementItem[];
       setItems(owned);
-      const d: Record<number, { actual: string; what: string; how: string }> = {};
-      for (const item of owned) {
-        d[item.kpi.id] = {
-          actual: item.entry?.actualValue?.toString() ?? "",
-          what: item.entry?.whatHappened ?? "",
-          how: item.entry?.howHappened ?? "",
-        };
-      }
-      setDrafts(d);
+      setDrafts(buildDrafts(owned));
     }
-    setLoading(false);
-  }, [year, period]);
+    router.refresh();
+  }
 
-  useEffect(() => {
-    if (year === initialYear && period === initialPeriod) {
-      setItems(initialItems);
-      setDrafts(buildDrafts(initialItems));
-      return;
-    }
-    load();
-  }, [year, period, initialYear, initialPeriod, initialItems, load]);
-
-  async function save(kpiId: number) {
-    const draft = drafts[kpiId];
+  async function save(requirementId: number) {
+    const draft = drafts[requirementId];
     if (!draft) return;
-    setSaving(kpiId);
+    setSaving(requirementId);
     setMsg("");
-    const res = await fetch("/api/entries", {
+    const res = await fetch("/api/my/measurements", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        kpiId,
+        requirementId,
         year,
         period,
         actualValue: parseFloat(draft.actual),
@@ -141,72 +104,62 @@ export default function MyKpisClient({
     setSaving(null);
     if (res.ok) {
       setMsg("تم حفظ القياس بنجاح — بانتظار الاعتماد");
-      await load();
+      await reload();
     } else {
       const err = await res.json();
       setMsg(err.error || "فشل الحفظ");
     }
   }
 
-  async function uploadEvidence(entryId: number, file: File) {
+  async function uploadEvidence(measurementPeriodId: number, file: File) {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch(`/api/entries/${entryId}/evidence`, { method: "POST", body: fd });
+    const res = await fetch(`/api/my/measurements/${measurementPeriodId}/evidence`, {
+      method: "POST",
+      body: fd,
+    });
     if (res.ok) {
       setMsg("تم رفع الشاهد بنجاح");
-      await load();
+      await reload();
     } else {
       const err = await res.json();
       setMsg(err.error || "فشل الرفع");
     }
   }
 
-  const allPeriods: Period[] = ["Q1", "Q2", "Q3", "Q4", "H1", "H2", "Y"];
-
   return (
     <>
       <div className="topbar">
         <div>
-          <h1>مهامي ومؤشراتي</h1>
+          <h1>متطلبات القياس</h1>
           <div className="text-muted">إدخال المتحقق الفعلي والشواهد للفترة المحددة</div>
         </div>
-        <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
-          <select className="input-field" style={{ width: "auto" }} value={year} onChange={(e) => setYear(+e.target.value)}>
-            {[year - 1, year, year + 1].map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-          <select className="input-field" style={{ width: "auto" }} value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
-            {allPeriods.map((p) => (
-              <option key={p} value={p}>{PERIOD_LABEL[p]}</option>
-            ))}
-          </select>
-        </div>
+        <PeriodSelector year={year} period={period} />
       </div>
 
       {msg && (
-        <div className={`alert ${msg.includes("نجاح") || msg.includes("رفع") ? "alert-success" : "alert-error"}`} style={{ marginBottom: "1rem" }}>
+        <div
+          className={`alert ${msg.includes("نجاح") || msg.includes("رفع") ? "alert-success" : "alert-error"}`}
+          style={{ marginBottom: "1rem" }}
+        >
           {msg}
         </div>
       )}
 
-      {loading ? (
-        <p className="text-muted">جاري التحميل...</p>
-      ) : items.length === 0 ? (
-        <div className="card"><p className="text-muted">لا توجد مؤشرات مسندة لك لهذه الفترة.</p></div>
+      {items.length === 0 ? (
+        <div className="card">
+          <p className="text-muted">لا توجد متطلبات مسندة لك لهذه الفترة.</p>
+        </div>
       ) : (
         <div className="card" style={{ overflowX: "auto" }}>
           <table className="tmkeen-table">
             <thead>
               <tr>
-                <th>رمز</th>
-                <th>اسم المؤشر</th>
+                <th>رمز المتطلب</th>
+                <th>المتطلب</th>
+                <th>المؤشرات المرتبطة</th>
                 <th>البيانات المطلوبة</th>
-                <th>خط الأساس</th>
-                <th>المستهدف</th>
                 <th>المتحقق</th>
-                <th>نسبة الإنجاز</th>
-                <th>الحالة</th>
                 <th>الاعتماد</th>
                 <th>الشواهد</th>
                 <th></th>
@@ -214,20 +167,28 @@ export default function MyKpisClient({
             </thead>
             <tbody>
               {items.map((item) => {
-                const draft = drafts[item.kpi.id] ?? { actual: "", what: "", how: "" };
-                const targetVal = item.target?.targetValue ?? 0;
-                const livePct = calcLivePct(parseFloat(draft.actual) || 0, targetVal, item.kpi.polarity);
-                const liveStatus = calcLiveStatus(livePct);
-                const isExpanded = expanded === item.kpi.id;
+                const draft = drafts[item.requirement.id] ?? { actual: "", what: "", how: "" };
+                const isExpanded = expanded === item.requirement.id;
+                const approved = item.measurement?.approvalStatus === "APPROVED";
 
                 return (
-                  <Fragment key={item.kpi.id}>
+                  <Fragment key={item.requirement.id}>
                     <tr>
-                      <td>{item.kpi.code}</td>
-                      <td>{item.kpi.name}</td>
-                      <td style={{ maxWidth: 160, fontSize: ".75rem" }}>{item.kpi.requiredData || "—"}</td>
-                      <td>{item.kpi.baseline ?? "—"}</td>
-                      <td>{item.target ? `${item.target.targetValue} ${item.kpi.unit}` : "—"}</td>
+                      <td>{item.requirement.code}</td>
+                      <td>{item.requirement.name}</td>
+                      <td style={{ fontSize: ".75rem" }}>
+                        {item.kpis.length === 0
+                          ? "—"
+                          : item.kpis
+                              .map(
+                                (k) =>
+                                  `${k.code} (${TYPE_LABEL[k.type as keyof typeof TYPE_LABEL] ?? k.type})`,
+                              )
+                              .join(" · ")}
+                      </td>
+                      <td style={{ maxWidth: 160, fontSize: ".75rem" }}>
+                        {item.requirement.requiredData || "—"}
+                      </td>
                       <td>
                         <input
                           className="input-field"
@@ -235,31 +196,45 @@ export default function MyKpisClient({
                           type="number"
                           step="any"
                           value={draft.actual}
-                          disabled={item.entry?.approvalStatus === "APPROVED"}
+                          disabled={approved}
                           onChange={(e) =>
-                            setDrafts((d) => ({ ...d, [item.kpi.id]: { ...draft, actual: e.target.value } }))
+                            setDrafts((d) => ({
+                              ...d,
+                              [item.requirement.id]: { ...draft, actual: e.target.value },
+                            }))
                           }
                         />
+                        <span
+                          className="text-muted"
+                          style={{ marginInlineStart: ".25rem", fontSize: ".75rem" }}
+                        >
+                          {item.requirement.unit}
+                        </span>
                       </td>
-                      <td>{livePct != null ? `${livePct}%` : "—"}</td>
                       <td>
-                        <span className={STATUS_BADGE[liveStatus]}>{STATUS_LABEL[liveStatus]}</span>
-                      </td>
-                      <td>
-                        {item.entry ? (
-                          <span className={APPROVAL_BADGE[item.entry.approvalStatus]}>
-                            {APPROVAL_LABEL[item.entry.approvalStatus]}
+                        {item.measurement ? (
+                          <span className={APPROVAL_BADGE[item.measurement.approvalStatus]}>
+                            {APPROVAL_LABEL[item.measurement.approvalStatus]}
                           </span>
                         ) : (
                           <span className="badge-neutral">جديد</span>
                         )}
                       </td>
                       <td>
-                        {item.entry ? (
+                        {item.measurement ? (
                           <>
-                            {item.entry.evidences.length}
-                            {item.entry.approvalStatus !== "APPROVED" && (
-                              <label className="btn-secondary btn-sm" style={{ marginInlineStart: ".3rem", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: ".2rem" }}>
+                            {item.measurement.evidences.length}
+                            {!approved && (
+                              <label
+                                className="btn-secondary btn-sm"
+                                style={{
+                                  marginInlineStart: ".3rem",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: ".2rem",
+                                }}
+                              >
                                 <Plus {...ICON_PROPS} />
                                 <input
                                   type="file"
@@ -267,69 +242,73 @@ export default function MyKpisClient({
                                   accept=".pdf,.png,.jpg,.jpeg,.xlsx,.docx"
                                   onChange={(e) => {
                                     const f = e.target.files?.[0];
-                                    if (f) uploadEvidence(item.entry!.id, f);
+                                    if (f) uploadEvidence(item.measurement!.id, f);
                                   }}
                                 />
                               </label>
                             )}
                           </>
-                        ) : "—"}
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td>
                         <button
                           type="button"
                           className="btn-primary btn-sm"
-                          disabled={saving === item.kpi.id || item.entry?.approvalStatus === "APPROVED"}
-                          onClick={() => save(item.kpi.id)}
+                          disabled={saving === item.requirement.id || approved}
+                          onClick={() => save(item.requirement.id)}
                         >
-                          {saving === item.kpi.id ? "..." : "حفظ"}
+                          {saving === item.requirement.id ? "..." : "حفظ"}
                         </button>
                         <button
                           type="button"
                           className="btn-secondary btn-sm"
-                          style={{ marginInlineStart: ".3rem", display: "inline-flex", alignItems: "center" }}
-                          onClick={() => setExpanded(isExpanded ? null : item.kpi.id)}
+                          style={{
+                            marginInlineStart: ".3rem",
+                            display: "inline-flex",
+                            alignItems: "center",
+                          }}
+                          onClick={() =>
+                            setExpanded(isExpanded ? null : item.requirement.id)
+                          }
                           aria-label={isExpanded ? "طي التفاصيل" : "عرض التفاصيل"}
                         >
-                          {isExpanded ? <ChevronUp {...ICON_PROPS} /> : <ChevronDown {...ICON_PROPS} />}
+                          {isExpanded ? (
+                            <ChevronUp {...ICON_PROPS} />
+                          ) : (
+                            <ChevronDown {...ICON_PROPS} />
+                          )}
                         </button>
                       </td>
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={11} style={{ background: "var(--tmkeen-surface-muted)" }}>
-                          {item.entry?.approvalStatus === "REJECTED" && item.entry.rejectReason && (
-                            <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
-                              سبب الرفض: {item.entry.rejectReason}
-                            </div>
-                          )}
+                        <td colSpan={8} style={{ background: "var(--tmkeen-surface-muted)" }}>
+                          {item.measurement?.approvalStatus === "REJECTED" &&
+                            item.measurement.rejectReason && (
+                              <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
+                                سبب الرفض: {item.measurement.rejectReason}
+                              </div>
+                            )}
                           <div className="field-grid" style={{ marginBottom: ".75rem" }}>
                             <div className="field-cell">
                               <div className="field-cell-row">
                                 <span className="field-cell-label">البيانات المطلوبة</span>
-                                <span className="field-cell-value">{item.kpi.requiredData || "—"}</span>
-                              </div>
-                            </div>
-                            <div className="field-cell">
-                              <div className="field-cell-row">
-                                <span className="field-cell-label">خط الأساس</span>
-                                <span className="field-cell-value">{item.kpi.baseline ?? "—"}</span>
+                                <span className="field-cell-value">
+                                  {item.requirement.requiredData || "—"}
+                                </span>
                               </div>
                             </div>
                             <div className="field-cell">
                               <div className="field-cell-row">
                                 <span className="field-cell-label">الاتجاه</span>
-                                <span className="field-cell-value">{POLARITY_LABEL[item.kpi.polarity] || item.kpi.polarity}</span>
+                                <span className="field-cell-value">
+                                  {POLARITY_LABEL[item.requirement.polarity] ||
+                                    item.requirement.polarity}
+                                </span>
                               </div>
                             </div>
-                            {item.entry?.recommendation && (
-                              <div className="field-cell">
-                                <div className="field-cell-row">
-                                  <span className="field-cell-label">التوصية</span>
-                                  <span className="field-cell-value">{item.entry.recommendation}</span>
-                                </div>
-                              </div>
-                            )}
                             <div className="field-cell">
                               <div className="field-cell-row">
                                 <span className="field-cell-label">ماذا حصل؟</span>
@@ -338,9 +317,15 @@ export default function MyKpisClient({
                                     className="input-field"
                                     rows={3}
                                     value={draft.what}
-                                    disabled={item.entry?.approvalStatus === "APPROVED"}
+                                    disabled={approved}
                                     onChange={(e) =>
-                                      setDrafts((d) => ({ ...d, [item.kpi.id]: { ...draft, what: e.target.value } }))
+                                      setDrafts((d) => ({
+                                        ...d,
+                                        [item.requirement.id]: {
+                                          ...draft,
+                                          what: e.target.value,
+                                        },
+                                      }))
                                     }
                                   />
                                 </div>
@@ -354,21 +339,31 @@ export default function MyKpisClient({
                                     className="input-field"
                                     rows={3}
                                     value={draft.how}
-                                    disabled={item.entry?.approvalStatus === "APPROVED"}
+                                    disabled={approved}
                                     onChange={(e) =>
-                                      setDrafts((d) => ({ ...d, [item.kpi.id]: { ...draft, how: e.target.value } }))
+                                      setDrafts((d) => ({
+                                        ...d,
+                                        [item.requirement.id]: {
+                                          ...draft,
+                                          how: e.target.value,
+                                        },
+                                      }))
                                     }
                                   />
                                 </div>
                               </div>
                             </div>
                           </div>
-                          {item.entry?.evidences.map((ev) => (
+                          {item.measurement?.evidences.map((ev) => (
                             <a
                               key={ev.id}
                               href={`/api/evidence/${ev.id}`}
                               className="badge-primary"
-                              style={{ marginInlineStart: ".4rem", display: "inline-block", marginTop: ".4rem" }}
+                              style={{
+                                marginInlineStart: ".4rem",
+                                display: "inline-block",
+                                marginTop: ".4rem",
+                              }}
                             >
                               {ev.fileName}
                             </a>

@@ -6,7 +6,8 @@ import { db } from "@/lib/db";
 import { scopeFilter } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
-import { getSetting } from "@/lib/settings";
+import { getApprovalDelegationFlags } from "@/lib/approval-settings";
+import { upsertMeasurementPeriod } from "@/lib/measurement-sync";
 import {
   achievementPct,
   deviationValue,
@@ -119,7 +120,17 @@ export async function POST(req: NextRequest) {
 
     const kpi = await db.kpi.findUnique({
       where: { id: body.kpiId },
-      select: { id: true, ownerId: true, polarity: true, frequency: true, sectionId: true, name: true, code: true },
+      select: {
+        id: true,
+        ownerId: true,
+        polarity: true,
+        frequency: true,
+        sectionId: true,
+        departmentId: true,
+        name: true,
+        code: true,
+        requirementId: true,
+      },
     });
 
     if (!kpi) return jsonError("المؤشر غير موجود", 404);
@@ -128,6 +139,82 @@ export async function POST(req: NextRequest) {
     const allowedPeriods = resolvePeriods(kpi.frequency);
     if (!allowedPeriods.includes(body.period as Period)) {
       return jsonError("الفترة لا تتوافق مع دورية المؤشر", 400);
+    }
+
+    // مسار موحّد: إن وُجد متطلب مرتبط نكتب عبر MeasurementPeriod ثم نزامن KpiEntry
+    if (kpi.requirementId != null) {
+      const mp = await upsertMeasurementPeriod({
+        requirementId: kpi.requirementId,
+        year: body.year,
+        period: body.period as Period,
+        actualValue: body.actualValue,
+        whatHappened: body.whatHappened ?? null,
+        howHappened: body.howHappened ?? null,
+        enteredById: userId,
+        approvalStatus: "PENDING",
+        approvedById: null,
+        approvedAt: null,
+        rejectReason: null,
+      });
+
+      const flags = await getApprovalDelegationFlags();
+      const approverIds: number[] = [];
+
+      const admins = await db.user.findMany({
+        where: { role: "SYSTEM_ADMIN", status: "ACTIVE" },
+        select: { id: true },
+      });
+      approverIds.push(...admins.map((a) => a.id));
+
+      if (flags.sectionHeadDelegation && kpi.sectionId) {
+        const heads = await db.user.findMany({
+          where: { role: "SECTION_HEAD", sectionId: kpi.sectionId, status: "ACTIVE" },
+          select: { id: true },
+        });
+        for (const h of heads) {
+          if (!approverIds.includes(h.id)) approverIds.push(h.id);
+        }
+      }
+
+      if (flags.deptManagerDelegation && kpi.departmentId) {
+        const managers = await db.user.findMany({
+          where: { role: "DEPT_MANAGER", departmentId: kpi.departmentId, status: "ACTIVE" },
+          select: { id: true },
+        });
+        for (const m of managers) {
+          if (!approverIds.includes(m.id)) approverIds.push(m.id);
+        }
+      }
+
+      await notify({
+        userIds: approverIds,
+        type: "APPROVAL_REQUEST",
+        title: "طلب اعتماد قياس جديد",
+        body: `${user.name} أرسل قياسًا للمؤشر ${kpi.code} — ${kpi.name}`,
+        link: "/approvals",
+        email: true,
+      });
+
+      const entry = await db.kpiEntry.findUnique({
+        where: {
+          kpiId_year_period: { kpiId: body.kpiId, year: body.year, period: body.period },
+        },
+      });
+
+      await audit(userId, "SUBMIT_ENTRY", "KpiEntry", entry?.id ?? mp.id, {
+        kpiId: body.kpiId,
+        requirementId: kpi.requirementId,
+        measurementPeriodId: mp.id,
+        year: body.year,
+        period: body.period,
+      });
+
+      return NextResponse.json({
+        entry: entry
+          ? { ...entry, deviationPct: deviationPct(entry.achievementPct) }
+          : null,
+        measurement: mp,
+      });
     }
 
     const target = await db.kpiTarget.findUnique({
@@ -174,7 +261,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const delegationOn = (await getSetting("section_head_can_approve")) === "1";
+    const flags = await getApprovalDelegationFlags();
     const approverIds: number[] = [];
 
     const admins = await db.user.findMany({
@@ -183,13 +270,23 @@ export async function POST(req: NextRequest) {
     });
     approverIds.push(...admins.map((a) => a.id));
 
-    if (delegationOn && kpi.sectionId) {
+    if (flags.sectionHeadDelegation && kpi.sectionId) {
       const heads = await db.user.findMany({
         where: { role: "SECTION_HEAD", sectionId: kpi.sectionId, status: "ACTIVE" },
         select: { id: true },
       });
       for (const h of heads) {
         if (!approverIds.includes(h.id)) approverIds.push(h.id);
+      }
+    }
+
+    if (flags.deptManagerDelegation && kpi.departmentId) {
+      const managers = await db.user.findMany({
+        where: { role: "DEPT_MANAGER", departmentId: kpi.departmentId, status: "ACTIVE" },
+        select: { id: true },
+      });
+      for (const m of managers) {
+        if (!approverIds.includes(m.id)) approverIds.push(m.id);
       }
     }
 

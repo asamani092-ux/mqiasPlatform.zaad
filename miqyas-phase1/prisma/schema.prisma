@@ -40,8 +40,11 @@ model User {
   department      Department?        @relation(fields: [departmentId], references: [id])
   section         Section?           @relation(fields: [sectionId], references: [id])
   ownedKpis       Kpi[]              @relation("KpiOwner")
+  ownedRequirements MeasurementRequirement[] @relation("RequirementOwner")
   entries         KpiEntry[]         @relation("EnteredBy")
   approvals       KpiEntry[]         @relation("ApprovedBy")
+  measurementEntries MeasurementPeriod[] @relation("MeasurementEnteredBy")
+  measurementApprovals MeasurementPeriod[] @relation("MeasurementApprovedBy")
   evidences       Evidence[]
   notifications   Notification[]
   actions         CorrectiveAction[] @relation("ActionResponsible")
@@ -62,6 +65,7 @@ model Department {
   operationalGoals OperationalGoal[]
   kpis             Kpi[]
   knowledgeAssets  KnowledgeAsset[]
+  requirements     MeasurementRequirement[]
 }
 
 model Section {
@@ -75,6 +79,7 @@ model Section {
   users            User[]
   operationalGoals OperationalGoal[]
   kpis             Kpi[]
+  requirements     MeasurementRequirement[]
 
   @@unique([departmentId, sectionNo])
 }
@@ -141,19 +146,75 @@ model Kpi {
   recommendation    String? // توصيات قسم الاستراتيجية (تعريف المؤشر)
   strategicGoalId   Int?
   operationalGoalId Int?
+  requirementId     Int? // متطلب القياس الموحّد (مصدر الشواهد/الفعلي)
   active            Boolean   @default(true)
   createdAt         DateTime  @default(now())
 
-  department      Department?      @relation(fields: [departmentId], references: [id])
-  section         Section?         @relation(fields: [sectionId], references: [id])
-  owner           User?            @relation("KpiOwner", fields: [ownerId], references: [id])
-  strategicGoal   StrategicGoal?   @relation(fields: [strategicGoalId], references: [id])
-  operationalGoal OperationalGoal? @relation(fields: [operationalGoalId], references: [id])
+  department      Department?             @relation(fields: [departmentId], references: [id])
+  section         Section?                @relation(fields: [sectionId], references: [id])
+  owner           User?                   @relation("KpiOwner", fields: [ownerId], references: [id])
+  strategicGoal   StrategicGoal?          @relation(fields: [strategicGoalId], references: [id])
+  operationalGoal OperationalGoal?        @relation(fields: [operationalGoalId], references: [id])
+  requirement     MeasurementRequirement? @relation(fields: [requirementId], references: [id])
   targets         KpiTarget[]
   entries         KpiEntry[]
   alerts          EarlyWarningAlert[]
   deviationCards  DeviationCard[]
   knowledgeAssets KnowledgeAsset[]
+
+  @@index([requirementId])
+}
+
+// ── متطلب القياس الموحّد (مصدر واحد للاستراتيجي والتشغيلي) ─────
+model MeasurementRequirement {
+  id           Int       @id @default(autoincrement())
+  code         String    @unique
+  name         String
+  unit         String    @default("%")
+  polarity     Polarity  @default(HIGHER_BETTER)
+  frequency    Frequency @default(QUARTERLY)
+  requiredData String?
+  departmentId Int?
+  sectionId    Int?
+  ownerId      Int?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  department Department?         @relation(fields: [departmentId], references: [id])
+  section    Section?            @relation(fields: [sectionId], references: [id])
+  owner      User?               @relation("RequirementOwner", fields: [ownerId], references: [id])
+  periods    MeasurementPeriod[]
+  kpis       Kpi[]
+
+  @@index([ownerId])
+  @@index([departmentId])
+  @@index([sectionId])
+}
+
+model MeasurementPeriod {
+  id             Int            @id @default(autoincrement())
+  requirementId  Int
+  year           Int
+  period         Period
+  actualValue    Float
+  whatHappened   String?
+  howHappened    String?
+  note           String?
+  enteredById    Int
+  approvalStatus ApprovalStatus @default(PENDING)
+  approvedById   Int?
+  approvedAt     DateTime?
+  rejectReason   String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  requirement MeasurementRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  enteredBy   User                   @relation("MeasurementEnteredBy", fields: [enteredById], references: [id])
+  approvedBy  User?                  @relation("MeasurementApprovedBy", fields: [approvedById], references: [id])
+  evidences   Evidence[]
+
+  @@unique([requirementId, year, period])
 }
 
 // الفترة: Q1..Q4 / H1,H2 / Y
@@ -215,27 +276,32 @@ model KpiEntry {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  kpi        Kpi        @relation(fields: [kpiId], references: [id], onDelete: Cascade)
-  enteredBy  User       @relation("EnteredBy", fields: [enteredById], references: [id])
-  approvedBy User?      @relation("ApprovedBy", fields: [approvedById], references: [id])
-  evidences  Evidence[]
+  kpi        Kpi         @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  enteredBy  User        @relation("EnteredBy", fields: [enteredById], references: [id])
+  approvedBy User?       @relation("ApprovedBy", fields: [approvedById], references: [id])
+  evidences  Evidence[]  // توافق مؤقت — المصدر المفضّل MeasurementPeriod.evidences
 
   @@unique([kpiId, year, period])
 }
 
-// الشواهد المرفوعة
+// الشواهد المرفوعة — تُفضَّل على MeasurementPeriod (مصدر موحّد)
 model Evidence {
-  id           Int      @id @default(autoincrement())
-  kpiEntryId   Int
-  fileName     String
-  storedName   String
-  mimeType     String
-  sizeBytes    Int
-  uploadedById Int
-  createdAt    DateTime @default(now())
+  id                  Int      @id @default(autoincrement())
+  kpiEntryId          Int? // توافق قديم
+  measurementPeriodId Int? // المصدر الموحّد
+  fileName            String
+  storedName          String
+  mimeType            String
+  sizeBytes           Int
+  uploadedById        Int
+  createdAt           DateTime @default(now())
 
-  entry      KpiEntry @relation(fields: [kpiEntryId], references: [id], onDelete: Cascade)
-  uploadedBy User     @relation(fields: [uploadedById], references: [id])
+  entry             KpiEntry?          @relation(fields: [kpiEntryId], references: [id], onDelete: Cascade)
+  measurementPeriod MeasurementPeriod? @relation(fields: [measurementPeriodId], references: [id], onDelete: Cascade)
+  uploadedBy        User               @relation(fields: [uploadedById], references: [id])
+
+  @@index([measurementPeriodId])
+  @@index([kpiEntryId])
 }
 
 // ── الإنذار المبكر ──────────────────────────────────────────────

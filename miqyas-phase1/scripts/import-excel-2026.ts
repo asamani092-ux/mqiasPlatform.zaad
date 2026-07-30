@@ -19,6 +19,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { mapDepartmentName, normalizeDeptText } from "../src/lib/department-map";
 import { achievementPct, deviationValue, kpiStatus } from "../src/lib/kpi";
+import { upsertMeasurementPeriod } from "../src/lib/measurement-sync";
 
 const YEAR = 2026;
 const EXCEL_PATH = path.join(__dirname, "../data/performance-2026.xlsx");
@@ -272,6 +273,15 @@ async function clearDemoMeasurements() {
   });
   await db.deviationCard.deleteMany({ where: { year: YEAR } });
   await db.earlyWarningAlert.deleteMany({ where: { year: YEAR } });
+  await db.evidence.deleteMany({
+    where: {
+      OR: [
+        { measurementPeriod: { year: YEAR } },
+        { entry: { year: YEAR } },
+      ],
+    },
+  });
+  await db.measurementPeriod.deleteMany({ where: { year: YEAR } });
   await db.kpiEntry.deleteMany({ where: { year: YEAR } });
   await db.kpiTarget.deleteMany({ where: { year: YEAR } });
 }
@@ -342,6 +352,30 @@ async function main() {
     // خط أساس ومستهدف سنوي افتراضيان (من Q1 كمرجع)
     const baseSynth = syntheticMetrics(def.code, def.unit, def.polarity, "Q1");
 
+    const requirement = await db.measurementRequirement.upsert({
+      where: { code: def.code },
+      create: {
+        code: def.code,
+        name: def.name,
+        unit: def.unit,
+        polarity: def.polarity,
+        frequency: def.frequency,
+        requiredData: def.requiredData || null,
+        departmentId,
+        ownerId: null,
+        active: true,
+      },
+      update: {
+        name: def.name,
+        unit: def.unit,
+        polarity: def.polarity,
+        frequency: def.frequency,
+        requiredData: def.requiredData || null,
+        departmentId,
+        active: true,
+      },
+    });
+
     const kpi = await db.kpi.upsert({
       where: { code: def.code },
       create: {
@@ -359,6 +393,7 @@ async function main() {
         recommendation: "بيانات تجريبية — لا تمثّل نتائج القياس الرسمي",
         strategicGoalId,
         operationalGoalId,
+        requirementId: requirement.id,
         active: true,
       },
       update: {
@@ -375,6 +410,7 @@ async function main() {
         recommendation: "بيانات تجريبية — لا تمثّل نتائج القياس الرسمي",
         strategicGoalId,
         operationalGoalId,
+        requirementId: requirement.id,
         active: true,
       },
     });
@@ -398,25 +434,17 @@ async function main() {
       });
       counts.kpiTargets++;
 
-      const pct = achievementPct(synth.actualValue, synth.periodTarget, def.polarity);
-      const devVal = deviationValue(synth.actualValue, synth.periodTarget);
-      const status = kpiStatus(pct);
-
-      await db.kpiEntry.create({
-        data: {
-          kpiId: kpi.id,
-          year: YEAR,
-          period,
-          actualValue: synth.actualValue,
-          whatHappened: "تحليل تجريبي افتراضي — ليس من ملف Excel الرسمي",
-          howHappened: "أُنشئ آلياً لبيئة التجربة في منصة مِقياس",
-          achievementPct: pct,
-          deviationValue: devVal,
-          status,
-          enteredById: adminUserId,
-          approvalStatus: "APPROVED",
-          approvedAt: new Date(),
-        },
+      await upsertMeasurementPeriod({
+        requirementId: requirement.id,
+        year: YEAR,
+        period,
+        actualValue: synth.actualValue,
+        whatHappened: "تحليل تجريبي افتراضي — ليس من ملف Excel الرسمي",
+        howHappened: "أُنشئ آلياً لبيئة التجربة في منصة مِقياس",
+        enteredById: adminUserId,
+        approvalStatus: "APPROVED",
+        approvedById: adminUserId,
+        approvedAt: new Date(),
       });
       counts.kpiEntries++;
     }
@@ -487,19 +515,41 @@ async function main() {
       where: { id: { in: kpiCodesForEmployee } },
       data: { ownerId: employee.id },
     });
+    const owned = await db.kpi.findMany({
+      where: { id: { in: kpiCodesForEmployee } },
+      select: { requirementId: true },
+    });
+    const reqIds = owned.map((k) => k.requirementId).filter((id): id is number => id != null);
+    if (reqIds.length > 0) {
+      await db.measurementRequirement.updateMany({
+        where: { id: { in: reqIds } },
+        data: { ownerId: employee.id },
+      });
+    }
   }
 
-  // عيّنة PENDING للاعتماد
-  const approvalSample = await db.kpiEntry.findMany({
+  // عيّنة PENDING للاعتماد (المصدر الموحّد + إسقاط KpiEntry)
+  const approvalSample = await db.measurementPeriod.findMany({
     where: { year: YEAR, approvalStatus: "APPROVED" },
     take: 5,
     orderBy: { id: "asc" },
-    select: { id: true },
+    select: { id: true, requirementId: true, year: true, period: true },
   });
   if (approvalSample.length > 0) {
+    const mpIds = approvalSample.map((e) => e.id);
+    await db.measurementPeriod.updateMany({
+      where: { id: { in: mpIds } },
+      data: { approvalStatus: "PENDING", approvedAt: null, approvedById: null },
+    });
     await db.kpiEntry.updateMany({
-      where: { id: { in: approvalSample.map((e) => e.id) } },
-      data: { approvalStatus: "PENDING", approvedAt: null },
+      where: {
+        OR: approvalSample.map((mp) => ({
+          kpi: { requirementId: mp.requirementId },
+          year: mp.year,
+          period: mp.period,
+        })),
+      },
+      data: { approvalStatus: "PENDING", approvedAt: null, approvedById: null },
     });
   }
 

@@ -11,6 +11,7 @@ import {
 
 type PendingEntry = {
   id: number;
+  measurementPeriodId?: number;
   year: number;
   period: string;
   actualValue: number;
@@ -20,6 +21,7 @@ type PendingEntry = {
   whatHappened: string | null;
   howHappened: string | null;
   kpi: { code: string; name: string; unit: string; requiredData: string | null };
+  owner?: { id: number; name: string; email: string } | null;
   employee: { id: number; name: string; email: string };
   evidences: { id: number; fileName: string }[];
 };
@@ -70,19 +72,19 @@ export default function ApprovalsClient() {
     });
   }, [entries, filterYear, filterPeriod]);
 
-  async function act(entryId: number, action: "approve" | "reject") {
+  async function act(measurementPeriodId: number, action: "approve" | "reject") {
     if (action === "reject" && !rejectReason.trim()) {
       setMsg("يرجى إدخال سبب الرفض");
       return;
     }
-    setActing(entryId);
+    setActing(measurementPeriodId);
     setMsg("");
-    const comment = approveComment[entryId]?.trim();
+    const comment = approveComment[measurementPeriodId]?.trim();
     const res = await fetch("/api/approvals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        entryId,
+        measurementPeriodId,
         action,
         rejectReason: action === "reject" ? rejectReason : undefined,
         comment: action === "approve" && comment ? comment : undefined,
@@ -94,7 +96,7 @@ export default function ApprovalsClient() {
       setRejectReason("");
       setApproveComment((prev) => {
         const next = { ...prev };
-        delete next[entryId];
+        delete next[measurementPeriodId];
         return next;
       });
       setMsg(action === "approve" ? "تم الاعتماد" : "تم الرفض");
@@ -115,11 +117,11 @@ export default function ApprovalsClient() {
       </div>
 
       <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
-        <strong>من يرى هذا التبويب؟</strong> مشرف النظام (SYSTEM_ADMIN)، ورئيس القسم (SECTION_HEAD)
-        إذا كان تفويض الاعتماد مفعّلاً من الإعدادات.
+        <strong>من يرى هذا التبويب؟</strong> مشرف النظام دائماً؛ ورئيس القسم أو مدير الإدارة فقط عند تفعيل
+        التفويض من الإعدادات.
         <br />
-        الاعتماد أو الرفض يغيّر الحالة من بانتظار الاعتماد (PENDING) إلى معتمد (APPROVED) أو مرفوض (REJECTED)
-        ويُشعر مقدّم القياس بالنتيجة.
+        الاعتماد يتم على فترة القياس الموحّدة للمتطلب (مرة واحدة لكل متطلب/فترة)، والشواهد مشتركة عبر المتطلب
+        الموحّد. النتيجة تُشعر مقدّم القياس وتُزامَن مع المؤشرات المرتبطة.
       </div>
 
       <div className="card" style={{ marginBottom: "1rem", display: "flex", gap: ".75rem", flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -171,7 +173,9 @@ export default function ApprovalsClient() {
                 <div>
                   <strong>{e.kpi.code}</strong> — {e.kpi.name}
                   <div className="text-muted">
-                    {e.employee.name} · {PERIOD_LABEL[e.period as keyof typeof PERIOD_LABEL] || e.period} {e.year}
+                    {e.owner?.name ? `المسؤول: ${e.owner.name} · ` : ""}
+                    أدخلها: {e.employee.name} ·{" "}
+                    {PERIOD_LABEL[e.period as keyof typeof PERIOD_LABEL] || e.period} {e.year}
                   </div>
                 </div>
                 <span className={STATUS_BADGE[e.status]}>{STATUS_LABEL[e.status]}</span>

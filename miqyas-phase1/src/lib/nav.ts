@@ -2,6 +2,7 @@ import type { Role } from "@prisma/client";
 import {
   AlertTriangle,
   BookOpen,
+  Building2,
   CheckCircle2,
   ClipboardCheck,
   ClipboardList,
@@ -41,8 +42,14 @@ const DASHBOARD_NAV: NavItem = {
 
 const MY_NAV: NavItem = {
   href: "/my",
-  label: "مهامي ومؤشراتي",
+  label: "مهامي وشواهدي",
   Icon: ClipboardList,
+};
+
+const DEPT_FOLLOW_NAV: NavItem = {
+  href: "/dept-follow",
+  label: "متابعة الإدارة",
+  Icon: Building2,
 };
 
 const TRACK_NAV: NavItem[] = [
@@ -53,15 +60,6 @@ const TRACK_NAV: NavItem[] = [
   { href: "/governance", label: "الحوكمة", Icon: Landmark },
   { href: "/knowledge", label: "المعرفة المؤسسية", Icon: BookOpen },
 ];
-
-/** مسارات القياس المسموحة لكل دور (فارغ = لا مسارات) */
-const TRACK_HREFS_BY_ROLE: Record<Role, ReadonlySet<string> | "all"> = {
-  EMPLOYEE: new Set(),
-  SECTION_HEAD: new Set(["/operational", "/early-warning", "/deviation"]),
-  DEPT_MANAGER: new Set(["/operational", "/early-warning", "/deviation", "/knowledge"]),
-  EXECUTIVE: "all",
-  SYSTEM_ADMIN: "all",
-};
 
 const ADMIN_NAV: NavItem[] = [
   { href: "/admin/users", label: "إدارة المستخدمين", Icon: Users },
@@ -87,49 +85,44 @@ const UAT_NAV: NavItem = {
   Icon: ClipboardCheck,
 };
 
-function tracksForRole(role: Role): NavItem[] {
-  const allowed = TRACK_HREFS_BY_ROLE[role];
-  if (allowed === "all") return TRACK_NAV;
-  if (!allowed || allowed.size === 0) return [];
-  return TRACK_NAV.filter((item) => allowed.has(item.href));
-}
-
-/** بناء أقسام التنقّل حسب الدور والأعلام — زمن O(1) · مساحة O(1) بالنسبة لعدد الأقسام الثابت */
+/** بناء أقسام التنقّل حسب الدور — موظف/رئيس قسم/مدير إدارة بدون مسارات القياس الكاملة */
 export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[] {
   const { showApprovals = false, showUat = false } = flags;
-  const isAdmin = role === "SYSTEM_ADMIN";
-  const showExecutive = isAdmin || role === "EXECUTIVE";
-  const showMy = role !== "EXECUTIVE";
   const sections: NavSection[] = [];
 
-  if (showExecutive) {
+  if (role === "EMPLOYEE") {
+    sections.push({ label: "الرئيسية", items: [MY_NAV] });
+    return sections;
+  }
+
+  if (role === "SECTION_HEAD") {
+    const items: NavItem[] = [MY_NAV];
+    if (showApprovals) items.push(APPROVALS_NAV);
+    sections.push({ label: "الرئيسية", items });
+    return sections;
+  }
+
+  if (role === "DEPT_MANAGER") {
+    const items: NavItem[] = [MY_NAV, DEPT_FOLLOW_NAV];
+    if (showApprovals) items.push(APPROVALS_NAV);
+    sections.push({ label: "الرئيسية", items });
+    return sections;
+  }
+
+  if (role === "EXECUTIVE") {
     sections.push({ items: [EXECUTIVE_NAV] });
+    sections.push({ label: "الرئيسية", items: [DASHBOARD_NAV] });
+    sections.push({ label: "مسارات القياس", items: TRACK_NAV });
+    return sections;
   }
 
-  const homeItems: NavItem[] = [DASHBOARD_NAV];
-  if (showMy) homeItems.push(MY_NAV);
-
-  sections.push({
-    label: "الرئيسية",
-    items: homeItems,
-  });
-
-  const tracks = tracksForRole(role);
-  if (tracks.length > 0) {
-    sections.push({ label: "مسارات القياس", items: tracks });
-  }
-
-  if (showApprovals && (isAdmin || role === "SECTION_HEAD")) {
-    sections.push({ items: [APPROVALS_NAV] });
-  }
-
-  if (isAdmin) {
-    sections.push({ label: "إدارة النظام", items: ADMIN_NAV });
-  }
-
-  if (showUat && isAdmin) {
-    sections.push({ label: "بيئة التجربة", items: [UAT_NAV] });
-  }
+  // SYSTEM_ADMIN
+  sections.push({ items: [EXECUTIVE_NAV] });
+  sections.push({ label: "الرئيسية", items: [DASHBOARD_NAV, MY_NAV, DEPT_FOLLOW_NAV] });
+  sections.push({ label: "مسارات القياس", items: TRACK_NAV });
+  if (showApprovals) sections.push({ items: [APPROVALS_NAV] });
+  sections.push({ label: "إدارة النظام", items: ADMIN_NAV });
+  if (showUat) sections.push({ label: "بيئة التجربة", items: [UAT_NAV] });
 
   return sections;
 }

@@ -19,15 +19,24 @@ export const can = {
   manageKpis: (u: SessionUser) => isAdmin(u),
   manageGovernance: (u: SessionUser) => isAdmin(u),
   viewExecutive: (u: SessionUser) => isAdmin(u) || u.role === "EXECUTIVE",
-  approveEntries: (u: SessionUser, delegationOn: boolean) =>
-    isAdmin(u) || (delegationOn && u.role === "SECTION_HEAD"),
-  manageDeviation: (u: SessionUser) =>
-    isAdmin(u) || u.role === "DEPT_MANAGER" || u.role === "SECTION_HEAD",
-  manageKnowledge: (u: SessionUser) =>
-    isAdmin(u) || u.role === "DEPT_MANAGER" || u.role === "SECTION_HEAD",
+  /** اعتماد القياسات: مشرف دائماً؛ رئيس قسم/مدير إدارة حسب الإعدادات */
+  approveEntries: (
+    u: SessionUser,
+    opts: { sectionHeadDelegation?: boolean; deptManagerDelegation?: boolean } = {}
+  ) => {
+    if (isAdmin(u)) return true;
+    if (opts.sectionHeadDelegation && u.role === "SECTION_HEAD") return true;
+    if (opts.deptManagerDelegation && u.role === "DEPT_MANAGER") return true;
+    return false;
+  },
+  manageDeviation: (u: SessionUser) => isAdmin(u) || u.role === "EXECUTIVE",
+  manageKnowledge: (u: SessionUser) => isAdmin(u),
   enterOwnKpis: (_u: SessionUser) => true,
+  /** متابعة مؤشرات الإدارة (قراءة) لمدير الإدارة */
+  followDepartment: (u: SessionUser) => isAdmin(u) || u.role === "DEPT_MANAGER",
 };
 
+/** نطاق مؤشرات KPI للمسارات التحليلية */
 export function scopeFilter(u: SessionUser): Record<string, unknown> {
   switch (u.role) {
     case "SYSTEM_ADMIN":
@@ -42,4 +51,9 @@ export function scopeFilter(u: SessionUser): Record<string, unknown> {
     default:
       return { ownerId: -1 };
   }
+}
+
+/** نطاق متطلبات القياس للكتابة في /my */
+export function requirementOwnerFilter(u: SessionUser): Record<string, unknown> {
+  return { ownerId: parseInt(u.id, 10), active: true };
 }

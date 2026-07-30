@@ -96,7 +96,7 @@ export default function SettingsClient() {
         </div>
 
         {settings
-          .filter((s) => s.key === "section_head_can_approve")
+          .filter((s) => s.key === "section_head_can_approve" || s.key === "dept_manager_can_approve")
           .map((s) => (
             <div key={s.key} style={{ marginBottom: "1.25rem" }}>
               <label className="label-field">{s.label}</label>
@@ -113,7 +113,12 @@ export default function SettingsClient() {
           ))}
 
         {settings
-          .filter((s) => !["current_year", "current_period", "section_head_can_approve"].includes(s.key))
+          .filter(
+            (s) =>
+              !["current_year", "current_period", "section_head_can_approve", "dept_manager_can_approve"].includes(
+                s.key
+              )
+          )
           .map((s) => (
             <div key={s.key} style={{ marginBottom: "1.25rem" }}>
               <label className="label-field">{s.label}</label>

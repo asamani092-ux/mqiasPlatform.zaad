@@ -5,47 +5,103 @@ import { db } from "@/lib/db";
 import { can } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
-import { getSetting } from "@/lib/settings";
-import { deviationPct } from "@/lib/kpi";
+import { getApprovalDelegationFlags } from "@/lib/approval-settings";
+import { syncKpiEntriesFromMeasurement } from "@/lib/measurement-sync";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
 
 const postSchema = z
   .object({
-    entryId: z.number().int().positive(),
+    measurementPeriodId: z.number().int().positive().optional(),
+    entryId: z.number().int().positive().optional(),
     action: z.enum(["approve", "reject"]),
     rejectReason: z.string().min(3).max(2000).optional(),
     comment: z.string().max(2000).optional(),
   })
-  .strict();
+  .strict()
+  .refine((b) => b.measurementPeriodId != null || b.entryId != null, {
+    message: "measurementPeriodId or entryId required",
+  });
+
+type Flags = Awaited<ReturnType<typeof getApprovalDelegationFlags>>;
+
+function canApproveScope(
+  user: { role: string; sectionId: number | null; departmentId: number | null },
+  flags: Flags,
+  requirement: { sectionId: number | null; departmentId: number | null },
+) {
+  if (user.role === "SYSTEM_ADMIN") return true;
+  if (user.role === "SECTION_HEAD") {
+    return (
+      flags.sectionHeadDelegation &&
+      requirement.sectionId != null &&
+      requirement.sectionId === user.sectionId
+    );
+  }
+  if (user.role === "DEPT_MANAGER") {
+    return (
+      flags.deptManagerDelegation &&
+      requirement.departmentId != null &&
+      requirement.departmentId === user.departmentId
+    );
+  }
+  return false;
+}
+
+async function resolveMeasurementPeriodId(body: {
+  measurementPeriodId?: number;
+  entryId?: number;
+}): Promise<number | null> {
+  if (body.measurementPeriodId != null) return body.measurementPeriodId;
+
+  if (body.entryId == null) return null;
+  const entry = await db.kpiEntry.findUnique({
+    where: { id: body.entryId },
+    include: { kpi: { select: { requirementId: true } } },
+  });
+  if (!entry?.kpi.requirementId) return null;
+
+  const mp = await db.measurementPeriod.findUnique({
+    where: {
+      requirementId_year_period: {
+        requirementId: entry.kpi.requirementId,
+        year: entry.year,
+        period: entry.period,
+      },
+    },
+    select: { id: true },
+  });
+  return mp?.id ?? null;
+}
 
 export async function GET() {
   try {
     const user = await requireUser();
-    const delegationOn = (await getSetting("section_head_can_approve")) === "1";
+    const flags = await getApprovalDelegationFlags();
 
-    if (!can.approveEntries(user, delegationOn)) {
+    if (!can.approveEntries(user, flags)) {
       return jsonError("غير مصرح", 403);
     }
 
-    let where: Record<string, unknown> = { approvalStatus: "PENDING" };
+    const where: Record<string, unknown> = { approvalStatus: "PENDING" };
 
     if (user.role === "SECTION_HEAD") {
-      where = {
-        approvalStatus: "PENDING",
-        kpi: { sectionId: user.sectionId ?? -1 },
-      };
+      where.requirement = { sectionId: user.sectionId ?? -1 };
+    } else if (user.role === "DEPT_MANAGER") {
+      where.requirement = { departmentId: user.departmentId ?? -1 };
     }
 
-    const entries = await db.kpiEntry.findMany({
+    const periods = await db.measurementPeriod.findMany({
       where,
       include: {
-        kpi: {
+        requirement: {
           select: {
             code: true,
             name: true,
             unit: true,
             sectionId: true,
+            departmentId: true,
             requiredData: true,
+            owner: { select: { id: true, name: true, email: true } },
           },
         },
         enteredBy: { select: { id: true, name: true, email: true } },
@@ -57,22 +113,30 @@ export async function GET() {
     });
 
     return NextResponse.json({
-      entries: entries.map((e) => ({
-        id: e.id,
-        year: e.year,
-        period: e.period,
-        actualValue: e.actualValue,
-        achievementPct: e.achievementPct,
-        deviationValue: e.deviationValue,
-        deviationPct: deviationPct(e.achievementPct),
-        status: e.status,
-        whatHappened: e.whatHappened,
-        howHappened: e.howHappened,
-        approvalStatus: e.approvalStatus,
-        createdAt: e.createdAt,
-        kpi: e.kpi,
-        employee: e.enteredBy,
-        evidences: e.evidences,
+      entries: periods.map((mp) => ({
+        id: mp.id,
+        measurementPeriodId: mp.id,
+        year: mp.year,
+        period: mp.period,
+        actualValue: mp.actualValue,
+        achievementPct: null as number | null,
+        deviationValue: null as number | null,
+        deviationPct: null as number | null,
+        status: "NO_DATA" as const,
+        whatHappened: mp.whatHappened,
+        howHappened: mp.howHappened,
+        approvalStatus: mp.approvalStatus,
+        createdAt: mp.createdAt,
+        kpi: {
+          code: mp.requirement.code,
+          name: mp.requirement.name,
+          unit: mp.requirement.unit,
+          sectionId: mp.requirement.sectionId,
+          requiredData: mp.requirement.requiredData,
+        },
+        owner: mp.requirement.owner,
+        employee: mp.enteredBy,
+        evidences: mp.evidences,
       })),
     });
   } catch (e) {
@@ -84,9 +148,9 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
     const userId = parseInt(user.id, 10);
-    const delegationOn = (await getSetting("section_head_can_approve")) === "1";
+    const flags = await getApprovalDelegationFlags();
 
-    if (!can.approveEntries(user, delegationOn)) {
+    if (!can.approveEntries(user, flags)) {
       return jsonError("غير مصرح", 403);
     }
 
@@ -96,31 +160,41 @@ export async function POST(req: NextRequest) {
       return jsonError("سبب الرفض مطلوب", 400);
     }
 
-    const entry = await db.kpiEntry.findUnique({
-      where: { id: body.entryId },
+    const measurementPeriodId = await resolveMeasurementPeriodId(body);
+    if (measurementPeriodId == null) {
+      return jsonError("فترة القياس غير موجودة", 404);
+    }
+
+    const mp = await db.measurementPeriod.findUnique({
+      where: { id: measurementPeriodId },
       include: {
-        kpi: { select: { code: true, name: true, sectionId: true } },
+        requirement: {
+          select: {
+            code: true,
+            name: true,
+            sectionId: true,
+            departmentId: true,
+          },
+        },
         enteredBy: { select: { id: true, name: true } },
       },
     });
 
-    if (!entry) return jsonError("الإدخال غير موجود", 404);
-    if (entry.approvalStatus !== "PENDING") {
-      return jsonError("الإدخال ليس بانتظار الاعتماد", 400);
+    if (!mp) return jsonError("فترة القياس غير موجودة", 404);
+    if (mp.approvalStatus !== "PENDING") {
+      return jsonError("القياس ليس بانتظار الاعتماد", 400);
     }
 
-    if (user.role === "SECTION_HEAD") {
-      if (!delegationOn || entry.kpi.sectionId !== user.sectionId) {
-        return jsonError("غير مصرح", 403);
-      }
+    if (!canApproveScope(user, flags, mp.requirement)) {
+      return jsonError("غير مصرح", 403);
     }
 
     const approveNote = body.comment?.trim() || null;
 
     const updated =
       body.action === "approve"
-        ? await db.kpiEntry.update({
-            where: { id: body.entryId },
+        ? await db.measurementPeriod.update({
+            where: { id: measurementPeriodId },
             data: {
               approvalStatus: "APPROVED",
               approvedById: userId,
@@ -129,8 +203,8 @@ export async function POST(req: NextRequest) {
               ...(approveNote ? { note: approveNote } : {}),
             },
           })
-        : await db.kpiEntry.update({
-            where: { id: body.entryId },
+        : await db.measurementPeriod.update({
+            where: { id: measurementPeriodId },
             data: {
               approvalStatus: "REJECTED",
               approvedById: userId,
@@ -139,18 +213,22 @@ export async function POST(req: NextRequest) {
             },
           });
 
+    await syncKpiEntriesFromMeasurement(measurementPeriodId);
+
+    const code = mp.requirement.code;
+    const name = mp.requirement.name;
     const approveBody = approveNote
-      ? `تم اعتماد قياس المؤشر ${entry.kpi.code} — ${entry.kpi.name}. ملاحظة: ${approveNote}`
-      : `تم اعتماد قياس المؤشر ${entry.kpi.code} — ${entry.kpi.name}`;
+      ? `تم اعتماد قياس المتطلب ${code} — ${name}. ملاحظة: ${approveNote}`
+      : `تم اعتماد قياس المتطلب ${code} — ${name}`;
 
     await notify({
-      userIds: [entry.enteredById],
+      userIds: [mp.enteredById],
       type: "APPROVAL_RESULT",
       title: body.action === "approve" ? "تم اعتماد قياسك" : "تم رفض قياسك",
       body:
         body.action === "approve"
           ? approveBody
-          : `تم رفض قياس المؤشر ${entry.kpi.code}: ${body.rejectReason}`,
+          : `تم رفض قياس المتطلب ${code}: ${body.rejectReason}`,
       link: "/my",
       email: true,
     });
@@ -158,12 +236,15 @@ export async function POST(req: NextRequest) {
     await audit(
       userId,
       body.action === "approve" ? "APPROVE_ENTRY" : "REJECT_ENTRY",
-      "KpiEntry",
-      entry.id,
+      "MeasurementPeriod",
+      mp.id,
       { action: body.action },
     );
 
-    return NextResponse.json({ entry: updated });
+    return NextResponse.json({
+      measurementPeriod: updated,
+      entry: updated,
+    });
   } catch (e) {
     if (e instanceof z.ZodError) return jsonError("بيانات غير صالحة", 400);
     return handleApiError(e);
