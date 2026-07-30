@@ -88,7 +88,12 @@ export async function POST(req: Request) {
     });
 
     if (existing && !canFillerEdit(existing.approvalStatus) && user.role !== "SYSTEM_ADMIN") {
-      return jsonError("لا يمكن تعديل القياس في حالته الحالية", 400);
+      return jsonError(
+        existing.approvalStatus === "SUBMITTED" || existing.approvalStatus === "PENDING"
+          ? "القياس مقدَّم بانتظار مراجعة الإدارة — لا يمكن تعديله الآن"
+          : "لا يمكن تعديل القياس في حالته الحالية",
+        400
+      );
     }
 
     const nextStatus = body.action === "draft" ? "DRAFT" : "SUBMITTED";
@@ -107,8 +112,8 @@ export async function POST(req: Request) {
       approvedAt: null,
       initialApprovedById: null,
       initialApprovedAt: null,
-      rejectReason: null,
-      suggestedWording: existing ? undefined : null,
+      rejectReason: body.action === "submit" ? null : existing ? undefined : null,
+      suggestedWording: body.action === "submit" ? null : existing ? undefined : null,
     });
 
     await recordApprovalEvent({

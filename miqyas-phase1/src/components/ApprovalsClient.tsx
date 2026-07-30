@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { CheckCircle2, FileWarning, PencilLine } from "lucide-react";
 import { PERIOD_LABEL, FILLER_ROLE_LABEL, type Period } from "@/lib/types";
 import { TYPE_LABEL as KPI_TYPE } from "@/lib/kpi-schemas";
+import { notifyToast } from "@/lib/ui-toast";
+import ActionToolbar, { IconActionButton } from "@/components/ui/ActionToolbar";
 
 type Entry = {
   id: number;
@@ -73,7 +75,7 @@ export default function ApprovalsClient() {
       }
       setForms(next);
     } else if (res.status === 403) {
-      toast.error("ليس لديك صلاحية الاعتماد النهائي");
+      notifyToast.error("الاعتماد النهائي لمشرف النظام فقط");
     }
     setLoading(false);
   }, []);
@@ -84,7 +86,30 @@ export default function ApprovalsClient() {
 
   async function run(id: number, action: "final_approve" | "reject_wording" | "reject_evidence" | "edit") {
     const f = forms[id];
-    if (!f) return;
+    const entry = entries.find((e) => e.id === id);
+    if (!f || !entry) return;
+
+    if (action === "reject_wording" && f.rejectReason.trim().length < 3) {
+      notifyToast.error("سبب رفض الصياغة مطلوب");
+      return;
+    }
+    if (action === "reject_evidence") {
+      const selected = Object.entries(f.evidenceReasons).filter(([, r]) => r.trim().length >= 3);
+      if (selected.length === 0 && f.rejectReason.trim().length < 3) {
+        notifyToast.error("حدّد شاهداً مرفوضاً بسبب، أو سبب عام");
+        return;
+      }
+    }
+    if (action === "final_approve") {
+      const dirty =
+        f.actual !== String(entry.actualValue) ||
+        f.what !== (entry.whatHappened ?? "") ||
+        f.how !== (entry.howHappened ?? "");
+      if (dirty && !window.confirm("سيتم حفظ تعديلاتك مع الاعتماد النهائي. متابعة؟")) {
+        return;
+      }
+    }
+
     setActing(id);
     const body: Record<string, unknown> = {
       measurementPeriodId: id,
@@ -94,16 +119,17 @@ export default function ApprovalsClient() {
       howHappened: f.how || null,
     };
     if (action === "reject_wording") {
-      body.rejectReason = f.rejectReason;
+      body.rejectReason = f.rejectReason.trim();
       body.suggestedWording = f.suggestedWording || null;
     }
     if (action === "reject_evidence") {
       const evidenceRejections = Object.entries(f.evidenceReasons)
         .filter(([, reason]) => reason.trim().length >= 3)
-        .map(([evidenceId, reason]) => ({ evidenceId: parseInt(evidenceId, 10), reason }));
+        .map(([evidenceId, reason]) => ({ evidenceId: parseInt(evidenceId, 10), reason: reason.trim() }));
       body.evidenceRejections = evidenceRejections;
-      body.rejectReason = f.rejectReason || (evidenceRejections[0]?.reason ?? undefined);
+      body.rejectReason = f.rejectReason.trim() || evidenceRejections[0]?.reason;
     }
+
     const res = await fetch("/api/approvals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -111,20 +137,21 @@ export default function ApprovalsClient() {
     });
     setActing(null);
     if (res.ok) {
-      toast.success(
+      notifyToast.success(
         action === "final_approve"
           ? "تم الاعتماد النهائي"
           : action === "reject_wording"
-            ? "رُفضت الصياغة"
+            ? "رُفضت الصياغة وأُعيد للمدخل"
             : action === "reject_evidence"
-              ? "رُفضت الشواهد"
-              : "تم حفظ التعديل"
+              ? "رُفضت الشواهد وأُعيد للمدخل"
+              : "تم حفظ التعديل",
+        { duration: "short" }
       );
       setMode((m) => ({ ...m, [id]: null }));
       await load();
     } else {
       const err = await res.json().catch(() => ({}));
-      toast.error(err.error || "فشلت العملية");
+      notifyToast.error(err.error || "فشلت العملية");
     }
   }
 
@@ -133,8 +160,13 @@ export default function ApprovalsClient() {
       <div className="topbar">
         <div>
           <h1>الاعتماد النهائي</h1>
-          <div className="text-muted">مراجعة المعتمد مبدئياً — قبول نهائي أو رفض صياغة/شواهد</div>
+          <div className="text-muted">قائمة المعتمد مبدئياً فقط — مشرف النظام</div>
         </div>
+      </div>
+
+      <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
+        <strong>الصلاحيات:</strong> الإدخال عبر «شواهد المؤشرات» · الاعتماد المبدئي لمدير الإدارة ·
+        الاعتماد النهائي ورفض الصياغة/الشواهد لمشرف النظام فقط.
       </div>
 
       {loading ? (
@@ -162,8 +194,7 @@ export default function ApprovalsClient() {
                   <div className="text-muted" style={{ fontSize: ".82rem", marginTop: ".25rem" }}>
                     {e.requirement.department?.name || "—"} · دور التعبئة:{" "}
                     {FILLER_ROLE_LABEL[e.requirement.fillerRole] || e.requirement.fillerRole}
-                    {" · "}
-                    أدخلها: {e.employee.name}
+                    {" · "}أدخلها: {e.employee.name}
                     {e.initialApprovedBy ? ` · اعتماد مبدئي: ${e.initialApprovedBy.name}` : ""}
                     {" · "}
                     {PERIOD_LABEL[e.period as Period] || e.period} {e.year}
@@ -294,7 +325,7 @@ export default function ApprovalsClient() {
 
                 {m === "evidence" && (
                   <div style={{ marginBottom: ".75rem" }}>
-                    <label className="label-field">سبب عام (اختياري إن حددت شواهد)</label>
+                    <label className="label-field">سبب عام (إن لم تحدد شاهداً)</label>
                     <textarea
                       className="input-field"
                       rows={2}
@@ -315,29 +346,28 @@ export default function ApprovalsClient() {
                   </div>
                 )}
 
-                <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    className="btn-primary btn-sm"
+                <ActionToolbar>
+                  <IconActionButton
+                    icon={CheckCircle2}
+                    label="اعتماد نهائي"
+                    variant="primary"
+                    showLabel
                     disabled={acting === e.id}
                     onClick={() => void run(e.id, "final_approve")}
-                  >
-                    اعتماد نهائي
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary btn-sm"
+                  />
+                  <IconActionButton
+                    icon={PencilLine}
+                    label="رفض صياغة"
+                    showLabel
                     onClick={() => setMode((prev) => ({ ...prev, [e.id]: m === "wording" ? null : "wording" }))}
-                  >
-                    رفض صياغة
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary btn-sm"
+                  />
+                  <IconActionButton
+                    icon={FileWarning}
+                    label="رفض شواهد"
+                    variant="danger"
+                    showLabel
                     onClick={() => setMode((prev) => ({ ...prev, [e.id]: m === "evidence" ? null : "evidence" }))}
-                  >
-                    رفض شواهد
-                  </button>
+                  />
                   <button
                     type="button"
                     className="btn-secondary btn-sm"
@@ -346,7 +376,7 @@ export default function ApprovalsClient() {
                   >
                     حفظ التعديل فقط
                   </button>
-                </div>
+                </ActionToolbar>
               </div>
             );
           })}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FocusEvent } from "react";
 import { currentQuarter } from "@/lib/kpi";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
+import { notifyToast } from "@/lib/ui-toast";
 
 type Setting = { key: string; label: string; value: string };
 
@@ -10,7 +11,6 @@ const QUARTER_PERIODS: Period[] = ["Q1", "Q2", "Q3", "Q4"];
 
 export default function SettingsClient() {
   const [settings, setSettings] = useState<Setting[]>([]);
-  const [msg, setMsg] = useState("");
   const defaults = currentQuarter();
 
   const load = useCallback(async () => {
@@ -30,8 +30,10 @@ export default function SettingsClient() {
       body: JSON.stringify({ key, value }),
     });
     if (res.ok) {
-      setMsg("تم حفظ الإعداد");
+      notifyToast.success("تم حفظ الإعداد", { duration: "short" });
       load();
+    } else {
+      notifyToast.error("فشل حفظ الإعداد");
     }
   }
 
@@ -64,9 +66,12 @@ export default function SettingsClient() {
         </div>
       </div>
 
-      {msg && <div className="alert alert-success" style={{ marginBottom: "1rem" }}>{msg}</div>}
-
       <div className="card">
+        <div className="alert alert-info" style={{ marginBottom: "1.25rem" }}>
+          <strong>طبقات الاعتماد:</strong> الإدخال عبر شواهد المؤشرات · الاعتماد المبدئي لمدير الإدارة دائماً ·
+          الاعتماد النهائي ورفض الصياغة/الشواهد لمشرف النظام فقط. لا يوجد تفويض للاعتماد النهائي لأدوار أخرى.
+        </div>
+
         <div style={{ marginBottom: "1.25rem" }}>
           <label className="label-field">سنة القياس الحالية</label>
           <div style={{ display: "flex", gap: ".5rem" }}>
@@ -94,23 +99,6 @@ export default function SettingsClient() {
             ))}
           </select>
         </div>
-
-        {settings
-          .filter((s) => s.key === "section_head_can_approve" || s.key === "dept_manager_can_approve")
-          .map((s) => (
-            <div key={s.key} style={{ marginBottom: "1.25rem" }}>
-              <label className="label-field">{s.label}</label>
-              <select
-                className="input-field"
-                style={{ maxWidth: 200 }}
-                value={s.value}
-                onChange={(e) => save(s.key, e.target.value)}
-              >
-                <option value="0">معطّل</option>
-                <option value="1">مفعّل</option>
-              </select>
-            </div>
-          ))}
 
         {settings
           .filter(

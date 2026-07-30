@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { syncKpiEntriesFromMeasurement } from "@/lib/measurement-sync";
+import { canFillerEdit } from "@/lib/approval-status";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
 
 const STORAGE_DIR = path.join(process.cwd(), "storage", "evidence");
@@ -42,7 +43,12 @@ export async function POST(
     });
 
     if (!mp) return jsonError("فترة القياس غير موجودة", 404);
-    if (mp.requirement.ownerId !== userId) return jsonError("غير مصرح", 403);
+    if (mp.requirement.ownerId !== userId && user.role !== "SYSTEM_ADMIN") {
+      return jsonError("غير مصرح", 403);
+    }
+    if (user.role !== "SYSTEM_ADMIN" && !canFillerEdit(mp.approvalStatus)) {
+      return jsonError("لا يمكن رفع شواهد والقياس في هذه الحالة", 400);
+    }
 
     const form = await req.formData();
     const file = form.get("file");

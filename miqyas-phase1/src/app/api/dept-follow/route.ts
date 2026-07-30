@@ -6,6 +6,7 @@ import { can } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 import { recordApprovalEvent, syncKpiEntriesFromMeasurement } from "@/lib/measurement-sync";
+import { canDeptReturn, canDeptReview, isFinalApproved } from "@/lib/approval-status";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
@@ -53,8 +54,12 @@ export async function PATCH(req: NextRequest) {
       return jsonError("خارج نطاق إدارتك", 403);
     }
 
+    if (isFinalApproved(mp.approvalStatus)) {
+      return jsonError("لا يمكن تعديل قياس معتمد نهائياً", 400);
+    }
+
     if (body.action === "update") {
-      if (!["SUBMITTED", "PENDING", "INITIAL_APPROVED"].includes(mp.approvalStatus)) {
+      if (!canDeptReview(mp.approvalStatus)) {
         return jsonError("لا يمكن التعديل في هذه الحالة", 400);
       }
       const updated = await db.measurementPeriod.update({
@@ -78,13 +83,22 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (body.action === "return_edit") {
+      if (!canDeptReturn(mp.approvalStatus)) {
+        return jsonError("لا يمكن إرجاع القياس في هذه الحالة", 400);
+      }
+      if (!body.comment?.trim() || body.comment.trim().length < 3) {
+        return jsonError("سبب الإرجاع مطلوب (3 أحرف على الأقل)", 400);
+      }
       const updated = await db.measurementPeriod.update({
         where: { id: mp.id },
         data: {
           approvalStatus: "DRAFT",
-          rejectReason: body.comment ?? "أُعيد للتعديل من مدير الإدارة",
+          rejectReason: body.comment.trim(),
+          suggestedWording: null,
           initialApprovedById: null,
           initialApprovedAt: null,
+          approvedById: null,
+          approvedAt: null,
         },
       });
       await syncKpiEntriesFromMeasurement(mp.id);

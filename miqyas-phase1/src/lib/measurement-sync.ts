@@ -159,7 +159,7 @@ export async function upsertMeasurementPeriod(input: MeasurementWriteInput) {
         input.initialApprovedById !== undefined ? input.initialApprovedById : undefined,
       initialApprovedAt:
         input.initialApprovedAt !== undefined ? input.initialApprovedAt : undefined,
-      rejectReason: input.rejectReason ?? null,
+      rejectReason: input.rejectReason !== undefined ? input.rejectReason : undefined,
       suggestedWording:
         input.suggestedWording !== undefined ? input.suggestedWording : undefined,
     },

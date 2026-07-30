@@ -3,15 +3,16 @@
 import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Plus, Save, Send } from "lucide-react";
-import { toast } from "sonner";
 import PeriodSelector from "@/components/PeriodSelector";
+import ActionToolbar, { IconActionButton } from "@/components/ui/ActionToolbar";
 import {
-  APPROVAL_LABEL,
   APPROVAL_BADGE,
   POLARITY_LABEL,
   type Period,
 } from "@/lib/types";
 import { TYPE_LABEL } from "@/lib/kpi-schemas";
+import { canFillerEdit, displayApprovalLabel } from "@/lib/approval-status";
+import { notifyToast } from "@/lib/ui-toast";
 import { ICON_PROPS } from "@/lib/icon-props";
 
 type MeasurementItem = {
@@ -40,10 +41,6 @@ type MeasurementItem = {
   periods: Period[];
 };
 
-function isLocked(status?: string | null) {
-  return status === "FINAL_APPROVED" || status === "APPROVED" || status === "INITIAL_APPROVED";
-}
-
 function buildDrafts(list: MeasurementItem[]) {
   const d: Record<number, { actual: string; what: string; how: string }> = {};
   for (const item of list) {
@@ -68,7 +65,7 @@ export default function MyKpisClient({
   const router = useRouter();
   const year = initialYear;
   const period = initialPeriod;
-  const [items, setItems] = useState<MeasurementItem[]>(initialItems);
+  const [items, setItems] = useState(initialItems);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [drafts, setDrafts] = useState(() => buildDrafts(initialItems));
   const [saving, setSaving] = useState<number | null>(null);
@@ -91,7 +88,7 @@ export default function MyKpisClient({
   async function save(requirementId: number, action: "draft" | "submit") {
     const draft = drafts[requirementId];
     if (!draft?.actual) {
-      toast.error("أدخل القيمة الفعلية");
+      notifyToast.error("أدخل القيمة الفعلية");
       return;
     }
     setSaving(requirementId);
@@ -110,11 +107,14 @@ export default function MyKpisClient({
     });
     setSaving(null);
     if (res.ok) {
-      toast.success(action === "draft" ? "تم حفظ المسودة" : "تم تقديم القياس لمراجعة الإدارة");
+      notifyToast.success(
+        action === "draft" ? "تم حفظ المسودة" : "تم تقديم القياس لمراجعة الإدارة",
+        { duration: action === "submit" ? "normal" : "short" }
+      );
       await reload();
     } else {
       const err = await res.json().catch(() => ({}));
-      toast.error(err.error || "فشل الحفظ");
+      notifyToast.error(err.error || "فشل الحفظ");
     }
   }
 
@@ -126,11 +126,11 @@ export default function MyKpisClient({
       body: fd,
     });
     if (res.ok) {
-      toast.success("تم رفع الشاهد");
+      notifyToast.success("تم رفع الشاهد", { duration: "short" });
       await reload();
     } else {
       const err = await res.json().catch(() => ({}));
-      toast.error(err.error || "فشل الرفع");
+      notifyToast.error(err.error || "فشل الرفع");
     }
   }
 
@@ -139,7 +139,9 @@ export default function MyKpisClient({
       <div className="topbar">
         <div>
           <h1>شواهد المؤشرات</h1>
-          <div className="text-muted">أدخل المتحقق وارفع الشواهد ثم قدّم لمراجعة مدير الإدارة</div>
+          <div className="text-muted">
+            أدخل المتحقق وارفع الشواهد ثم قدّم — بعد التقديم تُقفل حتى الإرجاع أو الرفض
+          </div>
         </div>
         <PeriodSelector year={year} period={period} />
       </div>
@@ -166,7 +168,17 @@ export default function MyKpisClient({
               {items.map((item) => {
                 const draft = drafts[item.requirement.id] ?? { actual: "", what: "", how: "" };
                 const isExpanded = expanded === item.requirement.id;
-                const locked = isLocked(item.measurement?.approvalStatus);
+                const status = item.measurement?.approvalStatus ?? "DRAFT";
+                const locked = item.measurement
+                  ? !canFillerEdit(status as never)
+                  : false;
+                const label = displayApprovalLabel(status, item.measurement?.rejectReason);
+                const showReturnAlert =
+                  !!item.measurement?.rejectReason &&
+                  (status === "DRAFT" ||
+                    status === "REJECTED_WORDING" ||
+                    status === "REJECTED_EVIDENCE" ||
+                    status === "REJECTED");
 
                 return (
                   <Fragment key={item.requirement.id}>
@@ -203,13 +215,7 @@ export default function MyKpisClient({
                         </span>
                       </td>
                       <td>
-                        {item.measurement ? (
-                          <span className={APPROVAL_BADGE[item.measurement.approvalStatus]}>
-                            {APPROVAL_LABEL[item.measurement.approvalStatus]}
-                          </span>
-                        ) : (
-                          <span className="badge-neutral">جديد</span>
-                        )}
+                        <span className={APPROVAL_BADGE[status] || "badge-neutral"}>{label}</span>
                       </td>
                       <td>
                         {item.measurement ? (
@@ -217,8 +223,9 @@ export default function MyKpisClient({
                             {item.measurement.evidences.filter((e) => e.status !== "REJECTED").length}
                             {!locked && (
                               <label
-                                className="btn-secondary btn-sm"
-                                style={{ marginInlineStart: ".3rem", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: ".2rem" }}
+                                className="icon-btn icon-btn--sm"
+                                style={{ marginInlineStart: ".3rem", cursor: "pointer" }}
+                                title="رفع شاهد"
                               >
                                 <Plus {...ICON_PROPS} />
                                 <input
@@ -237,49 +244,44 @@ export default function MyKpisClient({
                           "—"
                         )}
                       </td>
-                      <td style={{ display: "flex", gap: ".3rem", flexWrap: "wrap" }}>
-                        <button
-                          type="button"
-                          className="btn-secondary btn-sm"
-                          disabled={saving === item.requirement.id || locked}
-                          onClick={() => void save(item.requirement.id, "draft")}
-                          title="حفظ مسودة"
-                        >
-                          <Save {...ICON_PROPS} />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-primary btn-sm"
-                          disabled={saving === item.requirement.id || locked}
-                          onClick={() => void save(item.requirement.id, "submit")}
-                          title="تقديم للمراجعة"
-                        >
-                          <Send {...ICON_PROPS} />
-                          {saving === item.requirement.id ? "..." : "تقديم"}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-secondary btn-sm"
-                          onClick={() => setExpanded(isExpanded ? null : item.requirement.id)}
-                          aria-label={isExpanded ? "طي" : "تفاصيل"}
-                        >
-                          {isExpanded ? <ChevronUp {...ICON_PROPS} /> : <ChevronDown {...ICON_PROPS} />}
-                        </button>
+                      <td>
+                        <ActionToolbar>
+                          <IconActionButton
+                            icon={Save}
+                            label="حفظ مسودة"
+                            disabled={saving === item.requirement.id || locked}
+                            onClick={() => void save(item.requirement.id, "draft")}
+                          />
+                          <IconActionButton
+                            icon={Send}
+                            label="تقديم للمراجعة"
+                            variant="primary"
+                            showLabel
+                            disabled={saving === item.requirement.id || locked}
+                            onClick={() => void save(item.requirement.id, "submit")}
+                          />
+                          <IconActionButton
+                            icon={isExpanded ? ChevronUp : ChevronDown}
+                            label={isExpanded ? "طي" : "تفاصيل"}
+                            onClick={() => setExpanded(isExpanded ? null : item.requirement.id)}
+                          />
+                        </ActionToolbar>
                       </td>
                     </tr>
                     {isExpanded && (
                       <tr>
                         <td colSpan={7} style={{ background: "var(--tmkeen-surface-muted)" }}>
-                          {(item.measurement?.approvalStatus === "REJECTED_WORDING" ||
-                            item.measurement?.approvalStatus === "REJECTED_EVIDENCE" ||
-                            item.measurement?.approvalStatus === "REJECTED") && (
+                          {showReturnAlert && (
                             <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
-                              {item.measurement.rejectReason && (
-                                <div>سبب الرفض: {item.measurement.rejectReason}</div>
-                              )}
-                              {item.measurement.suggestedWording && (
+                              <div>
+                                <strong>
+                                  {status === "DRAFT" ? "أُعيد للتعديل: " : "ملاحظات المشرف: "}
+                                </strong>
+                                {item.measurement!.rejectReason}
+                              </div>
+                              {item.measurement!.suggestedWording && (
                                 <div style={{ marginTop: ".35rem" }}>
-                                  الصياغة المقترحة: {item.measurement.suggestedWording}
+                                  الصياغة المقترحة: {item.measurement!.suggestedWording}
                                 </div>
                               )}
                             </div>
