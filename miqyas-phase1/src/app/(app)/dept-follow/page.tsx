@@ -17,10 +17,14 @@ export default async function DeptFollowPage({
   if (!can.followDepartment(user)) redirect("/my");
 
   const { year, period } = await parseTrackParams(searchParams);
-  const departmentId = user.departmentId ?? -1;
+  const departmentId =
+    user.role === "SYSTEM_ADMIN" ? undefined : (user.departmentId ?? -1);
 
   const requirements = await db.measurementRequirement.findMany({
-    where: { departmentId, active: true },
+    where: {
+      active: true,
+      ...(departmentId != null ? { departmentId } : {}),
+    },
     select: {
       id: true,
       code: true,
@@ -33,6 +37,8 @@ export default async function DeptFollowPage({
         select: {
           id: true,
           actualValue: true,
+          whatHappened: true,
+          howHappened: true,
           approvalStatus: true,
           _count: { select: { evidences: true } },
         },
@@ -49,7 +55,10 @@ export default async function DeptFollowPage({
       name: r.name,
       unit: r.unit,
       ownerName: r.owner?.name ?? "—",
+      measurementPeriodId: mp?.id ?? null,
       actualValue: mp?.actualValue ?? null,
+      whatHappened: mp?.whatHappened ?? null,
+      howHappened: mp?.howHappened ?? null,
       approvalStatus: mp?.approvalStatus ?? null,
       evidenceCount: mp?._count.evidences ?? 0,
     };

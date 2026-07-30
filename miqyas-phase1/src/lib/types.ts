@@ -28,15 +28,33 @@ export const STATUS_BADGE: Record<KpiStatus, string> = {
 };
 
 export const APPROVAL_LABEL: Record<string, string> = {
-  PENDING: "بانتظار الاعتماد",
-  APPROVED: "معتمد",
-  REJECTED: "مرفوض",
+  DRAFT: "مسودة",
+  SUBMITTED: "مقدَّم",
+  INITIAL_APPROVED: "معتمد مبدئياً",
+  FINAL_APPROVED: "معتمد نهائياً",
+  REJECTED_WORDING: "مرفوض صياغة",
+  REJECTED_EVIDENCE: "مرفوض شواهد",
+  PENDING: "مقدَّم",
+  APPROVED: "معتمد نهائياً",
+  REJECTED: "مرفوض صياغة",
 };
 
 export const APPROVAL_BADGE: Record<string, string> = {
+  DRAFT: "badge-neutral",
+  SUBMITTED: "badge-warning",
+  INITIAL_APPROVED: "badge-primary",
+  FINAL_APPROVED: "badge-success",
+  REJECTED_WORDING: "badge-danger",
+  REJECTED_EVIDENCE: "badge-danger",
   PENDING: "badge-warning",
   APPROVED: "badge-success",
   REJECTED: "badge-danger",
+};
+
+export const FILLER_ROLE_LABEL: Record<string, string> = {
+  EMPLOYEE: "موظف",
+  SECTION_HEAD: "رئيس قسم",
+  DEPT_MANAGER: "مدير إدارة",
 };
 
 export const POLARITY_LABEL: Record<string, string> = {

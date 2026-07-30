@@ -1,125 +1,98 @@
-# تقرير هيكلة توحيد القياس والصلاحيات
+# تقرير هيكلة توحيد القياس والطبقات الثلاث
 
 منصة **مِقياس** — جمعية الزاد.  
-الغرض: مصدر قياس واحد (`MeasurementRequirement` / `MeasurementPeriod`) يغذّي المسار الاستراتيجي والتشغيلي، مع تقييد أدوار الإدخال والاعتماد.
+مصدر قياس موحّد مع ثلاث طبقات: إدخال → اعتماد مبدئي → اعتماد نهائي.
 
 ---
 
-## 1) خريطة المجلدات والطبقات
+## 1) خريطة المجلدات
 
 ```
 miqyas-phase1/
-├── prisma/
-│   ├── schema.prisma          # نموذج البيانات (Requirement/Period/Kpi/Evidence)
-│   └── seed.ts                # بذرة الهيكل + إعدادات (منها تفويض الاعتماد)
+├── prisma/schema.prisma
 ├── scripts/
-│   ├── import-excel-2026.ts   # بذرة التجربة: تعريفات Excel + قياسات افتراضية موحّدة
-│   └── migrate-unified-measurement.ts  # ترحيل بيانات قديمة → المصدر الموحّد
-├── src/
-│   ├── app/
-│   │   ├── (app)/
-│   │   │   ├── my/            # إدخال الموظف عبر المتطلبات
-│   │   │   ├── dept-follow/   # متابعة إدارة (قراءة) لمدير الإدارة
-│   │   │   ├── approvals/     # اعتماد MeasurementPeriod
-│   │   │   ├── strategic|operational|…  # مسارات تحليلية على Kpi/KpiEntry
-│   │   │   └── admin/         # مستخدمون / مؤشرات / إعدادات
-│   │   └── api/
-│   │       ├── my/measurements/           # كتابة المصدر الموحّد
-│   │       ├── my/measurements/[id]/evidence/
-│   │       ├── approvals/                 # اعتماد + مزامنة KpiEntry
-│   │       ├── entries/                   # توافق المسارات الحالية
-│   │       └── settings/                  # section_head_can_approve / dept_manager_can_approve
-│   ├── components/            # MyKpisClient, DeptFollowClient, ApprovalsClient, Settings…
-│   ├── lib/
-│   │   ├── measurement-sync.ts   # upsert MeasurementPeriod + مزامنة KpiEntry
-│   │   ├── my-measurements.ts    # قائمة متطلبات /my
-│   │   ├── rbac.ts / nav.ts      # صلاحيات وتنقّل
-│   │   └── approval-settings.ts
-│   └── middleware.ts          # حصر مسارات الموظف/رئيس القسم/مدير الإدارة
-└── docs/
-    └── architecture-measurement-unification.md  # هذا التقرير
+│   ├── import-excel-2026.ts
+│   ├── migrate-unified-measurement.ts
+│   └── migrate-measurement-layers.ts
+├── src/app/(app)/
+│   ├── my/                 # شواهد المؤشرات (الطبقة 1)
+│   ├── dept-follow/        # مراجعة الإدارة (الطبقة 2)
+│   ├── approvals/          # الاعتماد النهائي (الطبقة 3)
+│   └── admin/assign/       # إسناد جماعي للمتطلبات
+├── src/app/api/
+│   ├── my/measurements/
+│   ├── dept-follow/
+│   ├── approvals/
+│   └── admin/assign/
+└── docs/architecture-measurement-unification.md
 ```
 
-| الطبقة | المسؤولية |
-|--------|-----------|
-| App Router | صفحات وصلاحية عرض حسب الدور |
-| APIs | كتابة على المتطلب؛ قراءة/تحليل عبر المزامنة |
-| Prisma | مصدر الحقيقة + إسقاطات KPI |
-| RBAC / middleware | تقييد التنقّل والاعتماد |
-
 ---
 
-## 2) نموذج البيانات قبل / بعد
+## 2) الطبقات الثلاث
 
-### قبل
-- الموظف يدخل عبر `Kpi` → `KpiEntry` مباشرة.
-- `Evidence` مربوط بـ `kpiEntryId` فقط.
-- مؤشر استراتيجي وتشغيلي منفصلان → رفع مزدوج محتمل لنفس المعنى.
-
-### بعد
-
-```
-MeasurementRequirement (code فريد)
-  ├── MeasurementPeriod (requirementId + year + period)  ← الكتابة + الشواهد
-  │     └── Evidence.measurementPeriodId
-  ├── Kpi STRATEGIC.requirementId  → KpiEntry (مزامَن) + KpiTarget خاص
-  └── Kpi OPERATIONAL.requirementId → KpiEntry (مزامَن) + KpiTarget خاص
+```mermaid
+flowchart TB
+  assign[اسناد_المتطلب_بالدور]
+  L1[الطبقة1_ادخال_ورفع_شواهد]
+  L2[الطبقة2_مدير_الادارة]
+  L3[الطبقة3_مشرف_النظام]
+  assign --> L1
+  L1 -->|تقديم| L2
+  L2 -->|اعتماد_مبدئي| L3
+  L3 -->|رفض_صياغة_او_شواهد| L1
+  L3 -->|اعتماد_نهائي| Done[معتمد_نهائيا]
 ```
 
-| الكيان | الدور |
-|--------|------|
-| `MeasurementRequirement` | تعريف القياس الموحّد (وحدة، قطبية، دورية، إدارة، مالك) |
-| `MeasurementPeriod` | فعلي + سرد + اعتماد لفترة واحدة |
-| `Evidence` | على الفترة الموحّدة (`measurementPeriodId`؛ `kpiEntryId` اختياري للتوافق) |
-| `Kpi.requirementId` | ربط واجهة المسار بالمتطلب |
-| `KpiTarget` / `KpiEntry` | مستهدف وإنجاز لكل مؤشر؛ الفعلي يُزامَن من الفترة |
+| الطبقة | من | ماذا يفعل |
+|--------|-----|-----------|
+| 1 | موظف / رئيس قسم / مدير إدارة (حسب دور التعبئة والمالك) | فعلي + ماذا/كيف حصل + شواهد → مسودة أو تقديم |
+| 2 | مدير الإدارة | تعديل السرد/الفعلي + اعتماد مبدئي أو إرجاع |
+| 3 | مشرف النظام فقط | تعديل + قبول نهائي / رفض صياغة / رفض شواهد |
 
-**سياسة المزامنة:** كتابة `/my` → `MeasurementPeriod` + `Evidence` فقط؛ بعد الحفظ تُحدَّث/تُنشأ `KpiEntry` لكل `Kpi` بنفس `requirementId` (`achievementPct` من `KpiTarget` الخاص بالمؤشر).
+### حالات الفترة
+مسودة → مقدَّم → معتمد مبدئياً → معتمد نهائياً  
+مرفوض صياغة · مرفوض شواهد (مع أحداث تراكمية في `ApprovalEvent`)
 
-**ترحيل:** `scripts/migrate-unified-measurement.ts` ينشئ متطلباً لكل KPI، يربطها، ينشئ فترات من الإدخالات، وينقل الشواهد تراكمياً.
-
----
-
-## 3) مصفوفة الصلاحيات النهائية
-
-| الدور | التنقّل | الإدخال/شواهد | الاطلاع | الاعتماد |
-|-------|---------|---------------|---------|----------|
-| EMPLOYEE | `/my` (+ إشعارات) | متطلباته (`ownerId`) | لا | لا |
-| SECTION_HEAD | `/my`؛ `/approvals` إن `section_head_can_approve=1` | متطلباته | مع التفويض: قسمه في الاعتماد | فقط مع التفويض |
-| DEPT_MANAGER | `/my` + `/dept-follow` | متطلباته فقط | متطلبات إدارته (قراءة) | فقط إن `dept_manager_can_approve=1` |
-| EXECUTIVE | لوحات + مسارات قراءة | لا | الكل | لا |
-| SYSTEM_ADMIN | الكل | نعم | الكل | نعم (الأصل) |
-
-إعدادات: `section_head_can_approve`, `dept_manager_can_approve` في الإعدادات / `SystemSetting`.
+### تفريق من يملأ
+- حقل `fillerRole` على المتطلب: موظف / رئيس قسم / مدير إدارة
+- `ownerId` مستخدم مسؤول
+- شاشة `/admin/assign` للإسناد الجماعي
 
 ---
 
-## 4) تدفق الشاهد مرة واحدة
+## 3) نموذج البيانات
 
-1. الموظف يفتح `/my` → قائمة `MeasurementRequirement` المسندة.
-2. يحفظ فعلي + ماذا/كيف حصل عبر `POST /api/my/measurements` → `MeasurementPeriod`.
-3. يرفع شاهداً عبر `/api/my/measurements/[id]/evidence` → `Evidence.measurementPeriodId`.
-4. `syncKpiEntriesFromMeasurement` ينسخ الفعلي/السرد/الاعتماد إلى كل `KpiEntry` مرتبط.
-5. المسار الاستراتيجي/التشغيلي/لوحات يقرآن `Kpi`/`KpiEntry`؛ الشواهد تُعرض من الفترة الموحّدة (أو التوافق عبر `kpiEntryId` إن وُجد).
-6. منصة تشغيلية مستقبلية يمكنها قراءة/كتابة نفس `MeasurementRequirement`/`MeasurementPeriod`.
+```
+MeasurementRequirement (code, fillerRole, ownerId, departmentId…)
+  ├── MeasurementPeriod (فعلي، سرد، حالة الاعتماد، اعتماد مبدئي/نهائي، صياغة مقترحة)
+  │     ├── Evidence (status ACTIVE/REJECTED + سبب)
+  │     └── ApprovalEvent (تراكم الإجراءات)
+  └── Kpi[] ← إسقاط مزامَن عبر measurement-sync
+```
+
+التحليلات واللوحات تعتمد الحالة **معتمد نهائياً** فقط.
 
 ---
 
-## 5) توافق APIs الحالية ومخاطر الترحيل
+## 4) مصفوفة الصلاحيات
 
-| المسار | الحالة |
-|--------|--------|
-| `/api/my/measurements` | المصدر الجديد للكتابة |
-| `/api/my/entries` | قد يبقى للتوافق؛ الكتابة المفضّلة عبر measurements |
-| `/api/approvals` | يعمل على `measurementPeriodId` (+ `entryId` legacy يُحلّ للفترة) |
-| `/api/entries`, `/api/kpis`, لوحات | تبقى على `Kpi`/`KpiEntry` بعد المزامنة |
-| `/api/entries/[id]/evidence` | توافق مؤقت إن لزم؛ المفضّل عبر فترة القياس |
+| الدور | التنقّل | إدخال | مراجعة إدارة | اعتماد نهائي |
+|-------|---------|-------|--------------|--------------|
+| موظف | شواهد المؤشرات | متطلباته | لا | لا |
+| رئيس قسم | شواهد المؤشرات | متطلباته | لا | لا |
+| مدير إدارة | شواهد + مراجعة الإدارة | متطلباته | نعم | لا |
+| تنفيذي | لوحات ومسارات | لا | لا | لا |
+| مشرف النظام | الكل + إسناد + اعتماد نهائي | نعم | نعم | نعم |
 
-**مخاطر:**
-- مؤشرات بلا `requirementId` لن تُزامَن من `/my`.
-- شواهد قديمة على `kpiEntryId` فقط تحتاج سكربت الترحيل.
-- عيّنات الاعتماد يجب أن تُعلّم `MeasurementPeriod` وليس `KpiEntry` وحده.
-- اختلاف مستهدفات الاستراتيجي/التشغيلي مقصود؛ الفعلي مشترك والإنجاز قد يختلف.
+---
+
+## 5) تدفق الشاهد
+
+1. المدخل يرفع الشاهد على فترة القياس الموحّدة.
+2. مدير الإدارة يراجع ويعتمد مبدئياً.
+3. مشرف النظام يقبل أو يرفض صياغة/شاهد(اً) مع سبب.
+4. المساران الاستراتيجي/التشغيلي يقرآن بعد الاعتماد النهائي عبر `KpiEntry` المزامَن.
 
 ---
 
@@ -127,37 +100,20 @@ MeasurementRequirement (code فريد)
 
 ```bash
 cd miqyas-phase1
+npx prisma db push
+npx prisma generate
 npm run seed
 npm run seed:excel
-# اختياري لبيانات قديمة موجودة مسبقاً:
+# اختياري لبيانات قديمة:
 npx tsx scripts/migrate-unified-measurement.ts
+npx tsx scripts/migrate-measurement-layers.ts
 npm run build
 npm run dev
 ```
 
-حسابات التجربة:
-- مشرف: `admin@zad.org.sa` / `Admin@123456`
-- تنفيذي / مدير / رئيس / موظف: `*@zad.org.sa` / `Demo@123456`
-
-تحقق قبول:
-- موظف يرى `/my` فقط ويرفع شاهداً لمتطلب واحد.
-- مؤشر استراتيجي وتشغيلي على نفس المتطلب يعرضان نفس الشواهد/الفعلي.
-- مشرف يعتمد؛ رئيس قسم فقط مع التفويض؛ مدير إدارة يطّلع دون اعتماد افتراضياً.
-- هذا التقرير موجود تحت `docs/`.
-
 ---
 
-## 7) ملحق — النشر السحابي (مرحلة لاحقة، غير منفَّذة هنا)
+## 7) ملحق النشر السحابي (لاحق)
 
-قائمة تحقق فقط بعد نجاح التجربة المحلية:
-
-- [ ] ربط المستودع بالسيرفر السحابي
-- [ ] PostgreSQL إنتاج + نسخ احتياطي
-- [ ] بناء/تشغيل التطبيق عبر Docker (أو ما يعادله)
-- [ ] دومين + TLS
-- [ ] أسرار `.env` إنتاج (`DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, …)
-- [ ] منافذ وجدار ناري
-- [ ] `prisma migrate deploy` / `db push` حسب سياسة الإنتاج
-- [ ] إعادة بذرة أو ترحيل بيانات الإنتاج بحذر
-
-لا يُنفَّذ النشر في هذه الجولة.
+- ربط المستودع / PostgreSQL / Docker / دومين / TLS / أسرار الإنتاج  
+غير منفَّذ في هذه الجولة.

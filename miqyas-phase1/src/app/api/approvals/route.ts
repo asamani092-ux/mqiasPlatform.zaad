@@ -5,111 +5,66 @@ import { db } from "@/lib/db";
 import { can } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
-import { getApprovalDelegationFlags } from "@/lib/approval-settings";
-import { syncKpiEntriesFromMeasurement } from "@/lib/measurement-sync";
+import { recordApprovalEvent, syncKpiEntriesFromMeasurement } from "@/lib/measurement-sync";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
+
+export const dynamic = "force-dynamic";
 
 const postSchema = z
   .object({
-    measurementPeriodId: z.number().int().positive().optional(),
-    entryId: z.number().int().positive().optional(),
-    action: z.enum(["approve", "reject"]),
+    measurementPeriodId: z.number().int().positive(),
+    action: z.enum(["final_approve", "reject_wording", "reject_evidence", "edit"]),
     rejectReason: z.string().min(3).max(2000).optional(),
+    suggestedWording: z.string().max(5000).optional().nullable(),
     comment: z.string().max(2000).optional(),
+    actualValue: z.number().optional(),
+    whatHappened: z.string().max(5000).optional().nullable(),
+    howHappened: z.string().max(5000).optional().nullable(),
+    evidenceRejections: z
+      .array(
+        z.object({
+          evidenceId: z.number().int().positive(),
+          reason: z.string().min(3).max(2000),
+        })
+      )
+      .optional(),
   })
-  .strict()
-  .refine((b) => b.measurementPeriodId != null || b.entryId != null, {
-    message: "measurementPeriodId or entryId required",
-  });
-
-type Flags = Awaited<ReturnType<typeof getApprovalDelegationFlags>>;
-
-function canApproveScope(
-  user: { role: string; sectionId: number | null; departmentId: number | null },
-  flags: Flags,
-  requirement: { sectionId: number | null; departmentId: number | null },
-) {
-  if (user.role === "SYSTEM_ADMIN") return true;
-  if (user.role === "SECTION_HEAD") {
-    return (
-      flags.sectionHeadDelegation &&
-      requirement.sectionId != null &&
-      requirement.sectionId === user.sectionId
-    );
-  }
-  if (user.role === "DEPT_MANAGER") {
-    return (
-      flags.deptManagerDelegation &&
-      requirement.departmentId != null &&
-      requirement.departmentId === user.departmentId
-    );
-  }
-  return false;
-}
-
-async function resolveMeasurementPeriodId(body: {
-  measurementPeriodId?: number;
-  entryId?: number;
-}): Promise<number | null> {
-  if (body.measurementPeriodId != null) return body.measurementPeriodId;
-
-  if (body.entryId == null) return null;
-  const entry = await db.kpiEntry.findUnique({
-    where: { id: body.entryId },
-    include: { kpi: { select: { requirementId: true } } },
-  });
-  if (!entry?.kpi.requirementId) return null;
-
-  const mp = await db.measurementPeriod.findUnique({
-    where: {
-      requirementId_year_period: {
-        requirementId: entry.kpi.requirementId,
-        year: entry.year,
-        period: entry.period,
-      },
-    },
-    select: { id: true },
-  });
-  return mp?.id ?? null;
-}
+  .strict();
 
 export async function GET() {
   try {
     const user = await requireUser();
-    const flags = await getApprovalDelegationFlags();
-
-    if (!can.approveEntries(user, flags)) {
-      return jsonError("غير مصرح", 403);
-    }
-
-    const where: Record<string, unknown> = { approvalStatus: "PENDING" };
-
-    if (user.role === "SECTION_HEAD") {
-      where.requirement = { sectionId: user.sectionId ?? -1 };
-    } else if (user.role === "DEPT_MANAGER") {
-      where.requirement = { departmentId: user.departmentId ?? -1 };
-    }
+    if (!can.finalApprove(user)) return jsonError("غير مصرح", 403);
 
     const periods = await db.measurementPeriod.findMany({
-      where,
+      where: { approvalStatus: "INITIAL_APPROVED" },
       include: {
         requirement: {
           select: {
             code: true,
             name: true,
             unit: true,
-            sectionId: true,
-            departmentId: true,
             requiredData: true,
+            fillerRole: true,
             owner: { select: { id: true, name: true, email: true } },
+            department: { select: { name: true } },
+            kpis: { select: { id: true, code: true, name: true, type: true }, where: { active: true } },
           },
         },
         enteredBy: { select: { id: true, name: true, email: true } },
+        initialApprovedBy: { select: { id: true, name: true } },
         evidences: {
-          select: { id: true, fileName: true, mimeType: true, sizeBytes: true },
+          select: {
+            id: true,
+            fileName: true,
+            mimeType: true,
+            sizeBytes: true,
+            status: true,
+            rejectReason: true,
+          },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { initialApprovedAt: "desc" },
     });
 
     return NextResponse.json({
@@ -119,23 +74,14 @@ export async function GET() {
         year: mp.year,
         period: mp.period,
         actualValue: mp.actualValue,
-        achievementPct: null as number | null,
-        deviationValue: null as number | null,
-        deviationPct: null as number | null,
-        status: "NO_DATA" as const,
         whatHappened: mp.whatHappened,
         howHappened: mp.howHappened,
+        note: mp.note,
         approvalStatus: mp.approvalStatus,
-        createdAt: mp.createdAt,
-        kpi: {
-          code: mp.requirement.code,
-          name: mp.requirement.name,
-          unit: mp.requirement.unit,
-          sectionId: mp.requirement.sectionId,
-          requiredData: mp.requirement.requiredData,
-        },
-        owner: mp.requirement.owner,
+        suggestedWording: mp.suggestedWording,
+        requirement: mp.requirement,
         employee: mp.enteredBy,
+        initialApprovedBy: mp.initialApprovedBy,
         evidences: mp.evidences,
       })),
     });
@@ -148,103 +94,166 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
     const userId = parseInt(user.id, 10);
-    const flags = await getApprovalDelegationFlags();
-
-    if (!can.approveEntries(user, flags)) {
-      return jsonError("غير مصرح", 403);
-    }
+    if (!can.finalApprove(user)) return jsonError("غير مصرح", 403);
 
     const body = postSchema.parse(await req.json());
-
-    if (body.action === "reject" && !body.rejectReason) {
-      return jsonError("سبب الرفض مطلوب", 400);
-    }
-
-    const measurementPeriodId = await resolveMeasurementPeriodId(body);
-    if (measurementPeriodId == null) {
-      return jsonError("فترة القياس غير موجودة", 404);
-    }
-
     const mp = await db.measurementPeriod.findUnique({
-      where: { id: measurementPeriodId },
+      where: { id: body.measurementPeriodId },
       include: {
-        requirement: {
-          select: {
-            code: true,
-            name: true,
-            sectionId: true,
-            departmentId: true,
-          },
-        },
-        enteredBy: { select: { id: true, name: true } },
+        requirement: { select: { code: true, name: true, ownerId: true } },
       },
     });
-
     if (!mp) return jsonError("فترة القياس غير موجودة", 404);
-    if (mp.approvalStatus !== "PENDING") {
-      return jsonError("القياس ليس بانتظار الاعتماد", 400);
+
+    if (body.action === "edit") {
+      await db.measurementPeriod.update({
+        where: { id: mp.id },
+        data: {
+          actualValue: body.actualValue ?? mp.actualValue,
+          whatHappened: body.whatHappened !== undefined ? body.whatHappened : mp.whatHappened,
+          howHappened: body.howHappened !== undefined ? body.howHappened : mp.howHappened,
+        },
+      });
+      await syncKpiEntriesFromMeasurement(mp.id);
+      await recordApprovalEvent({
+        measurementPeriodId: mp.id,
+        actorId: userId,
+        action: "ADMIN_EDIT",
+        comment: body.comment,
+      });
+      return NextResponse.json({ ok: true });
     }
 
-    if (!canApproveScope(user, flags, mp.requirement)) {
-      return jsonError("غير مصرح", 403);
+    if (mp.approvalStatus !== "INITIAL_APPROVED") {
+      return jsonError("القياس ليس بانتظار الاعتماد النهائي", 400);
     }
 
-    const approveNote = body.comment?.trim() || null;
+    if (body.action === "final_approve") {
+      if (body.actualValue != null || body.whatHappened !== undefined || body.howHappened !== undefined) {
+        await db.measurementPeriod.update({
+          where: { id: mp.id },
+          data: {
+            actualValue: body.actualValue ?? mp.actualValue,
+            whatHappened: body.whatHappened !== undefined ? body.whatHappened : mp.whatHappened,
+            howHappened: body.howHappened !== undefined ? body.howHappened : mp.howHappened,
+          },
+        });
+      }
+      const updated = await db.measurementPeriod.update({
+        where: { id: mp.id },
+        data: {
+          approvalStatus: "FINAL_APPROVED",
+          approvedById: userId,
+          approvedAt: new Date(),
+          rejectReason: null,
+          suggestedWording: null,
+        },
+      });
+      await syncKpiEntriesFromMeasurement(mp.id);
+      await recordApprovalEvent({
+        measurementPeriodId: mp.id,
+        actorId: userId,
+        action: "FINAL_APPROVE",
+        comment: body.comment,
+      });
+      if (mp.requirement.ownerId) {
+        await notify({
+          userIds: [mp.requirement.ownerId],
+          type: "APPROVAL_RESULT",
+          title: "اعتُمد القياس نهائياً",
+          body: `${mp.requirement.code} — ${mp.requirement.name}`,
+          link: "/my",
+          email: true,
+        });
+      }
+      await audit(userId, "FINAL_APPROVE", "MeasurementPeriod", mp.id, {});
+      return NextResponse.json({ measurement: updated });
+    }
 
-    const updated =
-      body.action === "approve"
-        ? await db.measurementPeriod.update({
-            where: { id: measurementPeriodId },
-            data: {
-              approvalStatus: "APPROVED",
-              approvedById: userId,
-              approvedAt: new Date(),
-              rejectReason: null,
-              ...(approveNote ? { note: approveNote } : {}),
-            },
-          })
-        : await db.measurementPeriod.update({
-            where: { id: measurementPeriodId },
-            data: {
-              approvalStatus: "REJECTED",
-              approvedById: userId,
-              approvedAt: new Date(),
-              rejectReason: body.rejectReason!,
-            },
-          });
+    if (body.action === "reject_wording") {
+      if (!body.rejectReason) return jsonError("سبب رفض الصياغة مطلوب", 400);
+      const updated = await db.measurementPeriod.update({
+        where: { id: mp.id },
+        data: {
+          approvalStatus: "REJECTED_WORDING",
+          rejectReason: body.rejectReason,
+          suggestedWording: body.suggestedWording ?? null,
+          approvedById: userId,
+          approvedAt: new Date(),
+          initialApprovedById: null,
+          initialApprovedAt: null,
+        },
+      });
+      await syncKpiEntriesFromMeasurement(mp.id);
+      await recordApprovalEvent({
+        measurementPeriodId: mp.id,
+        actorId: userId,
+        action: "REJECT_WORDING",
+        comment: body.rejectReason,
+        payload: { suggestedWording: body.suggestedWording },
+      });
+      if (mp.requirement.ownerId) {
+        await notify({
+          userIds: [mp.requirement.ownerId],
+          type: "APPROVAL_RESULT",
+          title: "رُفضت صياغة القياس",
+          body: body.rejectReason,
+          link: "/my",
+          email: true,
+        });
+      }
+      await audit(userId, "REJECT_WORDING", "MeasurementPeriod", mp.id, {});
+      return NextResponse.json({ measurement: updated });
+    }
 
-    await syncKpiEntriesFromMeasurement(measurementPeriodId);
-
-    const code = mp.requirement.code;
-    const name = mp.requirement.name;
-    const approveBody = approveNote
-      ? `تم اعتماد قياس المتطلب ${code} — ${name}. ملاحظة: ${approveNote}`
-      : `تم اعتماد قياس المتطلب ${code} — ${name}`;
-
-    await notify({
-      userIds: [mp.enteredById],
-      type: "APPROVAL_RESULT",
-      title: body.action === "approve" ? "تم اعتماد قياسك" : "تم رفض قياسك",
-      body:
-        body.action === "approve"
-          ? approveBody
-          : `تم رفض قياس المتطلب ${code}: ${body.rejectReason}`,
-      link: "/my",
-      email: true,
+    // reject_evidence
+    if (!body.rejectReason && !(body.evidenceRejections?.length)) {
+      return jsonError("حدّد سبب رفض الشواهد أو شاهدًا بعينه", 400);
+    }
+    if (body.evidenceRejections?.length) {
+      for (const er of body.evidenceRejections) {
+        await db.evidence.updateMany({
+          where: { id: er.evidenceId, measurementPeriodId: mp.id },
+          data: {
+            status: "REJECTED",
+            rejectReason: er.reason,
+            rejectedById: userId,
+            rejectedAt: new Date(),
+          },
+        });
+      }
+    }
+    const updated = await db.measurementPeriod.update({
+      where: { id: mp.id },
+      data: {
+        approvalStatus: "REJECTED_EVIDENCE",
+        rejectReason: body.rejectReason ?? "رُفضت شواهد القياس",
+        approvedById: userId,
+        approvedAt: new Date(),
+        initialApprovedById: null,
+        initialApprovedAt: null,
+      },
     });
-
-    await audit(
-      userId,
-      body.action === "approve" ? "APPROVE_ENTRY" : "REJECT_ENTRY",
-      "MeasurementPeriod",
-      mp.id,
-      { action: body.action },
-    );
-
-    return NextResponse.json({
-      measurementPeriod: updated,
-      entry: updated,
+    await syncKpiEntriesFromMeasurement(mp.id);
+    await recordApprovalEvent({
+      measurementPeriodId: mp.id,
+      actorId: userId,
+      action: "REJECT_EVIDENCE",
+      comment: body.rejectReason,
+      payload: { evidenceRejections: body.evidenceRejections },
     });
+    if (mp.requirement.ownerId) {
+      await notify({
+        userIds: [mp.requirement.ownerId],
+        type: "APPROVAL_RESULT",
+        title: "رُفضت شواهد القياس",
+        body: body.rejectReason ?? "يرجى استبدال الشواهد وإعادة التقديم",
+        link: "/my",
+        email: true,
+      });
+    }
+    await audit(userId, "REJECT_EVIDENCE", "MeasurementPeriod", mp.id, {});
+    return NextResponse.json({ measurement: updated });
   } catch (e) {
     if (e instanceof z.ZodError) return jsonError("بيانات غير صالحة", 400);
     return handleApiError(e);

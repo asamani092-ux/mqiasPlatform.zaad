@@ -1,43 +1,58 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  PERIOD_LABEL,
-  STATUS_LABEL,
-  STATUS_BADGE,
-  type KpiStatus,
-  type Period,
-} from "@/lib/types";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { PERIOD_LABEL, FILLER_ROLE_LABEL, type Period } from "@/lib/types";
+import { TYPE_LABEL as KPI_TYPE } from "@/lib/kpi-schemas";
 
-type PendingEntry = {
+type Entry = {
   id: number;
-  measurementPeriodId?: number;
+  measurementPeriodId: number;
   year: number;
   period: string;
   actualValue: number;
-  achievementPct: number | null;
-  deviationPct: number | null;
-  status: KpiStatus;
   whatHappened: string | null;
   howHappened: string | null;
-  kpi: { code: string; name: string; unit: string; requiredData: string | null };
-  owner?: { id: number; name: string; email: string } | null;
+  note: string | null;
+  suggestedWording: string | null;
+  requirement: {
+    code: string;
+    name: string;
+    unit: string;
+    requiredData: string | null;
+    fillerRole: string;
+    owner: { id: number; name: string; email: string } | null;
+    department: { name: string } | null;
+    kpis: { id: number; code: string; name: string; type: string }[];
+  };
   employee: { id: number; name: string; email: string };
-  evidences: { id: number; fileName: string }[];
+  initialApprovedBy: { id: number; name: string } | null;
+  evidences: {
+    id: number;
+    fileName: string;
+    status: string;
+    rejectReason: string | null;
+  }[];
 };
 
-const FILTER_PERIODS: Period[] = ["Q1", "Q2", "Q3", "Q4", "H1", "H2", "Y"];
-
 export default function ApprovalsClient() {
-  const [entries, setEntries] = useState<PendingEntry[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [rejectId, setRejectId] = useState<number | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
-  const [approveComment, setApproveComment] = useState<Record<number, string>>({});
-  const [filterYear, setFilterYear] = useState<string>("");
-  const [filterPeriod, setFilterPeriod] = useState<string>("");
-  const [msg, setMsg] = useState("");
   const [acting, setActing] = useState<number | null>(null);
+  const [mode, setMode] = useState<Record<number, "approve" | "wording" | "evidence" | null>>({});
+  const [forms, setForms] = useState<
+    Record<
+      number,
+      {
+        what: string;
+        how: string;
+        actual: string;
+        rejectReason: string;
+        suggestedWording: string;
+        evidenceReasons: Record<number, string>;
+      }
+    >
+  >({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,65 +60,71 @@ export default function ApprovalsClient() {
     if (res.ok) {
       const data = await res.json();
       setEntries(data.entries);
+      const next: typeof forms = {};
+      for (const e of data.entries as Entry[]) {
+        next[e.id] = {
+          what: e.whatHappened ?? "",
+          how: e.howHappened ?? "",
+          actual: String(e.actualValue),
+          rejectReason: "",
+          suggestedWording: e.suggestedWording ?? "",
+          evidenceReasons: {},
+        };
+      }
+      setForms(next);
     } else if (res.status === 403) {
-      setMsg("ليس لديك صلاحية اعتماد القياسات");
+      toast.error("ليس لديك صلاحية الاعتماد النهائي");
     }
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
-  const yearOptions = useMemo(() => {
-    const years = new Set(entries.map((e) => e.year));
-    const cy = new Date().getFullYear();
-    years.add(cy - 1);
-    years.add(cy);
-    years.add(cy + 1);
-    return Array.from(years).sort((a, b) => b - a);
-  }, [entries]);
-
-  const filtered = useMemo(() => {
-    return entries.filter((e) => {
-      if (filterYear && e.year !== parseInt(filterYear, 10)) return false;
-      if (filterPeriod && e.period !== filterPeriod) return false;
-      return true;
-    });
-  }, [entries, filterYear, filterPeriod]);
-
-  async function act(measurementPeriodId: number, action: "approve" | "reject") {
-    if (action === "reject" && !rejectReason.trim()) {
-      setMsg("يرجى إدخال سبب الرفض");
-      return;
+  async function run(id: number, action: "final_approve" | "reject_wording" | "reject_evidence" | "edit") {
+    const f = forms[id];
+    if (!f) return;
+    setActing(id);
+    const body: Record<string, unknown> = {
+      measurementPeriodId: id,
+      action,
+      actualValue: f.actual ? parseFloat(f.actual) : undefined,
+      whatHappened: f.what || null,
+      howHappened: f.how || null,
+    };
+    if (action === "reject_wording") {
+      body.rejectReason = f.rejectReason;
+      body.suggestedWording = f.suggestedWording || null;
     }
-    setActing(measurementPeriodId);
-    setMsg("");
-    const comment = approveComment[measurementPeriodId]?.trim();
+    if (action === "reject_evidence") {
+      const evidenceRejections = Object.entries(f.evidenceReasons)
+        .filter(([, reason]) => reason.trim().length >= 3)
+        .map(([evidenceId, reason]) => ({ evidenceId: parseInt(evidenceId, 10), reason }));
+      body.evidenceRejections = evidenceRejections;
+      body.rejectReason = f.rejectReason || (evidenceRejections[0]?.reason ?? undefined);
+    }
     const res = await fetch("/api/approvals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        measurementPeriodId,
-        action,
-        rejectReason: action === "reject" ? rejectReason : undefined,
-        comment: action === "approve" && comment ? comment : undefined,
-      }),
+      body: JSON.stringify(body),
     });
     setActing(null);
     if (res.ok) {
-      setRejectId(null);
-      setRejectReason("");
-      setApproveComment((prev) => {
-        const next = { ...prev };
-        delete next[measurementPeriodId];
-        return next;
-      });
-      setMsg(action === "approve" ? "تم الاعتماد" : "تم الرفض");
+      toast.success(
+        action === "final_approve"
+          ? "تم الاعتماد النهائي"
+          : action === "reject_wording"
+            ? "رُفضت الصياغة"
+            : action === "reject_evidence"
+              ? "رُفضت الشواهد"
+              : "تم حفظ التعديل"
+      );
+      setMode((m) => ({ ...m, [id]: null }));
       await load();
     } else {
-      const err = await res.json();
-      setMsg(err.error || "فشلت العملية");
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.error || "فشلت العملية");
     }
   }
 
@@ -111,158 +132,224 @@ export default function ApprovalsClient() {
     <>
       <div className="topbar">
         <div>
-          <h1>اعتماد القياسات</h1>
-          <div className="text-muted">مراجعة الإدخالات المعلقة واعتمادها أو رفضها</div>
+          <h1>الاعتماد النهائي</h1>
+          <div className="text-muted">مراجعة المعتمد مبدئياً — قبول نهائي أو رفض صياغة/شواهد</div>
         </div>
       </div>
-
-      <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
-        <strong>من يرى هذا التبويب؟</strong> مشرف النظام دائماً؛ ورئيس القسم أو مدير الإدارة فقط عند تفعيل
-        التفويض من الإعدادات.
-        <br />
-        الاعتماد يتم على فترة القياس الموحّدة للمتطلب (مرة واحدة لكل متطلب/فترة)، والشواهد مشتركة عبر المتطلب
-        الموحّد. النتيجة تُشعر مقدّم القياس وتُزامَن مع المؤشرات المرتبطة.
-      </div>
-
-      <div className="card" style={{ marginBottom: "1rem", display: "flex", gap: ".75rem", flexWrap: "wrap", alignItems: "flex-end" }}>
-        <div>
-          <label className="label-field">السنة (اختياري)</label>
-          <select
-            className="input-field"
-            style={{ width: "auto" }}
-            value={filterYear}
-            onChange={(e) => setFilterYear(e.target.value)}
-          >
-            <option value="">الكل</option>
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label-field">الفترة (اختياري)</label>
-          <select
-            className="input-field"
-            style={{ width: "auto" }}
-            value={filterPeriod}
-            onChange={(e) => setFilterPeriod(e.target.value)}
-          >
-            <option value="">الكل</option>
-            {FILTER_PERIODS.map((p) => (
-              <option key={p} value={p}>{PERIOD_LABEL[p]}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {msg && (
-        <div className={`alert ${msg.includes("تم") ? "alert-success" : "alert-error"}`} style={{ marginBottom: "1rem" }}>
-          {msg}
-        </div>
-      )}
 
       {loading ? (
         <p className="text-muted">جاري التحميل...</p>
-      ) : filtered.length === 0 ? (
-        <div className="card"><p className="text-muted">لا توجد قياسات بانتظار الاعتماد.</p></div>
+      ) : entries.length === 0 ? (
+        <div className="card"><p className="text-muted">لا توجد قياسات بانتظار الاعتماد النهائي.</p></div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {filtered.map((e) => (
-            <div key={e.id} className="card">
-              <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: ".5rem", marginBottom: ".75rem" }}>
-                <div>
-                  <strong>{e.kpi.code}</strong> — {e.kpi.name}
-                  <div className="text-muted">
-                    {e.owner?.name ? `المسؤول: ${e.owner.name} · ` : ""}
-                    أدخلها: {e.employee.name} ·{" "}
-                    {PERIOD_LABEL[e.period as keyof typeof PERIOD_LABEL] || e.period} {e.year}
+          {entries.map((e) => {
+            const f = forms[e.id] ?? {
+              what: "",
+              how: "",
+              actual: "",
+              rejectReason: "",
+              suggestedWording: "",
+              evidenceReasons: {},
+            };
+            const m = mode[e.id] ?? null;
+            return (
+              <div key={e.id} className="card">
+                <div style={{ marginBottom: ".65rem" }}>
+                  <strong style={{ fontSize: "1.05rem" }}>{e.requirement.code}</strong>
+                  {" — "}
+                  {e.requirement.name}
+                  <div className="text-muted" style={{ fontSize: ".82rem", marginTop: ".25rem" }}>
+                    {e.requirement.department?.name || "—"} · دور التعبئة:{" "}
+                    {FILLER_ROLE_LABEL[e.requirement.fillerRole] || e.requirement.fillerRole}
+                    {" · "}
+                    أدخلها: {e.employee.name}
+                    {e.initialApprovedBy ? ` · اعتماد مبدئي: ${e.initialApprovedBy.name}` : ""}
+                    {" · "}
+                    {PERIOD_LABEL[e.period as Period] || e.period} {e.year}
                   </div>
                 </div>
-                <span className={STATUS_BADGE[e.status]}>{STATUS_LABEL[e.status]}</span>
-              </div>
 
-              <div className="grid grid-4" style={{ marginBottom: ".75rem", fontSize: ".82rem" }}>
-                <div><span className="text-muted">المتحقق:</span> <strong>{e.actualValue}</strong></div>
-                <div><span className="text-muted">نسبة الإنجاز:</span> <strong>{e.achievementPct ?? "—"}%</strong></div>
-                <div><span className="text-muted">الانحراف:</span> <strong>{e.deviationPct ?? "—"}%</strong></div>
-                <div><span className="text-muted">البيانات المطلوبة:</span> {e.kpi.requiredData || "—"}</div>
-              </div>
+                {e.requirement.kpis.length > 0 && (
+                  <div style={{ marginBottom: ".65rem", fontSize: ".82rem" }}>
+                    <span className="text-muted">المؤشرات المرتبطة: </span>
+                    {e.requirement.kpis
+                      .map((k) => `${k.code} — ${k.name} (${KPI_TYPE[k.type as keyof typeof KPI_TYPE] ?? k.type})`)
+                      .join(" · ")}
+                  </div>
+                )}
 
-              {(e.whatHappened || e.howHappened) && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: ".75rem" }}>
-                  {e.whatHappened && (
-                    <div>
-                      <div className="label-field">ماذا حصل؟</div>
-                      <p style={{ fontSize: ".82rem" }}>{e.whatHappened}</p>
-                    </div>
-                  )}
-                  {e.howHappened && (
-                    <div>
-                      <div className="label-field">كيف حصل؟</div>
-                      <p style={{ fontSize: ".82rem" }}>{e.howHappened}</p>
-                    </div>
-                  )}
+                {e.requirement.requiredData && (
+                  <div className="alert alert-info" style={{ marginBottom: ".65rem" }}>
+                    البيانات المطلوبة: {e.requirement.requiredData}
+                  </div>
+                )}
+
+                <div className="grid grid-3" style={{ marginBottom: ".75rem", gap: ".75rem" }}>
+                  <div>
+                    <label className="label-field">المتحقق ({e.requirement.unit})</label>
+                    <input
+                      className="input-field"
+                      type="number"
+                      step="any"
+                      value={f.actual}
+                      onChange={(ev) =>
+                        setForms((prev) => ({ ...prev, [e.id]: { ...f, actual: ev.target.value } }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label-field">ماذا حصل؟</label>
+                    <textarea
+                      className="input-field"
+                      rows={3}
+                      value={f.what}
+                      onChange={(ev) =>
+                        setForms((prev) => ({ ...prev, [e.id]: { ...f, what: ev.target.value } }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label-field">كيف حصل؟</label>
+                    <textarea
+                      className="input-field"
+                      rows={3}
+                      value={f.how}
+                      onChange={(ev) =>
+                        setForms((prev) => ({ ...prev, [e.id]: { ...f, how: ev.target.value } }))
+                      }
+                    />
+                  </div>
                 </div>
-              )}
 
-              {e.evidences.length > 0 && (
                 <div style={{ marginBottom: ".75rem" }}>
                   <div className="label-field">الشواهد</div>
-                  {e.evidences.map((ev) => (
-                    <a
-                      key={ev.id}
-                      href={`/api/evidence/${ev.id}`}
-                      className="badge-primary"
-                      style={{ marginLeft: ".4rem" }}
-                    >
-                      {ev.fileName}
-                    </a>
-                  ))}
+                  {e.evidences.length === 0 ? (
+                    <span className="text-muted">لا شواهد</span>
+                  ) : (
+                    e.evidences.map((ev) => (
+                      <div key={ev.id} style={{ display: "flex", gap: ".5rem", alignItems: "center", marginBottom: ".35rem", flexWrap: "wrap" }}>
+                        <a href={`/api/evidence/${ev.id}`} className="badge-primary">
+                          {ev.fileName}
+                        </a>
+                        {m === "evidence" && (
+                          <input
+                            className="input-field"
+                            style={{ maxWidth: 280 }}
+                            placeholder="سبب رفض هذا الشاهد"
+                            value={f.evidenceReasons[ev.id] ?? ""}
+                            onChange={(x) =>
+                              setForms((prev) => ({
+                                ...prev,
+                                [e.id]: {
+                                  ...f,
+                                  evidenceReasons: { ...f.evidenceReasons, [ev.id]: x.target.value },
+                                },
+                              }))
+                            }
+                          />
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
-              )}
 
-              {rejectId === e.id ? (
-                <div style={{ marginBottom: ".75rem" }}>
-                  <label className="label-field">سبب الرفض (مطلوب)</label>
-                  <textarea
-                    className="input-field"
-                    rows={2}
-                    value={rejectReason}
-                    onChange={(ev) => setRejectReason(ev.target.value)}
-                    placeholder="اكتب سبب الرفض..."
-                  />
-                  <div style={{ display: "flex", gap: ".5rem", marginTop: ".5rem" }}>
-                    <button type="button" className="btn-primary btn-sm" disabled={acting === e.id} onClick={() => act(e.id, "reject")}>
-                      تأكيد الرفض
-                    </button>
-                    <button type="button" className="btn-secondary btn-sm" onClick={() => { setRejectId(null); setRejectReason(""); }}>
-                      إلغاء
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <label className="label-field">تعليق الاعتماد (اختياري)</label>
-                  <textarea
-                    className="input-field"
-                    rows={2}
-                    value={approveComment[e.id] ?? ""}
-                    onChange={(ev) => setApproveComment((prev) => ({ ...prev, [e.id]: ev.target.value }))}
-                    placeholder="يمكن إضافة ملاحظة للمقدّم عند الاعتماد..."
-                    style={{ marginBottom: ".5rem" }}
-                  />
-                  <div style={{ display: "flex", gap: ".5rem" }}>
-                    <button type="button" className="btn-primary btn-sm" disabled={acting === e.id} onClick={() => act(e.id, "approve")}>
-                      {acting === e.id ? "..." : "اعتماد"}
-                    </button>
-                    <button type="button" className="btn-secondary btn-sm" onClick={() => setRejectId(e.id)}>
-                      رفض
+                {m === "wording" && (
+                  <div style={{ marginBottom: ".75rem", display: "grid", gap: ".5rem" }}>
+                    <div>
+                      <label className="label-field">سبب رفض الصياغة</label>
+                      <textarea
+                        className="input-field"
+                        rows={2}
+                        value={f.rejectReason}
+                        onChange={(ev) =>
+                          setForms((prev) => ({ ...prev, [e.id]: { ...f, rejectReason: ev.target.value } }))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="label-field">الصياغة المقترحة</label>
+                      <textarea
+                        className="input-field"
+                        rows={3}
+                        value={f.suggestedWording}
+                        onChange={(ev) =>
+                          setForms((prev) => ({
+                            ...prev,
+                            [e.id]: { ...f, suggestedWording: ev.target.value },
+                          }))
+                        }
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-primary btn-sm"
+                      disabled={acting === e.id}
+                      onClick={() => void run(e.id, "reject_wording")}
+                    >
+                      تأكيد رفض الصياغة
                     </button>
                   </div>
+                )}
+
+                {m === "evidence" && (
+                  <div style={{ marginBottom: ".75rem" }}>
+                    <label className="label-field">سبب عام (اختياري إن حددت شواهد)</label>
+                    <textarea
+                      className="input-field"
+                      rows={2}
+                      value={f.rejectReason}
+                      onChange={(ev) =>
+                        setForms((prev) => ({ ...prev, [e.id]: { ...f, rejectReason: ev.target.value } }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="btn-primary btn-sm"
+                      style={{ marginTop: ".5rem" }}
+                      disabled={acting === e.id}
+                      onClick={() => void run(e.id, "reject_evidence")}
+                    >
+                      تأكيد رفض الشواهد
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="btn-primary btn-sm"
+                    disabled={acting === e.id}
+                    onClick={() => void run(e.id, "final_approve")}
+                  >
+                    اعتماد نهائي
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    onClick={() => setMode((prev) => ({ ...prev, [e.id]: m === "wording" ? null : "wording" }))}
+                  >
+                    رفض صياغة
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    onClick={() => setMode((prev) => ({ ...prev, [e.id]: m === "evidence" ? null : "evidence" }))}
+                  >
+                    رفض شواهد
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    disabled={acting === e.id}
+                    onClick={() => void run(e.id, "edit")}
+                  >
+                    حفظ التعديل فقط
+                  </button>
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
     </>

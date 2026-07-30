@@ -105,7 +105,7 @@ async function commitImport(rows: ValidatedImportRow[], adminUserId: number, yea
             status,
             enteredById: ownerId,
             approvalStatus: row.approvalStatus,
-            approvedAt: row.approvalStatus === "APPROVED" ? new Date() : null,
+            approvedAt: row.approvalStatus === "FINAL_APPROVED" ? new Date() : null,
           },
           update: {
             actualValue: row.actualValue,
@@ -116,7 +116,7 @@ async function commitImport(rows: ValidatedImportRow[], adminUserId: number, yea
             deviationValue: devVal,
             status,
             approvalStatus: row.approvalStatus,
-            approvedAt: row.approvalStatus === "APPROVED" ? new Date() : null,
+            approvedAt: row.approvalStatus === "FINAL_APPROVED" ? new Date() : null,
           },
         });
       }

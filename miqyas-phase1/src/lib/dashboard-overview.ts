@@ -29,7 +29,7 @@ export async function getDashboardOverview(
         select: { status: true },
       }),
       db.earlyWarningAlert.count({ where: { year, period } }),
-      db.kpiEntry.count({ where: { year, period, approvalStatus: "APPROVED" } }),
+      db.kpiEntry.count({ where: { year, period, approvalStatus: "FINAL_APPROVED" } }),
       db.kpi.count({ where: { active: true } }),
     ]);
 

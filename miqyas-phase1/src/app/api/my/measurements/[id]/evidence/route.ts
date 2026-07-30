@@ -108,8 +108,8 @@ export async function DELETE(
 
     if (!mp) return jsonError("فترة القياس غير موجودة", 404);
     if (mp.requirement.ownerId !== userId) return jsonError("غير مصرح", 403);
-    if (mp.approvalStatus === "APPROVED") {
-      return jsonError("لا يمكن حذف الشواهد بعد الاعتماد", 400);
+    if (mp.approvalStatus === "FINAL_APPROVED" || mp.approvalStatus === "APPROVED") {
+      return jsonError("لا يمكن حذف الشواهد بعد الاعتماد النهائي", 400);
     }
 
     const evidence = await db.evidence.findFirst({

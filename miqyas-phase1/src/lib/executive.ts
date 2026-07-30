@@ -84,7 +84,7 @@ export async function getExecutiveSnapshot(opts: {
     where: {
       year: opts.year,
       period: opts.period,
-      approvalStatus: "APPROVED",
+      approvalStatus: "FINAL_APPROVED",
     },
     include: {
       kpi: {

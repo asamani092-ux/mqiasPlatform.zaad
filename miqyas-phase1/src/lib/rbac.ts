@@ -1,4 +1,5 @@
 import type { Role } from "@prisma/client";
+import { roleToFillerRole } from "@/lib/approval-status";
 
 export type SessionUser = {
   id: string;
@@ -19,21 +20,19 @@ export const can = {
   manageKpis: (u: SessionUser) => isAdmin(u),
   manageGovernance: (u: SessionUser) => isAdmin(u),
   viewExecutive: (u: SessionUser) => isAdmin(u) || u.role === "EXECUTIVE",
-  /** اعتماد القياسات: مشرف دائماً؛ رئيس قسم/مدير إدارة حسب الإعدادات */
-  approveEntries: (
-    u: SessionUser,
-    opts: { sectionHeadDelegation?: boolean; deptManagerDelegation?: boolean } = {}
-  ) => {
-    if (isAdmin(u)) return true;
-    if (opts.sectionHeadDelegation && u.role === "SECTION_HEAD") return true;
-    if (opts.deptManagerDelegation && u.role === "DEPT_MANAGER") return true;
-    return false;
-  },
+  /** الاعتماد النهائي — مشرف النظام فقط */
+  finalApprove: (u: SessionUser) => isAdmin(u),
+  /** اعتماد نهائي (اسم قديم للتوافق مع الواجهات) */
+  approveEntries: (u: SessionUser) => isAdmin(u),
   manageDeviation: (u: SessionUser) => isAdmin(u) || u.role === "EXECUTIVE",
   manageKnowledge: (u: SessionUser) => isAdmin(u),
   enterOwnKpis: (_u: SessionUser) => true,
-  /** متابعة مؤشرات الإدارة (قراءة) لمدير الإدارة */
+  /** مراجعة الإدارة: اعتماد مبدئي + تعديل السرد */
+  reviewDepartment: (u: SessionUser) => isAdmin(u) || u.role === "DEPT_MANAGER",
+  /** متابعة/مراجعة مؤشرات الإدارة */
   followDepartment: (u: SessionUser) => isAdmin(u) || u.role === "DEPT_MANAGER",
+  /** إسناد جماعي للمتطلبات */
+  assignRequirements: (u: SessionUser) => isAdmin(u),
 };
 
 /** نطاق مؤشرات KPI للمسارات التحليلية */
@@ -53,7 +52,13 @@ export function scopeFilter(u: SessionUser): Record<string, unknown> {
   }
 }
 
-/** نطاق متطلبات القياس للكتابة في /my */
+/** نطاق متطلبات القياس للكتابة في شواهد المؤشرات */
 export function requirementOwnerFilter(u: SessionUser): Record<string, unknown> {
-  return { ownerId: parseInt(u.id, 10), active: true };
+  const fillerRole = roleToFillerRole(u.role);
+  const base: Record<string, unknown> = {
+    ownerId: parseInt(u.id, 10),
+    active: true,
+  };
+  if (fillerRole) base.fillerRole = fillerRole;
+  return base;
 }

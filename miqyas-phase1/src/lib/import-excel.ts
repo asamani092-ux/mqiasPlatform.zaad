@@ -24,7 +24,7 @@ export type ParsedImportRow = {
   whatHappened: string | null;
   howHappened: string | null;
   recommendation: string | null;
-  approvalStatus: "APPROVED" | "PENDING";
+  approvalStatus: "FINAL_APPROVED" | "SUBMITTED" | "APPROVED" | "PENDING";
   status: ImportRowStatus;
   error?: string;
   existingKpiId?: number;
@@ -157,7 +157,9 @@ function parseSheet(
         whatHappened: idx.what >= 0 ? String(row[idx.what] ?? "").trim() || null : null,
         howHappened: idx.how >= 0 ? String(row[idx.how] ?? "").trim() || null : null,
         recommendation: idx.recommendation >= 0 ? String(row[idx.recommendation] ?? "").trim() || null : null,
-        approvalStatus: String(row[idx.approval] ?? "").includes("معتمد") ? "APPROVED" : "PENDING",
+        approvalStatus: String(row[idx.approval] ?? "").includes("معتمد")
+          ? "FINAL_APPROVED"
+          : "SUBMITTED",
         status: existingCodes.has(code) ? "UPDATE" : "NEW",
         existingKpiId: existingCodes.get(code),
       };
@@ -185,7 +187,7 @@ function parseSheet(
         whatHappened: null,
         howHappened: null,
         recommendation: null,
-        approvalStatus: "PENDING",
+        approvalStatus: "SUBMITTED",
         status: "ERROR",
         error: e instanceof Error ? e.message : "خطأ في التحليل",
       });

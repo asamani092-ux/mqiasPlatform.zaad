@@ -14,18 +14,11 @@ export default withAuth(
 
     if (!role) return NextResponse.redirect(new URL("/login", req.url));
 
-    // أدوار الإدخال: لا يصلون لمسارات القياس/الإدارة/التنفيذية
     if (ENTRY_ROLES.includes(role)) {
-      const allowedPrefixes = ["/my", "/api/"];
-      if (role === "DEPT_MANAGER") allowedPrefixes.push("/dept-follow");
       if (path.startsWith("/approvals") || path.startsWith("/api/approvals")) {
-        // تُفحص الصلاحية في الصفحة/API حسب الإعدادات
-        return NextResponse.next();
+        // الاعتماد النهائي لمشرف النظام فقط
+        return NextResponse.redirect(myUrl);
       }
-      const ok = allowedPrefixes.some(
-        (p) => path === p || path.startsWith(p + "/") || path.startsWith(p)
-      );
-      // السماح بالأصول الثابتة عبر matcher؛ هنا نعيد توجيه الصفحات فقط
       if (
         path.startsWith("/dashboard") ||
         path.startsWith("/strategic") ||

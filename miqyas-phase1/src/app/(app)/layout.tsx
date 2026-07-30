@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/auth";
 import AppShell from "@/components/AppShell";
 import Providers from "@/components/Providers";
 import { can } from "@/lib/rbac";
-import { getApprovalDelegationFlags } from "@/lib/approval-settings";
 import { isUatEnabled } from "@/lib/uat-enabled";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -20,8 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     departmentId: user.departmentId,
     sectionId: user.sectionId,
   };
-  const flags = await getApprovalDelegationFlags();
-  const showApprovals = can.approveEntries(sessionUser, flags);
+  const showApprovals = can.finalApprove(sessionUser);
   const showUat = isUatEnabled();
 
   return (

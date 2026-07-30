@@ -45,6 +45,9 @@ model User {
   approvals       KpiEntry[]         @relation("ApprovedBy")
   measurementEntries MeasurementPeriod[] @relation("MeasurementEnteredBy")
   measurementApprovals MeasurementPeriod[] @relation("MeasurementApprovedBy")
+  measurementInitialApprovals MeasurementPeriod[] @relation("MeasurementInitialApprovedBy")
+  evidenceRejections Evidence[] @relation("EvidenceRejectedBy")
+  approvalEvents  ApprovalEvent[]
   evidences       Evidence[]
   notifications   Notification[]
   actions         CorrectiveAction[] @relation("ActionResponsible")
@@ -165,21 +168,29 @@ model Kpi {
   @@index([requirementId])
 }
 
+// دور من يملأ متطلب القياس (الطبقة 1)
+enum FillerRole {
+  EMPLOYEE
+  SECTION_HEAD
+  DEPT_MANAGER
+}
+
 // ── متطلب القياس الموحّد (مصدر واحد للاستراتيجي والتشغيلي) ─────
 model MeasurementRequirement {
-  id           Int       @id @default(autoincrement())
-  code         String    @unique
+  id           Int        @id @default(autoincrement())
+  code         String     @unique
   name         String
-  unit         String    @default("%")
-  polarity     Polarity  @default(HIGHER_BETTER)
-  frequency    Frequency @default(QUARTERLY)
+  unit         String     @default("%")
+  polarity     Polarity   @default(HIGHER_BETTER)
+  frequency    Frequency  @default(QUARTERLY)
   requiredData String?
   departmentId Int?
   sectionId    Int?
   ownerId      Int?
-  active       Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  fillerRole   FillerRole @default(EMPLOYEE)
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   department Department?         @relation(fields: [departmentId], references: [id])
   section    Section?            @relation(fields: [sectionId], references: [id])
@@ -190,31 +201,38 @@ model MeasurementRequirement {
   @@index([ownerId])
   @@index([departmentId])
   @@index([sectionId])
+  @@index([fillerRole])
 }
 
 model MeasurementPeriod {
-  id             Int            @id @default(autoincrement())
-  requirementId  Int
-  year           Int
-  period         Period
-  actualValue    Float
-  whatHappened   String?
-  howHappened    String?
-  note           String?
-  enteredById    Int
-  approvalStatus ApprovalStatus @default(PENDING)
-  approvedById   Int?
-  approvedAt     DateTime?
-  rejectReason   String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id                  Int            @id @default(autoincrement())
+  requirementId       Int
+  year                Int
+  period              Period
+  actualValue         Float
+  whatHappened        String?
+  howHappened         String?
+  note                String?
+  enteredById         Int
+  approvalStatus      ApprovalStatus @default(DRAFT)
+  approvedById        Int?
+  approvedAt          DateTime?
+  initialApprovedById Int?
+  initialApprovedAt   DateTime?
+  rejectReason        String?
+  suggestedWording    String? // صياغة مقترحة عند رفض الصياغة
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
-  requirement MeasurementRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
-  enteredBy   User                   @relation("MeasurementEnteredBy", fields: [enteredById], references: [id])
-  approvedBy  User?                  @relation("MeasurementApprovedBy", fields: [approvedById], references: [id])
-  evidences   Evidence[]
+  requirement       MeasurementRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  enteredBy         User                   @relation("MeasurementEnteredBy", fields: [enteredById], references: [id])
+  approvedBy        User?                  @relation("MeasurementApprovedBy", fields: [approvedById], references: [id])
+  initialApprovedBy User?                  @relation("MeasurementInitialApprovedBy", fields: [initialApprovedById], references: [id])
+  evidences         Evidence[]
+  approvalEvents    ApprovalEvent[]
 
   @@unique([requirementId, year, period])
+  @@index([approvalStatus])
 }
 
 // الفترة: Q1..Q4 / H1,H2 / Y
@@ -240,11 +258,44 @@ model KpiTarget {
   @@unique([kpiId, year, period])
 }
 
-// ── إدخالات القيم (واجهة الموظف + الاعتماد) ─────────────────────
+// ── حالات اعتماد القياس (ثلاث طبقات) ───────────────────────────
 enum ApprovalStatus {
+  DRAFT // مسودة — لم يُقدَّم
+  SUBMITTED // مقدَّم — بانتظار مدير الإدارة
+  INITIAL_APPROVED // معتمد مبدئياً — بانتظار مشرف النظام
+  FINAL_APPROVED // معتمد نهائياً
+  REJECTED_WORDING // مرفوض صياغة
+  REJECTED_EVIDENCE // مرفوض شواهد
+  // قيم قديمة للتوافق أثناء الترحيل
   PENDING
   APPROVED
   REJECTED
+}
+
+enum ApprovalEventAction {
+  SAVE_DRAFT
+  SUBMIT
+  INITIAL_APPROVE
+  FINAL_APPROVE
+  REJECT_WORDING
+  REJECT_EVIDENCE
+  RETURN_EDIT
+  ADMIN_EDIT
+}
+
+model ApprovalEvent {
+  id                  Int                 @id @default(autoincrement())
+  measurementPeriodId Int
+  actorId             Int
+  action              ApprovalEventAction
+  comment             String?
+  payload             String? // JSON اختياري (صياغة مقترحة / شواهد مرفوضة)
+  createdAt           DateTime            @default(now())
+
+  measurementPeriod MeasurementPeriod @relation(fields: [measurementPeriodId], references: [id], onDelete: Cascade)
+  actor             User              @relation(fields: [actorId], references: [id])
+
+  @@index([measurementPeriodId])
 }
 
 enum KpiStatus {
@@ -269,7 +320,7 @@ model KpiEntry {
   status         KpiStatus      @default(NO_DATA)
   note           String?
   enteredById    Int
-  approvalStatus ApprovalStatus @default(PENDING)
+  approvalStatus ApprovalStatus @default(DRAFT)
   approvedById   Int?
   approvedAt     DateTime?
   rejectReason   String?
@@ -279,14 +330,19 @@ model KpiEntry {
   kpi        Kpi         @relation(fields: [kpiId], references: [id], onDelete: Cascade)
   enteredBy  User        @relation("EnteredBy", fields: [enteredById], references: [id])
   approvedBy User?       @relation("ApprovedBy", fields: [approvedById], references: [id])
-  evidences  Evidence[]  // توافق مؤقت — المصدر المفضّل MeasurementPeriod.evidences
+  evidences  Evidence[] // توافق مؤقت — المصدر المفضّل MeasurementPeriod.evidences
 
   @@unique([kpiId, year, period])
 }
 
+enum EvidenceStatus {
+  ACTIVE
+  REJECTED
+}
+
 // الشواهد المرفوعة — تُفضَّل على MeasurementPeriod (مصدر موحّد)
 model Evidence {
-  id                  Int      @id @default(autoincrement())
+  id                  Int            @id @default(autoincrement())
   kpiEntryId          Int? // توافق قديم
   measurementPeriodId Int? // المصدر الموحّد
   fileName            String
@@ -294,11 +350,16 @@ model Evidence {
   mimeType            String
   sizeBytes           Int
   uploadedById        Int
-  createdAt           DateTime @default(now())
+  status              EvidenceStatus @default(ACTIVE)
+  rejectReason        String?
+  rejectedById        Int?
+  rejectedAt          DateTime?
+  createdAt           DateTime       @default(now())
 
   entry             KpiEntry?          @relation(fields: [kpiEntryId], references: [id], onDelete: Cascade)
   measurementPeriod MeasurementPeriod? @relation(fields: [measurementPeriodId], references: [id], onDelete: Cascade)
   uploadedBy        User               @relation(fields: [uploadedById], references: [id])
+  rejectedBy        User?              @relation("EvidenceRejectedBy", fields: [rejectedById], references: [id])
 
   @@index([measurementPeriodId])
   @@index([kpiEntryId])

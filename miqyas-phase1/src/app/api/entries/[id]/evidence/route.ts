@@ -99,7 +99,7 @@ export async function DELETE(
 
     if (!entry) return jsonError("الإدخال غير موجود", 404);
     if (entry.kpi.ownerId !== userId) return jsonError("غير مصرح", 403);
-    if (entry.approvalStatus === "APPROVED") {
+    if (entry.approvalStatus === "FINAL_APPROVED") {
       return jsonError("لا يمكن حذف الشواهد بعد الاعتماد", 400);
     }
 

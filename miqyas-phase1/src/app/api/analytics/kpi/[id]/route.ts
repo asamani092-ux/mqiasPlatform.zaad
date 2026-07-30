@@ -25,7 +25,7 @@ export async function GET(
         strategicGoal: true,
         targets: { where: { year } },
         entries: {
-          where: { year, approvalStatus: "APPROVED" },
+          where: { year, approvalStatus: "FINAL_APPROVED" },
           include: { evidences: { select: { id: true, fileName: true } } },
         },
         deviationCards: { where: { year } },

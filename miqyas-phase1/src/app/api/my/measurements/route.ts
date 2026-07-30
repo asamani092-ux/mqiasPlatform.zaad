@@ -5,9 +5,9 @@ import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
-import { getApprovalDelegationFlags } from "@/lib/approval-settings";
 import { getMyRequirements } from "@/lib/my-measurements";
-import { upsertMeasurementPeriod } from "@/lib/measurement-sync";
+import { recordApprovalEvent, upsertMeasurementPeriod } from "@/lib/measurement-sync";
+import { canFillerEdit, roleToFillerRole } from "@/lib/approval-status";
 import { resolvePeriods } from "@/lib/kpi";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
 
@@ -27,16 +27,16 @@ const postSchema = z
     whatHappened: z.string().max(5000).optional().nullable(),
     howHappened: z.string().max(5000).optional().nullable(),
     note: z.string().max(5000).optional().nullable(),
+    action: z.enum(["draft", "submit"]).default("submit"),
   })
   .strict();
 
-/** قائمة متطلبات القياس للمستخدم الحالي */
 export async function GET(req: Request) {
   try {
     const user = await requireUser();
     const params = querySchema.parse(Object.fromEntries(new URL(req.url).searchParams));
     const userId = parseInt(user.id, 10);
-    const items = await getMyRequirements(userId, params.year, params.period);
+    const items = await getMyRequirements(userId, params.year, params.period, user.role);
     return NextResponse.json({ year: params.year, period: params.period, items });
   } catch (e) {
     if (e instanceof z.ZodError) return jsonError("معاملات غير صالحة", 400);
@@ -44,12 +44,12 @@ export async function GET(req: Request) {
   }
 }
 
-/** إدخال قياس عبر MeasurementPeriod ثم مزامنة المؤشرات */
 export async function POST(req: Request) {
   try {
     const user = await requireUser();
     const body = postSchema.parse(await req.json());
     const userId = parseInt(user.id, 10);
+    const fillerRole = roleToFillerRole(user.role);
 
     const requirement = await db.measurementRequirement.findUnique({
       where: { id: body.requirementId },
@@ -58,8 +58,8 @@ export async function POST(req: Request) {
         code: true,
         name: true,
         ownerId: true,
+        fillerRole: true,
         frequency: true,
-        sectionId: true,
         departmentId: true,
         active: true,
       },
@@ -67,11 +67,31 @@ export async function POST(req: Request) {
 
     if (!requirement || !requirement.active) return jsonError("المتطلب غير موجود", 404);
     if (requirement.ownerId !== userId) return jsonError("غير مصرح — هذا المتطلب ليس من مهامك", 403);
+    if (fillerRole && requirement.fillerRole !== fillerRole) {
+      return jsonError("دور التعبئة لا يطابق دورك", 403);
+    }
 
     const allowedPeriods = resolvePeriods(requirement.frequency);
     if (!allowedPeriods.includes(body.period as Period)) {
       return jsonError("الفترة لا تتوافق مع دورية المتطلب", 400);
     }
+
+    const existing = await db.measurementPeriod.findUnique({
+      where: {
+        requirementId_year_period: {
+          requirementId: body.requirementId,
+          year: body.year,
+          period: body.period as Period,
+        },
+      },
+      select: { id: true, approvalStatus: true },
+    });
+
+    if (existing && !canFillerEdit(existing.approvalStatus) && user.role !== "SYSTEM_ADMIN") {
+      return jsonError("لا يمكن تعديل القياس في حالته الحالية", 400);
+    }
+
+    const nextStatus = body.action === "draft" ? "DRAFT" : "SUBMITTED";
 
     const mp = await upsertMeasurementPeriod({
       requirementId: body.requirementId,
@@ -82,52 +102,43 @@ export async function POST(req: Request) {
       howHappened: body.howHappened ?? null,
       note: body.note ?? null,
       enteredById: userId,
-      approvalStatus: "PENDING",
+      approvalStatus: nextStatus,
       approvedById: null,
       approvedAt: null,
+      initialApprovedById: null,
+      initialApprovedAt: null,
       rejectReason: null,
+      suggestedWording: existing ? undefined : null,
     });
 
-    const flags = await getApprovalDelegationFlags();
-    const approverIds: number[] = [];
-
-    const admins = await db.user.findMany({
-      where: { role: "SYSTEM_ADMIN", status: "ACTIVE" },
-      select: { id: true },
+    await recordApprovalEvent({
+      measurementPeriodId: mp.id,
+      actorId: userId,
+      action: body.action === "draft" ? "SAVE_DRAFT" : "SUBMIT",
     });
-    approverIds.push(...admins.map((a) => a.id));
 
-    // نفس منطق can.approveEntries: تفويض رؤساء الأقسام / مديري الإدارات حسب الإعدادات
-    if (flags.sectionHeadDelegation && requirement.sectionId != null) {
-      const heads = await db.user.findMany({
-        where: { role: "SECTION_HEAD", sectionId: requirement.sectionId, status: "ACTIVE" },
-        select: { id: true },
-      });
-      for (const h of heads) {
-        if (!approverIds.includes(h.id)) approverIds.push(h.id);
-      }
-    }
-
-    if (flags.deptManagerDelegation && requirement.departmentId != null) {
+    if (body.action === "submit" && requirement.departmentId != null) {
       const managers = await db.user.findMany({
-        where: { role: "DEPT_MANAGER", departmentId: requirement.departmentId, status: "ACTIVE" },
+        where: {
+          role: "DEPT_MANAGER",
+          departmentId: requirement.departmentId,
+          status: "ACTIVE",
+        },
         select: { id: true },
       });
-      for (const m of managers) {
-        if (!approverIds.includes(m.id)) approverIds.push(m.id);
+      if (managers.length > 0) {
+        await notify({
+          userIds: managers.map((m) => m.id),
+          type: "APPROVAL_REQUEST",
+          title: "قياس بانتظار المراجعة المبدئية",
+          body: `${user.name} قدّم قياساً للمتطلب ${requirement.code} — ${requirement.name}`,
+          link: "/dept-follow",
+          email: true,
+        });
       }
     }
 
-    await notify({
-      userIds: approverIds,
-      type: "APPROVAL_REQUEST",
-      title: "طلب اعتماد قياس جديد",
-      body: `${user.name} أرسل قياسًا للمتطلب ${requirement.code} — ${requirement.name}`,
-      link: "/approvals",
-      email: true,
-    });
-
-    await audit(userId, "SUBMIT_MEASUREMENT", "MeasurementPeriod", mp.id, {
+    await audit(userId, body.action === "draft" ? "DRAFT_MEASUREMENT" : "SUBMIT_MEASUREMENT", "MeasurementPeriod", mp.id, {
       requirementId: body.requirementId,
       year: body.year,
       period: body.period,

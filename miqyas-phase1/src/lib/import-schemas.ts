@@ -21,7 +21,7 @@ export const importRowSchema = z.object({
   whatHappened: z.string().nullable(),
   howHappened: z.string().nullable(),
   recommendation: z.string().nullable(),
-  approvalStatus: z.enum(["APPROVED", "PENDING"]),
+  approvalStatus: z.enum(["FINAL_APPROVED", "SUBMITTED", "APPROVED", "PENDING"]),
   status: z.enum(["NEW", "UPDATE", "ERROR"]),
   error: z.string().optional(),
 });

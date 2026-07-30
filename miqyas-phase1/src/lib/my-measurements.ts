@@ -1,11 +1,21 @@
-import type { Period } from "@prisma/client";
+import type { Period, Role } from "@prisma/client";
 import { db } from "@/lib/db";
 import { resolvePeriods } from "@/lib/kpi";
+import { roleToFillerRole } from "@/lib/approval-status";
 
 /** متطلبات القياس المسندة للمستخدم مع فترة القياس والشواهد والمؤشرات المرتبطة */
-export async function getMyRequirements(userId: number, year: number, period: Period) {
+export async function getMyRequirements(
+  userId: number,
+  year: number,
+  period: Period,
+  role?: Role
+) {
+  const fillerRole = role ? roleToFillerRole(role) : null;
+  const where: Record<string, unknown> = { active: true, ownerId: userId };
+  if (fillerRole) where.fillerRole = fillerRole;
+
   const requirements = await db.measurementRequirement.findMany({
-    where: { active: true, ownerId: userId },
+    where,
     select: {
       id: true,
       code: true,
@@ -15,6 +25,7 @@ export async function getMyRequirements(userId: number, year: number, period: Pe
       frequency: true,
       requiredData: true,
       ownerId: true,
+      fillerRole: true,
       departmentId: true,
       sectionId: true,
       periods: {
@@ -22,7 +33,15 @@ export async function getMyRequirements(userId: number, year: number, period: Pe
         take: 1,
         include: {
           evidences: {
-            select: { id: true, fileName: true, mimeType: true, sizeBytes: true, createdAt: true },
+            select: {
+              id: true,
+              fileName: true,
+              mimeType: true,
+              sizeBytes: true,
+              createdAt: true,
+              status: true,
+              rejectReason: true,
+            },
           },
         },
       },
@@ -47,6 +66,7 @@ export async function getMyRequirements(userId: number, year: number, period: Pe
         frequency: req.frequency,
         requiredData: req.requiredData,
         ownerId: req.ownerId,
+        fillerRole: req.fillerRole,
         departmentId: req.departmentId,
         sectionId: req.sectionId,
       },
@@ -59,6 +79,7 @@ export async function getMyRequirements(userId: number, year: number, period: Pe
             note: measurement.note,
             approvalStatus: measurement.approvalStatus,
             rejectReason: measurement.rejectReason,
+            suggestedWording: measurement.suggestedWording,
             evidences: measurement.evidences,
           }
         : null,

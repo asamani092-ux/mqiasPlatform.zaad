@@ -10,7 +10,7 @@ import { classifyStatus5 } from "../src/lib/status5";
 async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const db = new PrismaClient({ adapter: new PrismaPg(pool) });
-  const approved = await db.kpiEntry.count({ where: { approvalStatus: "APPROVED" } });
+  const approved = await db.kpiEntry.count({ where: { approvalStatus: "FINAL_APPROVED" } });
   const pending = await db.kpiEntry.count({ where: { approvalStatus: "PENDING" } });
   const emp = await db.user.findUnique({ where: { email: "employee@zad.org.sa" }, select: { id: true } });
   const empKpis = emp ? await db.kpi.count({ where: { ownerId: emp.id } }) : 0;
@@ -20,7 +20,7 @@ async function main() {
   const periods: Period[] = ["Q1", "Q2"];
   for (const period of periods) {
     const entries = await db.kpiEntry.findMany({
-      where: { year: 2026, period, approvalStatus: "APPROVED" },
+      where: { year: 2026, period, approvalStatus: "FINAL_APPROVED" },
       include: { kpi: { select: { polarity: true } } },
     });
     for (const entry of entries) {

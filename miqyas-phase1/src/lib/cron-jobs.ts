@@ -101,7 +101,7 @@ export async function runEarlyWarning(date = new Date()) {
     include: {
       targets: { where: { year, period }, take: 1 },
       entries: {
-        where: { year, period, approvalStatus: "APPROVED" },
+        where: { year, period, approvalStatus: "FINAL_APPROVED" },
         take: 1,
       },
     },

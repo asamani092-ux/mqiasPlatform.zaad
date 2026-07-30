@@ -14,6 +14,7 @@ import {
   Settings,
   Settings2,
   Target,
+  UserPlus,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -42,13 +43,13 @@ const DASHBOARD_NAV: NavItem = {
 
 const MY_NAV: NavItem = {
   href: "/my",
-  label: "مهامي وشواهدي",
+  label: "شواهد المؤشرات",
   Icon: ClipboardList,
 };
 
 const DEPT_FOLLOW_NAV: NavItem = {
   href: "/dept-follow",
-  label: "متابعة الإدارة",
+  label: "مراجعة الإدارة",
   Icon: Building2,
 };
 
@@ -64,6 +65,7 @@ const TRACK_NAV: NavItem[] = [
 const ADMIN_NAV: NavItem[] = [
   { href: "/admin/users", label: "إدارة المستخدمين", Icon: Users },
   { href: "/admin/kpis", label: "إدارة المؤشرات", Icon: Ruler },
+  { href: "/admin/assign", label: "إسناد المتطلبات", Icon: UserPlus },
   { href: "/admin/settings", label: "إعدادات النظام", Icon: Settings2 },
 ];
 
@@ -75,7 +77,7 @@ const EXECUTIVE_NAV: NavItem = {
 
 const APPROVALS_NAV: NavItem = {
   href: "/approvals",
-  label: "اعتماد القياسات",
+  label: "الاعتماد النهائي",
   Icon: CheckCircle2,
 };
 
@@ -85,7 +87,7 @@ const UAT_NAV: NavItem = {
   Icon: ClipboardCheck,
 };
 
-/** بناء أقسام التنقّل حسب الدور — موظف/رئيس قسم/مدير إدارة بدون مسارات القياس الكاملة */
+/** بناء أقسام التنقّل حسب الدور */
 export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[] {
   const { showApprovals = false, showUat = false } = flags;
   const sections: NavSection[] = [];
@@ -96,16 +98,12 @@ export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[]
   }
 
   if (role === "SECTION_HEAD") {
-    const items: NavItem[] = [MY_NAV];
-    if (showApprovals) items.push(APPROVALS_NAV);
-    sections.push({ label: "الرئيسية", items });
+    sections.push({ label: "الرئيسية", items: [MY_NAV] });
     return sections;
   }
 
   if (role === "DEPT_MANAGER") {
-    const items: NavItem[] = [MY_NAV, DEPT_FOLLOW_NAV];
-    if (showApprovals) items.push(APPROVALS_NAV);
-    sections.push({ label: "الرئيسية", items });
+    sections.push({ label: "الرئيسية", items: [MY_NAV, DEPT_FOLLOW_NAV] });
     return sections;
   }
 

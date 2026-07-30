@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         kpiId: body.kpiId,
         year: body.year,
         period: body.period,
-        approvalStatus: "APPROVED",
+        approvalStatus: "FINAL_APPROVED",
       },
     });
     if (!entry) return jsonError("لا يوجد قياس معتمد لهذه الفترة", 400);

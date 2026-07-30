@@ -442,9 +442,11 @@ async function main() {
         whatHappened: "تحليل تجريبي افتراضي — ليس من ملف Excel الرسمي",
         howHappened: "أُنشئ آلياً لبيئة التجربة في منصة مِقياس",
         enteredById: adminUserId,
-        approvalStatus: "APPROVED",
+        approvalStatus: "FINAL_APPROVED",
         approvedById: adminUserId,
         approvedAt: new Date(),
+        initialApprovedById: adminUserId,
+        initialApprovedAt: new Date(),
       });
       counts.kpiEntries++;
     }
@@ -510,46 +512,94 @@ async function main() {
   }
 
   const employee = await db.user.findUnique({ where: { email: "employee@zad.org.sa" } });
-  if (employee && kpiCodesForEmployee.length > 0) {
-    await db.kpi.updateMany({
-      where: { id: { in: kpiCodesForEmployee } },
-      data: { ownerId: employee.id },
-    });
+  const head = await db.user.findUnique({ where: { email: "head@zad.org.sa" } });
+  const manager = await db.user.findUnique({ where: { email: "manager@zad.org.sa" } });
+
+  async function assignOwned(
+    userId: number,
+    fillerRole: "EMPLOYEE" | "SECTION_HEAD" | "DEPT_MANAGER",
+    kpiIds: number[]
+  ) {
+    if (kpiIds.length === 0) return;
+    await db.kpi.updateMany({ where: { id: { in: kpiIds } }, data: { ownerId: userId } });
     const owned = await db.kpi.findMany({
-      where: { id: { in: kpiCodesForEmployee } },
+      where: { id: { in: kpiIds } },
       select: { requirementId: true },
     });
     const reqIds = owned.map((k) => k.requirementId).filter((id): id is number => id != null);
     if (reqIds.length > 0) {
       await db.measurementRequirement.updateMany({
         where: { id: { in: reqIds } },
-        data: { ownerId: employee.id },
+        data: { ownerId: userId, fillerRole },
       });
     }
   }
 
-  // عيّنة PENDING للاعتماد (المصدر الموحّد + إسقاط KpiEntry)
-  const approvalSample = await db.measurementPeriod.findMany({
-    where: { year: YEAR, approvalStatus: "APPROVED" },
-    take: 5,
+  if (employee) await assignOwned(employee.id, "EMPLOYEE", kpiCodesForEmployee.slice(0, 3));
+  const moreKpis = await db.kpi.findMany({
+    where: { active: true, id: { notIn: kpiCodesForEmployee.slice(0, 3) } },
+    select: { id: true },
+    take: 4,
+    orderBy: { id: "asc" },
+  });
+  if (head) await assignOwned(head.id, "SECTION_HEAD", moreKpis.slice(0, 2).map((k) => k.id));
+  if (manager) await assignOwned(manager.id, "DEPT_MANAGER", moreKpis.slice(2, 4).map((k) => k.id));
+
+  const submittedSample = await db.measurementPeriod.findMany({
+    where: { year: YEAR, approvalStatus: "FINAL_APPROVED" },
+    take: 3,
     orderBy: { id: "asc" },
     select: { id: true, requirementId: true, year: true, period: true },
   });
-  if (approvalSample.length > 0) {
-    const mpIds = approvalSample.map((e) => e.id);
+  if (submittedSample.length > 0) {
     await db.measurementPeriod.updateMany({
-      where: { id: { in: mpIds } },
-      data: { approvalStatus: "PENDING", approvedAt: null, approvedById: null },
+      where: { id: { in: submittedSample.map((e) => e.id) } },
+      data: {
+        approvalStatus: "SUBMITTED",
+        approvedAt: null,
+        approvedById: null,
+        initialApprovedAt: null,
+        initialApprovedById: null,
+      },
     });
     await db.kpiEntry.updateMany({
       where: {
-        OR: approvalSample.map((mp) => ({
+        OR: submittedSample.map((mp) => ({
           kpi: { requirementId: mp.requirementId },
           year: mp.year,
           period: mp.period,
         })),
       },
-      data: { approvalStatus: "PENDING", approvedAt: null, approvedById: null },
+      data: { approvalStatus: "SUBMITTED", approvedAt: null, approvedById: null },
+    });
+  }
+
+  const initialSample = await db.measurementPeriod.findMany({
+    where: { year: YEAR, approvalStatus: "FINAL_APPROVED" },
+    take: 3,
+    orderBy: { id: "desc" },
+    select: { id: true, requirementId: true, year: true, period: true },
+  });
+  if (initialSample.length > 0) {
+    await db.measurementPeriod.updateMany({
+      where: { id: { in: initialSample.map((e) => e.id) } },
+      data: {
+        approvalStatus: "INITIAL_APPROVED",
+        approvedAt: null,
+        approvedById: null,
+        initialApprovedAt: new Date(),
+        initialApprovedById: manager?.id ?? adminUserId,
+      },
+    });
+    await db.kpiEntry.updateMany({
+      where: {
+        OR: initialSample.map((mp) => ({
+          kpi: { requirementId: mp.requirementId },
+          year: mp.year,
+          period: mp.period,
+        })),
+      },
+      data: { approvalStatus: "INITIAL_APPROVED", approvedAt: null, approvedById: null },
     });
   }
 
@@ -558,7 +608,7 @@ async function main() {
     where: {
       year: YEAR,
       period: "Q2",
-      approvalStatus: "APPROVED",
+      approvalStatus: "FINAL_APPROVED",
       achievementPct: { lt: 80 },
     },
     include: { kpi: { select: { polarity: true } } },

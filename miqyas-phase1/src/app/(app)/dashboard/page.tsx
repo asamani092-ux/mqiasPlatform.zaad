@@ -20,7 +20,7 @@ export default async function DashboardPage({
   const [overview, entries, departments] = await Promise.all([
     getDashboardOverview(user, year, period),
     db.kpiEntry.findMany({
-      where: { year, period, approvalStatus: "APPROVED" },
+      where: { year, period, approvalStatus: "FINAL_APPROVED" },
       select: { status: true },
     }),
     db.department.findMany({

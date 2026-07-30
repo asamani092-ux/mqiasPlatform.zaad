@@ -14,10 +14,13 @@ export type MeasurementWriteInput = {
   approvalStatus?: ApprovalStatus;
   approvedById?: number | null;
   approvedAt?: Date | null;
+  initialApprovedById?: number | null;
+  initialApprovedAt?: Date | null;
   rejectReason?: string | null;
+  suggestedWording?: string | null;
 };
 
-/** يزامن كل KpiEntry المرتبطة بالمتطلب من MeasurementPeriod — O(k) على عدد المؤشرات المرتبطة */
+/** يزامن كل KpiEntry المرتبطة بالمتطلب من MeasurementPeriod — O(k) */
 export async function syncKpiEntriesFromMeasurement(measurementPeriodId: number) {
   const mp = await db.measurementPeriod.findUnique({
     where: { id: measurementPeriodId },
@@ -76,7 +79,6 @@ export async function syncKpiEntriesFromMeasurement(measurementPeriodId: number)
       },
     });
 
-    // ربط الشواهد الموحّدة أيضاً بالإدخال للعرض في المسارات القديمة
     for (const ev of mp.evidences) {
       if (ev.kpiEntryId === entry.id) continue;
       if (ev.kpiEntryId == null) {
@@ -90,6 +92,32 @@ export async function syncKpiEntriesFromMeasurement(measurementPeriodId: number)
   }
 
   return { synced };
+}
+
+export async function recordApprovalEvent(input: {
+  measurementPeriodId: number;
+  actorId: number;
+  action:
+    | "SAVE_DRAFT"
+    | "SUBMIT"
+    | "INITIAL_APPROVE"
+    | "FINAL_APPROVE"
+    | "REJECT_WORDING"
+    | "REJECT_EVIDENCE"
+    | "RETURN_EDIT"
+    | "ADMIN_EDIT";
+  comment?: string | null;
+  payload?: unknown;
+}) {
+  await db.approvalEvent.create({
+    data: {
+      measurementPeriodId: input.measurementPeriodId,
+      actorId: input.actorId,
+      action: input.action,
+      comment: input.comment ?? null,
+      payload: input.payload != null ? JSON.stringify(input.payload) : null,
+    },
+  });
 }
 
 /** كتابة قياس الفترة الموحّد ثم مزامنة المؤشرات المرتبطة */
@@ -111,20 +139,29 @@ export async function upsertMeasurementPeriod(input: MeasurementWriteInput) {
       howHappened: input.howHappened ?? null,
       note: input.note ?? null,
       enteredById: input.enteredById,
-      approvalStatus: input.approvalStatus ?? "PENDING",
+      approvalStatus: input.approvalStatus ?? "DRAFT",
       approvedById: input.approvedById ?? null,
       approvedAt: input.approvedAt ?? null,
+      initialApprovedById: input.initialApprovedById ?? null,
+      initialApprovedAt: input.initialApprovedAt ?? null,
       rejectReason: input.rejectReason ?? null,
+      suggestedWording: input.suggestedWording ?? null,
     },
     update: {
       actualValue: input.actualValue,
       whatHappened: input.whatHappened ?? null,
       howHappened: input.howHappened ?? null,
       note: input.note ?? null,
-      approvalStatus: input.approvalStatus ?? "PENDING",
+      approvalStatus: input.approvalStatus ?? "DRAFT",
       approvedById: input.approvedById ?? null,
       approvedAt: input.approvedAt ?? null,
+      initialApprovedById:
+        input.initialApprovedById !== undefined ? input.initialApprovedById : undefined,
+      initialApprovedAt:
+        input.initialApprovedAt !== undefined ? input.initialApprovedAt : undefined,
       rejectReason: input.rejectReason ?? null,
+      suggestedWording:
+        input.suggestedWording !== undefined ? input.suggestedWording : undefined,
     },
   });
 

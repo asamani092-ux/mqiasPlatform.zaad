@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       where: {
         year: body.year,
         period: body.period,
-        approvalStatus: "APPROVED",
+        approvalStatus: "FINAL_APPROVED",
         kpi: scope,
       },
       include: { kpi: { select: { polarity: true } } },
