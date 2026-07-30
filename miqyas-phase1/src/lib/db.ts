@@ -18,6 +18,23 @@ function createPrismaClient() {
   return new PrismaClient({ adapter });
 }
 
-export const db = globalForPrisma.prisma ?? createPrismaClient();
+/** يعيد إنشاء العميل إن كان قديماً (بعد prisma generate دون إعادة تشغيل كاملة) */
+function resolvePrismaClient(): PrismaClient {
+  const cached = globalForPrisma.prisma;
+  if (cached && typeof (cached as { measurementRequirement?: unknown }).measurementRequirement !== "undefined") {
+    return cached;
+  }
+  const client = createPrismaClient();
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = client;
+  }
+  return client;
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+export const db: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const client = resolvePrismaClient();
+    const value = Reflect.get(client, prop, receiver);
+    return typeof value === "function" ? (value as (...a: unknown[]) => unknown).bind(client) : value;
+  },
+});

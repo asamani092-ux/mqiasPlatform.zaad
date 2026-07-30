@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "postbuild": "node scripts/copy-standalone-assets.js",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
     "seed": "prisma db seed",
