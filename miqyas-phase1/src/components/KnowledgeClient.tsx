@@ -200,12 +200,6 @@ export default function KnowledgeClient({
           <div className="text-muted">أصول المعرفة والدروس المستفادة</div>
         </div>
         <div style={{ display: "flex", gap: ".5rem", alignItems: "center", flexWrap: "wrap" }}>
-          {canManage && (
-            <button type="button" className="btn-primary btn-sm" onClick={openCreate}>
-              <Plus {...ICON_PROPS} />
-              إضافة أصل
-            </button>
-          )}
           <PeriodSelector year={year} period={period} />
         </div>
       </div>
@@ -234,7 +228,15 @@ export default function KnowledgeClient({
         />
       </div>
 
-      <div style={{ display: "flex", gap: ".65rem", flexWrap: "wrap", marginBottom: "1rem", alignItems: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: ".65rem",
+          flexWrap: "wrap",
+          marginBottom: ".5rem",
+          alignItems: "center",
+        }}
+      >
         <input
           className="input-field"
           style={{ width: "min(240px, 100%)" }}
@@ -243,7 +245,7 @@ export default function KnowledgeClient({
           onChange={(e) => setSearch(e.target.value)}
         />
         <select
-          className="inp"
+          className="input-field"
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
           style={{ width: "auto" }}
@@ -254,7 +256,7 @@ export default function KnowledgeClient({
           ))}
         </select>
         <select
-          className="inp"
+          className="input-field"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           style={{ width: "auto" }}
@@ -264,7 +266,16 @@ export default function KnowledgeClient({
             <option key={s} value={s}>{ASSET_STATUS_LABEL[s]}</option>
           ))}
         </select>
+        {canManage && (
+          <button type="button" className="btn-primary btn-sm" onClick={openCreate}>
+            <Plus {...ICON_PROPS} />
+            إضافة أصل
+          </button>
+        )}
       </div>
+      <p className="text-muted" style={{ fontSize: ".78rem", marginBottom: "1rem" }}>
+        المواد تُدار داخل المنصة حالياً.
+      </p>
 
       <div className="kpi-grid">
         {filtered.map((a) => (

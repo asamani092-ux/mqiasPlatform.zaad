@@ -897,6 +897,40 @@ a:visited {
     border: none;
     margin: 0;
     background: var(--tmkeen-surface) !important;
+    padding: 0.5rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  .print-modal .modal-body,
+  .print-modal .modal-head {
+    padding: 0.5rem 0.65rem !important;
+  }
+
+  .print-modal h3,
+  .print-modal h4,
+  .print-modal .section-h {
+    font-size: 0.9rem !important;
+    margin: 0.35rem 0 !important;
+  }
+
+  .print-modal .field-grid {
+    gap: 0.35rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .print-modal .field-cell {
+    padding: 0.35rem 0.5rem !important;
+  }
+
+  .print-modal .tmkeen-table th,
+  .print-modal .tmkeen-table td {
+    padding: 0.25rem 0.4rem !important;
+    font-size: 0.72rem !important;
+  }
+
+  .print-modal .chart-wrap {
+    max-height: 160px !important;
+    margin-bottom: 0.5rem !important;
   }
 
   .modal-overlay {

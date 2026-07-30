@@ -256,7 +256,7 @@ export default function DeviationCardModal({
           )}
         </div>
 
-        <div className="modal-footer no-print">
+        <div className="modal-footer no-print" style={{ display: "flex", flexWrap: "wrap", gap: ".5rem", justifyContent: "flex-end" }}>
           {canManage && (
             <>
               <button
@@ -289,7 +289,7 @@ export default function DeviationCardModal({
               )}
               <button
                 type="button"
-                className="btn-primary btn-sm"
+                className="btn-secondary btn-sm"
                 disabled={saving}
                 onClick={addAction}
               >

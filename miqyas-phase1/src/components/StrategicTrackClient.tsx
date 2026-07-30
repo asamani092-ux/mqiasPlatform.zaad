@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Info, X } from "lucide-react";
 import PeriodSelector from "@/components/PeriodSelector";
 import BarChartWithTarget from "@/components/charts/BarChartWithTarget";
 import KpiAnalysisModal from "@/components/KpiAnalysisModal";
@@ -12,6 +12,7 @@ import {
   strategicSummary,
   type StrategicKpiRow,
 } from "@/lib/strategic-analytics";
+import { AXIS_LABEL, AXIS_ORDER, type StrategicAxis } from "@/lib/axis";
 import {
   STATUS5_FILTER_OPTIONS,
   STATUS5_SHORT,
@@ -20,6 +21,9 @@ import {
 } from "@/lib/status5";
 import { type Period } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
+
+const TRACK_HELP =
+  "يعرض مسار الأداء الاستراتيجي مؤشرات مرتبطة بالأهداف الاستراتيجية، مع نسب الإنجاز والانحراف والحالة الخماسية بناءً على القياسات المعتمدة فقط. استخدم الفلاتر والبحث لاستعراض المحاور والمؤشرات، ثم افتح «تحليل» لعرض التفاصيل والاتجاه الربعي.";
 
 function formatDeviation(pct: number | null | undefined): string {
   if (pct == null) return "—";
@@ -86,6 +90,9 @@ export default function StrategicTrackClient({
 }) {
   const [filter, setFilter] = useState<Status5 | "all">("all");
   const [analysisRow, setAnalysisRow] = useState<StrategicKpiRow | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [tableSearch, setTableSearch] = useState("");
+  const [axisFilter, setAxisFilter] = useState<StrategicAxis | "">("");
 
   const summary = useMemo(() => strategicSummary(rows), [rows]);
   const axes = useMemo(() => groupByAxis(rows), [rows]);
@@ -98,6 +105,16 @@ export default function StrategicTrackClient({
     () => rows.filter((r) => filter === "all" || r.status5 === filter),
     [rows, filter],
   );
+
+  const tableRows = useMemo(() => {
+    const q = tableSearch.trim().toLowerCase();
+    return filteredRows.filter((r) => {
+      if (axisFilter && r.axis !== axisFilter) return false;
+      if (!q) return true;
+      const hay = `${r.code} ${r.name} ${r.ownerLabel ?? ""} ${r.departmentName ?? ""} ${r.strategicGoalCode ?? ""} ${r.strategicGoalTitle ?? ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [filteredRows, tableSearch, axisFilter]);
 
   const filteredAxes = useMemo(() => {
     return axes
@@ -152,7 +169,17 @@ export default function StrategicTrackClient({
     <>
       <div className="topbar">
         <div>
-          <h1>مسار الأداء الاستراتيجي</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: ".65rem", flexWrap: "wrap" }}>
+            <h1 style={{ margin: 0 }}>مسار الأداء الاستراتيجي</h1>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => setHelpOpen(true)}
+            >
+              <Info {...ICON_PROPS} />
+              شرح المسار
+            </button>
+          </div>
           <div className="text-muted">مؤشرات الأداء الاستراتيجي — قيم معتمدة فقط</div>
         </div>
         <PeriodSelector year={year} period={period} />
@@ -246,7 +273,37 @@ export default function StrategicTrackClient({
 
       <div className="card" style={{ marginTop: "1rem" }}>
         <h3 style={{ marginBottom: ".75rem" }}>جميع المؤشرات الاستراتيجية</h3>
-        {filteredRows.length === 0 ? (
+        <div
+          style={{
+            display: "flex",
+            gap: ".65rem",
+            flexWrap: "wrap",
+            alignItems: "center",
+            marginBottom: ".75rem",
+          }}
+        >
+          <input
+            className="input-field"
+            style={{ width: "min(260px, 100%)" }}
+            placeholder="بحث بالرمز أو الاسم..."
+            value={tableSearch}
+            onChange={(e) => setTableSearch(e.target.value)}
+          />
+          <select
+            className="input-field"
+            style={{ width: "auto" }}
+            value={axisFilter}
+            onChange={(e) => setAxisFilter(e.target.value as StrategicAxis | "")}
+          >
+            <option value="">كل المحاور</option>
+            {AXIS_ORDER.map((ax) => (
+              <option key={ax} value={ax}>
+                {AXIS_LABEL[ax]}
+              </option>
+            ))}
+          </select>
+        </div>
+        {tableRows.length === 0 ? (
           <p className="text-muted">لا توجد مؤشرات للعرض.</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
@@ -266,7 +323,7 @@ export default function StrategicTrackClient({
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map((r) => (
+                {tableRows.map((r) => (
                   <tr key={r.kpiId}>
                     <td>{r.code}</td>
                     <td>{r.name}</td>
@@ -296,6 +353,32 @@ export default function StrategicTrackClient({
           </div>
         )}
       </div>
+
+      {helpOpen && (
+        <div className="modal-overlay" onClick={() => setHelpOpen(false)}>
+          <div className="modal-panel card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>شرح مسار الأداء الاستراتيجي</h3>
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={() => setHelpOpen(false)}
+                aria-label="إغلاق"
+              >
+                <X {...ICON_PROPS} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: 0, lineHeight: 1.7 }}>{TRACK_HELP}</p>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn-primary btn-sm" onClick={() => setHelpOpen(false)}>
+                حسناً
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {analysisRow && (
         <KpiAnalysisModal

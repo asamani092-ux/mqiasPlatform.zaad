@@ -3,6 +3,7 @@ import { getSessionUser } from "@/lib/auth";
 import { parseTrackParams } from "@/lib/track-params";
 import { getLiveEarlyWarnings } from "@/lib/early-warning-live";
 import { summarizeEarlyWarning } from "@/lib/early-warning-stats";
+import { can } from "@/lib/rbac";
 import EarlyWarningClient from "@/components/EarlyWarningClient";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ export default async function EarlyWarningPage({
       summary={summary}
       year={year}
       period={period}
+      canManage={can.manageDeviation(user)}
     />
   );
 }

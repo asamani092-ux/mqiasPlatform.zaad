@@ -18,6 +18,9 @@ type KpiDetailResponse = {
     baseline: number | null;
     annualTarget: number | null;
     ownerLabel: string | null;
+    measureFormula: string | null;
+    requiredData: string | null;
+    recommendation: string | null;
     department: { name: string } | null;
     polarity: string;
   };
@@ -68,6 +71,19 @@ export default function KpiAnalysisModal({
         ? `+${row.deviationPct}%`
         : `${row.deviationPct}%`
       : "—";
+
+  const description =
+    row.description?.trim() ||
+    detail?.kpi.measureFormula?.trim() ||
+    null;
+  const requiredData =
+    row.requiredData?.trim() ||
+    detail?.kpi.requiredData?.trim() ||
+    null;
+  const recommendation =
+    row.recommendation?.trim() ||
+    detail?.kpi.recommendation?.trim() ||
+    null;
 
   const trendPoints: TrendPoint[] = QUARTERS.map((q) => {
     const t = detail?.targets.find((x) => x.period === q);
@@ -145,6 +161,35 @@ export default function KpiAnalysisModal({
                   <div className="field-cell-value">{deviationSigned}</div>
                 </div>
               </div>
+
+              {(description || requiredData || recommendation) && (
+                <div className="field-grid" style={{ marginBottom: "1rem" }}>
+                  {description && (
+                    <div className="field-cell" style={{ gridColumn: "1 / -1" }}>
+                      <div className="field-cell-label">الوصف / آلية الاحتساب</div>
+                      <div className="field-cell-value" style={{ fontSize: ".85rem", fontWeight: 500 }}>
+                        {description}
+                      </div>
+                    </div>
+                  )}
+                  {requiredData && (
+                    <div className="field-cell" style={{ gridColumn: "1 / -1" }}>
+                      <div className="field-cell-label">البيانات المطلوبة</div>
+                      <div className="field-cell-value" style={{ fontSize: ".85rem", fontWeight: 500 }}>
+                        {requiredData}
+                      </div>
+                    </div>
+                  )}
+                  {recommendation && (
+                    <div className="field-cell" style={{ gridColumn: "1 / -1" }}>
+                      <div className="field-cell-label">التوصيات</div>
+                      <div className="field-cell-value" style={{ fontSize: ".85rem", fontWeight: 500 }}>
+                        {recommendation}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <Status5OwnerLine
                 status={status5}

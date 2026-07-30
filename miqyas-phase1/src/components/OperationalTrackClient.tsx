@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Info, X } from "lucide-react";
 import PeriodSelector from "@/components/PeriodSelector";
 import BarChartWithTarget from "@/components/charts/BarChartWithTarget";
 import KpiAnalysisModal from "@/components/KpiAnalysisModal";
@@ -21,6 +21,9 @@ import {
 } from "@/lib/status5";
 import { type Period } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
+
+const TRACK_HELP =
+  "يعرض مسار الأداء التشغيلي مؤشرات الإدارات والأقسام المرتبطة بالأهداف التشغيلية، مع نسب الإنجاز والانحراف والحالة الخماسية من القياسات المعتمدة فقط. استخدم البحث وفلتر الإدارة لاستعراض الجدول، ثم افتح «تحليل» لعرض التفاصيل والاتجاه الربعي.";
 
 function formatDeviation(pct: number | null | undefined): string {
   if (pct == null) return "—";
@@ -89,6 +92,9 @@ export default function OperationalTrackClient({
 }) {
   const [filter, setFilter] = useState<Status5 | "all">("all");
   const [analysisRow, setAnalysisRow] = useState<OperationalKpiRow | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [tableSearch, setTableSearch] = useState("");
+  const [deptFilter, setDeptFilter] = useState<number | "">("");
 
   const summary = useMemo(() => operationalSummary(rows), [rows]);
   const deptGroups = useMemo(() => groupByDepartment(rows, departments), [rows, departments]);
@@ -98,6 +104,16 @@ export default function OperationalTrackClient({
     () => rows.filter((r) => filter === "all" || r.status5 === filter),
     [rows, filter],
   );
+
+  const tableRows = useMemo(() => {
+    const q = tableSearch.trim().toLowerCase();
+    return filteredRows.filter((r) => {
+      if (deptFilter !== "" && r.departmentId !== deptFilter) return false;
+      if (!q) return true;
+      const hay = `${r.code} ${r.name} ${r.ownerLabel ?? ""} ${r.departmentName ?? ""} ${r.sectionName ?? ""} ${r.operationalGoalTitle ?? ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [filteredRows, tableSearch, deptFilter]);
 
   const filteredDepts = useMemo(
     () =>
@@ -155,7 +171,17 @@ export default function OperationalTrackClient({
     <>
       <div className="topbar">
         <div>
-          <h1>مسار الأداء التشغيلي</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: ".65rem", flexWrap: "wrap" }}>
+            <h1 style={{ margin: 0 }}>مسار الأداء التشغيلي</h1>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => setHelpOpen(true)}
+            >
+              <Info {...ICON_PROPS} />
+              شرح المسار
+            </button>
+          </div>
           <div className="text-muted">مؤشرات الأداء التشغيلي — قيم معتمدة فقط</div>
         </div>
         <PeriodSelector year={year} period={period} />
@@ -251,7 +277,39 @@ export default function OperationalTrackClient({
 
       <div className="card" style={{ marginTop: "1rem" }}>
         <h3 style={{ marginBottom: ".75rem" }}>جميع المؤشرات التشغيلية</h3>
-        {filteredRows.length === 0 ? (
+        <div
+          style={{
+            display: "flex",
+            gap: ".65rem",
+            flexWrap: "wrap",
+            alignItems: "center",
+            marginBottom: ".75rem",
+          }}
+        >
+          <input
+            className="input-field"
+            style={{ width: "min(260px, 100%)" }}
+            placeholder="بحث بالرمز أو الاسم..."
+            value={tableSearch}
+            onChange={(e) => setTableSearch(e.target.value)}
+          />
+          <select
+            className="input-field"
+            style={{ width: "auto" }}
+            value={deptFilter === "" ? "" : String(deptFilter)}
+            onChange={(e) =>
+              setDeptFilter(e.target.value ? parseInt(e.target.value, 10) : "")
+            }
+          >
+            <option value="">كل الإدارات</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {tableRows.length === 0 ? (
           <p className="text-muted">لا توجد مؤشرات للعرض.</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
@@ -271,7 +329,7 @@ export default function OperationalTrackClient({
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map((r) => (
+                {tableRows.map((r) => (
                   <tr key={r.kpiId}>
                     <td>{r.code}</td>
                     <td>{r.name}</td>
@@ -301,6 +359,32 @@ export default function OperationalTrackClient({
           </div>
         )}
       </div>
+
+      {helpOpen && (
+        <div className="modal-overlay" onClick={() => setHelpOpen(false)}>
+          <div className="modal-panel card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>شرح مسار الأداء التشغيلي</h3>
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={() => setHelpOpen(false)}
+                aria-label="إغلاق"
+              >
+                <X {...ICON_PROPS} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: 0, lineHeight: 1.7 }}>{TRACK_HELP}</p>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn-primary btn-sm" onClick={() => setHelpOpen(false)}>
+                حسناً
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {analysisRow && (
         <KpiAnalysisModal

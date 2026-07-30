@@ -115,12 +115,12 @@ export default function DashboardClient({
         <PeriodSelector year={year} period={period} />
       </div>
 
-      <h3 style={{ marginBottom: ".75rem" }}>نظرة إجمالية على أداء المنصة</h3>
-      <div className="grid grid-3" style={{ marginBottom: "1rem" }}>
+      <h3 style={{ marginBottom: ".5rem" }}>نظرة إجمالية على أداء المنصة</h3>
+      <div className="grid grid-3" style={{ marginBottom: "1rem", gap: ".75rem" }}>
         {trackTiles.map((s) => (
-          <div key={s.lbl} className={`card stat-card ${s.accent}`.trim()}>
-            <div className="stat-num">{s.num}</div>
-            <div className="stat-lbl">{s.lbl}</div>
+          <div key={s.lbl} className={`card stat-card ${s.accent}`.trim()} style={{ padding: ".85rem 1rem" }}>
+            <div className="stat-num" style={{ fontSize: "1.55rem" }}>{s.num}</div>
+            <div className="stat-lbl" style={{ fontSize: ".72rem", marginTop: ".15rem" }}>{s.lbl}</div>
           </div>
         ))}
       </div>
@@ -250,9 +250,9 @@ export default function DashboardClient({
         {Object.keys(byStatus).length === 0 ? (
           <p className="text-muted">لا توجد قياسات معتمدة لهذه الفترة بعد.</p>
         ) : (
-          <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap", alignItems: "center" }}>
             {(Object.keys(byStatus) as KpiStatus[]).map((s) => (
-              <span key={s} className={STATUS_BADGE[s]}>
+              <span key={s} className={STATUS_BADGE[s]} style={{ fontSize: ".72rem" }}>
                 {STATUS_LABEL[s]} · {byStatus[s]}
               </span>
             ))}

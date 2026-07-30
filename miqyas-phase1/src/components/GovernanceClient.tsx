@@ -24,11 +24,32 @@ type Requirement = {
   compliancePct: number;
 };
 
+type Observation = {
+  id: number;
+  title: string;
+  status: string;
+  openedYear: number;
+  openedPeriod: string;
+  closedYear: number | null;
+  closedPeriod: string | null;
+  createdAt: string;
+};
+
 const STATUS_BADGE: Record<string, string> = {
   COMPLIANT: "badge-success",
   PARTIAL: "badge-warning",
   NON_COMPLIANT: "badge-danger",
   PENDING: "badge-secondary",
+};
+
+const OBS_STATUS_BADGE: Record<string, string> = {
+  OPEN: "badge-warning",
+  CLOSED: "badge-success",
+};
+
+const OBS_STATUS_LABEL: Record<string, string> = {
+  OPEN: "مفتوحة",
+  CLOSED: "مغلقة",
 };
 
 type RequirementForm = {
@@ -52,18 +73,22 @@ const emptyForm = (): RequirementForm => ({
 export default function GovernanceClient({
   initialStats,
   initialRequirements,
+  initialObservations = [],
   year,
   period,
   canManage,
 }: {
   initialStats: GovernanceStats;
   initialRequirements: Requirement[];
+  initialObservations?: Observation[];
   year: number;
   period: Period;
   canManage: boolean;
 }) {
   const [stats, setStats] = useState(initialStats);
   const [requirements, setRequirements] = useState(initialRequirements);
+  const [observations, setObservations] = useState(initialObservations);
+  const [tab, setTab] = useState<"requirements" | "observations">("requirements");
   const [msg, setMsg] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -78,6 +103,7 @@ export default function GovernanceClient({
       const data = await res.json();
       setStats(data.stats);
       setRequirements(data.requirements);
+      setObservations(data.observations ?? []);
     }
   }, [year, period]);
 
@@ -245,105 +271,163 @@ export default function GovernanceClient({
         />
       </div>
 
-      <div style={{ display: "flex", gap: ".65rem", flexWrap: "wrap", marginBottom: "1rem", alignItems: "center" }}>
-        <select
-          className="inp"
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          style={{ width: "auto" }}
+      <div className="tab-bar" style={{ marginBottom: "1rem" }}>
+        <button
+          type="button"
+          className={tab === "requirements" ? "active" : ""}
+          onClick={() => setTab("requirements")}
         >
-          <option value="">كل التصنيفات</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        <select
-          className="inp"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          style={{ width: "auto" }}
-        >
-          <option value="">كل الحالات</option>
-          <option value="COMPLIANT">ملتزم</option>
-          <option value="PARTIAL">جزئي</option>
-          <option value="NON_COMPLIANT">غير ملتزم</option>
-          <option value="PENDING">انتظار</option>
-        </select>
-        <button type="button" className="btn-secondary btn-sm" onClick={() => load()}>
-          تحديث
+          متطلبات
         </button>
-        {canManage && (
-          <button type="button" className="btn-primary btn-sm" onClick={openCreate}>
-            <Plus {...ICON_PROPS} />
-            إضافة معيار
-          </button>
-        )}
-        <span className="text-muted" style={{ fontSize: ".85rem", marginInlineStart: "auto" }}>
-          ملاحظات قائمة: {stats.openObservations}
-        </span>
+        <button
+          type="button"
+          className={tab === "observations" ? "active" : ""}
+          onClick={() => setTab("observations")}
+        >
+          ملاحظات ({stats.openObservations})
+        </button>
       </div>
 
-      <div className="card" style={{ marginBottom: "1rem", padding: 0, overflow: "hidden" }}>
-        <table className="tmkeen-table">
-          <thead>
-            <tr>
-              <th>الرمز</th>
-              <th>المعيار</th>
-              <th>التصنيف</th>
-              <th>الجهة</th>
-              <th>نسبة الالتزام</th>
-              <th>الحالة</th>
-              {canManage && <th>الإجراء</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r) => (
-              <tr key={r.id}>
-                <td>{r.code}</td>
-                <td>{r.title}</td>
-                <td>{r.category || "—"}</td>
-                <td>{r.owner || "—"}</td>
-                <td>{r.compliancePct}%</td>
-                <td>
-                  <span className={STATUS_BADGE[r.status] ?? "badge-secondary"}>
-                    {GOVERNANCE_STATUS_LABEL[r.status] ?? r.status}
-                  </span>
-                </td>
-                {canManage && (
-                  <td>
-                    <div style={{ display: "flex", gap: ".25rem", flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        className="btn-secondary btn-sm"
-                        aria-label="تعديل"
-                        onClick={() => openEdit(r)}
-                      >
-                        <Pencil {...ICON_PROPS} />
-                        تعديل
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-danger btn-sm"
-                        aria-label="حذف"
-                        onClick={() => deleteRequirement(r.id, r.title)}
-                      >
-                        <Trash2 {...ICON_PROPS} />
-                      </button>
-                    </div>
-                  </td>
-                )}
+      {tab === "requirements" && (
+        <>
+          <div style={{ display: "flex", gap: ".65rem", flexWrap: "wrap", marginBottom: "1rem", alignItems: "center" }}>
+            <select
+              className="input-field"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              style={{ width: "auto" }}
+            >
+              <option value="">كل التصنيفات</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <select
+              className="input-field"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ width: "auto" }}
+            >
+              <option value="">كل الحالات</option>
+              <option value="COMPLIANT">ملتزم</option>
+              <option value="PARTIAL">جزئي</option>
+              <option value="NON_COMPLIANT">غير ملتزم</option>
+              <option value="PENDING">انتظار</option>
+            </select>
+            <button type="button" className="btn-secondary btn-sm" onClick={() => load()}>
+              تحديث
+            </button>
+            {canManage && (
+              <button type="button" className="btn-primary btn-sm" onClick={openCreate}>
+                <Plus {...ICON_PROPS} />
+                إضافة معيار
+              </button>
+            )}
+          </div>
+
+          <div className="card" style={{ marginBottom: "1rem", padding: 0, overflow: "hidden" }}>
+            <table className="tmkeen-table">
+              <thead>
+                <tr>
+                  <th>الرمز</th>
+                  <th>المعيار</th>
+                  <th>التصنيف</th>
+                  <th>الجهة</th>
+                  <th>نسبة الالتزام</th>
+                  <th>الحالة</th>
+                  {canManage && <th>الإجراء</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.code}</td>
+                    <td>{r.title}</td>
+                    <td>{r.category || "—"}</td>
+                    <td>{r.owner || "—"}</td>
+                    <td>{r.compliancePct}%</td>
+                    <td>
+                      <span className={STATUS_BADGE[r.status] ?? "badge-secondary"}>
+                        {GOVERNANCE_STATUS_LABEL[r.status] ?? r.status}
+                      </span>
+                    </td>
+                    {canManage && (
+                      <td>
+                        <div style={{ display: "flex", gap: ".35rem", flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            className="btn-secondary btn-sm"
+                            aria-label="تعديل"
+                            onClick={() => openEdit(r)}
+                          >
+                            <Pencil {...ICON_PROPS} />
+                            تعديل
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-danger btn-sm"
+                            aria-label="حذف"
+                            onClick={() => deleteRequirement(r.id, r.title)}
+                          >
+                            <Trash2 {...ICON_PROPS} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filtered.length === 0 && (
+              <p className="text-muted" style={{ padding: ".75rem 1rem" }}>
+                لا توجد معايير مطابقة للفلتر.
+              </p>
+            )}
+          </div>
+        </>
+      )}
+
+      {tab === "observations" && (
+        <div className="card" style={{ marginBottom: "1rem", padding: 0, overflow: "hidden" }}>
+          <table className="tmkeen-table">
+            <thead>
+              <tr>
+                <th>الملاحظة</th>
+                <th>الحالة</th>
+                <th>فترة الفتح</th>
+                <th>فترة الإغلاق</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && (
-          <p className="text-muted" style={{ padding: ".75rem 1rem" }}>
-            لا توجد معايير مطابقة للفلتر.
-          </p>
-        )}
-      </div>
+            </thead>
+            <tbody>
+              {observations.map((o) => (
+                <tr key={o.id}>
+                  <td>{o.title}</td>
+                  <td>
+                    <span className={OBS_STATUS_BADGE[o.status] ?? "badge-secondary"}>
+                      {OBS_STATUS_LABEL[o.status] ?? o.status}
+                    </span>
+                  </td>
+                  <td>
+                    {PERIOD_LABEL[o.openedPeriod as Period] ?? o.openedPeriod} {o.openedYear}
+                  </td>
+                  <td>
+                    {o.closedPeriod
+                      ? `${PERIOD_LABEL[o.closedPeriod as Period] ?? o.closedPeriod} ${o.closedYear ?? ""}`
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {observations.length === 0 && (
+            <p className="text-muted" style={{ padding: ".75rem 1rem" }}>
+              لا توجد ملاحظات مسجّلة.
+            </p>
+          )}
+        </div>
+      )}
 
       {modalOpen && (
         <div className="modal-overlay" onClick={() => !saving && setModalOpen(false)}>
@@ -447,7 +531,7 @@ export default function GovernanceClient({
                 </div>
               </div>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer" style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
               <button
                 type="button"
                 className="btn-secondary btn-sm"

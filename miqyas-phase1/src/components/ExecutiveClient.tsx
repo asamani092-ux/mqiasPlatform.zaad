@@ -93,7 +93,7 @@ export default function ExecutiveClient({
               ? `${headline.measuredKpis}`
               : "—"
           }
-          centerSubLabel="مؤشرات مقيسة"
+          centerSubLabel="مؤشرات تم قياسها"
         />
       </div>
 

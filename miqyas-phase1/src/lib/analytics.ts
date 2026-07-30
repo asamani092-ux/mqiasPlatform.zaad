@@ -10,6 +10,10 @@ export type KpiAnalyticsRow = {
   code: string;
   name: string;
   unit: string;
+  /** وصف المؤشر / آلية الاحتساب */
+  description: string | null;
+  requiredData: string | null;
+  recommendation: string | null;
   baseline: number | null;
   annualTarget: number | null;
   target: number | null;
@@ -45,7 +49,7 @@ export async function getKpiRows(opts: {
       operationalGoal: { select: { title: true } },
       targets: { where: { year: opts.year, period: opts.period }, take: 1 },
       entries: {
-        where: { year: opts.year, period: opts.period, approvalStatus: "APPROVED" },
+        where: { year: opts.year, period: opts.period, approvalStatus: "FINAL_APPROVED" },
         take: 1,
       },
     },
@@ -67,6 +71,9 @@ export async function getKpiRows(opts: {
       code: kpi.code,
       name: kpi.name,
       unit: kpi.unit,
+      description: kpi.measureFormula ?? null,
+      requiredData: kpi.requiredData ?? null,
+      recommendation: kpi.recommendation ?? null,
       baseline: kpi.baseline,
       annualTarget: kpi.annualTarget,
       target,
