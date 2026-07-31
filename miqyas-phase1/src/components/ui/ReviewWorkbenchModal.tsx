@@ -42,6 +42,8 @@ export type ReviewWorkbenchItem = {
 type Props = {
   open: boolean;
   item: ReviewWorkbenchItem | null;
+  /** review = اعتماد/رفض حقول · revoke = إلغاء اعتماد نهائي */
+  mode?: "review" | "revoke";
   approveLabel: string;
   returnLabel?: string;
   allowEditValues?: boolean;
@@ -103,6 +105,7 @@ function isPreviewable(mime?: string | null) {
 export default function ReviewWorkbenchModal({
   open,
   item,
+  mode = "review",
   approveLabel,
   returnLabel = "إعادة للتعديل",
   allowEditValues = true,
@@ -111,6 +114,7 @@ export default function ReviewWorkbenchModal({
   onApprove,
   onReturn,
 }: Props) {
+  const revokeMode = mode === "revoke";
   const [actual, setActual] = useState("");
   const [what, setWhat] = useState("");
   const [how, setHow] = useState("");
@@ -142,9 +146,14 @@ export default function ReviewWorkbenchModal({
   if (!open || !item) return null;
 
   const evidenceIds = activeEvidences.map((e) => e.id);
-  const canApprove = allFieldsAccepted(fields, evidenceIds, evidenceDecisions);
+  const canApprove =
+    !revokeMode && allFieldsAccepted(fields, evidenceIds, evidenceDecisions);
   const hasReject = anyRejected(fields, evidenceDecisions);
-  const canReturn = hasReject && notes.trim().length >= 3;
+  const canReturn = revokeMode
+    ? notes.trim().length >= 3
+    : hasReject && notes.trim().length >= 3;
+  const showNotes = revokeMode || hasReject;
+  const editValues = allowEditValues && !revokeMode;
 
   function setField(key: FieldKey, d: Exclude<Decision, null>) {
     setFields((prev) => ({ ...prev, [key]: d }));
@@ -189,12 +198,20 @@ export default function ReviewWorkbenchModal({
           </div>
         ) : null}
 
+        {revokeMode ? (
+          <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
+            إلغاء الاعتماد النهائي يعيد القياس للمدخل كمسودة مع إشعار مدير الإدارة. السبب مطلوب.
+          </div>
+        ) : null}
+
         <div className="review-field-block">
           <div className="review-field-title">
             <span>{FIELD_LABELS.actual} ({item.unit})</span>
-            <DecisionButtons value={fields.actual} onChange={(d) => setField("actual", d)} />
+            {!revokeMode ? (
+              <DecisionButtons value={fields.actual} onChange={(d) => setField("actual", d)} />
+            ) : null}
           </div>
-          {allowEditValues ? (
+          {editValues ? (
             <input
               className="input-field review-actual-input"
               type="number"
@@ -211,9 +228,11 @@ export default function ReviewWorkbenchModal({
           <div className="review-field-block">
             <div className="review-field-title">
               <span>{FIELD_LABELS.what}</span>
-              <DecisionButtons value={fields.what} onChange={(d) => setField("what", d)} />
+              {!revokeMode ? (
+                <DecisionButtons value={fields.what} onChange={(d) => setField("what", d)} />
+              ) : null}
             </div>
-            {allowEditValues ? (
+            {editValues ? (
               <textarea
                 className="input-field"
                 rows={4}
@@ -227,9 +246,11 @@ export default function ReviewWorkbenchModal({
           <div className="review-field-block">
             <div className="review-field-title">
               <span>{FIELD_LABELS.how}</span>
-              <DecisionButtons value={fields.how} onChange={(d) => setField("how", d)} />
+              {!revokeMode ? (
+                <DecisionButtons value={fields.how} onChange={(d) => setField("how", d)} />
+              ) : null}
             </div>
-            {allowEditValues ? (
+            {editValues ? (
               <textarea
                 className="input-field"
                 rows={4}
@@ -260,12 +281,14 @@ export default function ReviewWorkbenchModal({
                     >
                       {ev.fileName}
                     </button>
-                    <DecisionButtons
-                      value={evidenceDecisions[ev.id] ?? null}
-                      onChange={(d) =>
-                        setEvidenceDecisions((prev) => ({ ...prev, [ev.id]: d }))
-                      }
-                    />
+                    {!revokeMode ? (
+                      <DecisionButtons
+                        value={evidenceDecisions[ev.id] ?? null}
+                        onChange={(d) =>
+                          setEvidenceDecisions((prev) => ({ ...prev, [ev.id]: d }))
+                        }
+                      />
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -305,47 +328,59 @@ export default function ReviewWorkbenchModal({
           )}
         </div>
 
-        {hasReject && (
+        {showNotes && (
           <div className="review-notes-block">
-            <label className="label-field">ملاحظات الإعادة للتعديل (مطلوبة)</label>
+            <label className="label-field">
+              {revokeMode ? "سبب إلغاء الاعتماد النهائي (مطلوب)" : "ملاحظات الإعادة للتعديل (مطلوبة)"}
+            </label>
             <textarea
               className="input-field"
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="اشرح ما يجب تصحيحه للمدخل..."
+              placeholder={
+                revokeMode
+                  ? "لماذا يُلغى الاعتماد النهائي؟"
+                  : "اشرح ما يجب تصحيحه للمدخل..."
+              }
             />
           </div>
         )}
 
         <div className="review-workbench-actions">
+          {!revokeMode ? (
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={busy || !canApprove || !actual}
+              title={!canApprove ? "يجب قبول كل الحقول والشواهد أولاً" : undefined}
+              onClick={() =>
+                onApprove({
+                  actualValue: parseFloat(actual),
+                  whatHappened: what,
+                  howHappened: how,
+                  fieldDecisions: fields,
+                  evidenceDecisions,
+                })
+              }
+            >
+              {approveLabel}
+            </button>
+          ) : null}
           <button
             type="button"
-            className="btn-primary"
-            disabled={busy || !canApprove || !actual}
-            title={!canApprove ? "يجب قبول كل الحقول والشواهد أولاً" : undefined}
-            onClick={() =>
-              onApprove({
-                actualValue: parseFloat(actual),
-                whatHappened: what,
-                howHappened: how,
-                fieldDecisions: fields,
-                evidenceDecisions,
-              })
-            }
-          >
-            {approveLabel}
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
+            className={revokeMode ? "btn-primary" : "btn-secondary"}
             disabled={busy || !canReturn}
             title={
-              !hasReject
-                ? "ارفض حقلاً أو شاهداً أولاً"
-                : notes.trim().length < 3
-                  ? "أضف ملاحظات (3 أحرف على الأقل)"
+              revokeMode
+                ? notes.trim().length < 3
+                  ? "أضف السبب (3 أحرف على الأقل)"
                   : undefined
+                : !hasReject
+                  ? "ارفض حقلاً أو شاهداً أولاً"
+                  : notes.trim().length < 3
+                    ? "أضف ملاحظات (3 أحرف على الأقل)"
+                    : undefined
             }
             onClick={() =>
               onReturn({

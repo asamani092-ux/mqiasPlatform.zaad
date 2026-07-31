@@ -30,7 +30,7 @@ const fieldDecisionsSchema = z.object({
 const postSchema = z
   .object({
     measurementPeriodId: z.number().int().positive(),
-    action: z.enum(["final_approve", "return_for_edit", "edit"]),
+    action: z.enum(["final_approve", "return_for_edit", "revoke_final", "edit"]),
     notes: z.string().max(5000).optional(),
     comment: z.string().max(2000).optional(),
     actualValue: z.number().optional(),
@@ -54,13 +54,16 @@ function toDecisionMap(list?: { evidenceId: number; decision: "accept" | "reject
   return map;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const user = await requireUser();
     if (!can.finalApprove(user)) return jsonError("غير مصرح", 403);
 
+    const queue = req.nextUrl.searchParams.get("queue") === "final" ? "final" : "pending";
     const periods = await db.measurementPeriod.findMany({
-      where: { approvalStatus: "INITIAL_APPROVED" },
+      where: {
+        approvalStatus: queue === "final" ? { in: ["FINAL_APPROVED", "APPROVED"] } : "INITIAL_APPROVED",
+      },
       include: {
         requirement: {
           select: {
@@ -87,10 +90,11 @@ export async function GET() {
           },
         },
       },
-      orderBy: { initialApprovedAt: "desc" },
+      orderBy: queue === "final" ? { approvedAt: "desc" } : { initialApprovedAt: "desc" },
     });
 
     return NextResponse.json({
+      queue,
       entries: periods.map((mp) => ({
         id: mp.id,
         measurementPeriodId: mp.id,
@@ -155,6 +159,59 @@ export async function POST(req: NextRequest) {
         comment: body.comment,
       });
       return NextResponse.json({ ok: true });
+    }
+
+    if (body.action === "revoke_final") {
+      if (mp.approvalStatus !== "FINAL_APPROVED" && mp.approvalStatus !== "APPROVED") {
+        return jsonError("القياس ليس معتمداً نهائياً", 400);
+      }
+      const notes = body.notes?.trim() || "";
+      if (notes.length < 3) {
+        return jsonError("سبب إلغاء الاعتماد النهائي مطلوب (3 أحرف على الأقل)", 400);
+      }
+      const feedback = {
+        fields: {},
+        evidences: [] as { evidenceId: number; fileName?: string; reason?: string }[],
+        notes,
+        at: new Date().toISOString(),
+        layer: "final" as const,
+        revokedFinal: true,
+      };
+      const rejectReason = `أُلغي الاعتماد النهائي: ${notes}`;
+      const updated = await db.measurementPeriod.update({
+        where: { id: mp.id },
+        data: {
+          approvalStatus: "DRAFT",
+          rejectReason,
+          reviewFeedback: feedback as unknown as Prisma.InputJsonValue,
+          suggestedWording: null,
+          approvedById: null,
+          approvedAt: null,
+          initialApprovedById: null,
+          initialApprovedAt: null,
+        },
+      });
+      await syncKpiEntriesFromMeasurement(mp.id);
+      await recordApprovalEvent({
+        measurementPeriodId: mp.id,
+        actorId: userId,
+        action: "RETURN_EDIT",
+        comment: notes,
+        payload: feedback,
+      });
+      await notifyMeasurementReturn({
+        measurementPeriodId: mp.id,
+        requirementCode: mp.requirement.code,
+        requirementName: mp.requirement.name,
+        departmentId: mp.requirement.departmentId,
+        ownerId: mp.requirement.ownerId,
+        enteredById: mp.enteredBy.id,
+        title: "أُلغي الاعتماد النهائي وأُعيد للتعديل",
+        body: rejectReason,
+        includeDeptManagers: true,
+      });
+      await audit(userId, "REVOKE_FINAL", "MeasurementPeriod", mp.id, {});
+      return NextResponse.json({ measurement: updated });
     }
 
     if (mp.approvalStatus !== "INITIAL_APPROVED") {

@@ -20,6 +20,7 @@ type Entry = {
   actualValue: number;
   whatHappened: string | null;
   howHappened: string | null;
+  approvalStatus?: string;
   requirement: {
     code: string;
     name: string;
@@ -39,6 +40,8 @@ type Entry = {
     rejectReason: string | null;
   }[];
 };
+
+type QueueMode = "pending" | "final";
 
 type CardItem = Entry & {
   code: string;
@@ -62,6 +65,7 @@ function evidencePayload(map: Record<number, Decision>) {
 }
 
 export default function ApprovalsClient() {
+  const [queue, setQueue] = useState<QueueMode>("pending");
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
@@ -69,7 +73,8 @@ export default function ApprovalsClient() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/approvals");
+    setOpenId(null);
+    const res = await fetch(`/api/approvals?queue=${queue}`);
     if (res.ok) {
       const data = await res.json();
       setEntries(data.entries);
@@ -77,7 +82,7 @@ export default function ApprovalsClient() {
       notifyToast.error("الاعتماد النهائي لمشرف النظام فقط");
     }
     setLoading(false);
-  }, []);
+  }, [queue]);
 
   useEffect(() => {
     void load();
@@ -92,12 +97,12 @@ export default function ApprovalsClient() {
         departmentName: e.requirement.department?.name ?? null,
         ownerName: e.requirement.owner?.name ?? null,
         enteredByName: e.employee.name,
-        statusLabel: displayApprovalLabel("INITIAL_APPROVED"),
+        statusLabel: displayApprovalLabel(e.approvalStatus || (queue === "final" ? "FINAL_APPROVED" : "INITIAL_APPROVED")),
         kpiCodes: e.requirement.kpis.map((k) => k.code),
         evidenceCount: e.evidences.filter((x) => x.status !== "REJECTED").length,
-        awaiting: true,
+        awaiting: queue === "pending",
       })),
-    [entries]
+    [entries, queue]
   );
 
   const openEntry = entries.find((e) => e.id === openId) ?? null;
@@ -125,7 +130,7 @@ export default function ApprovalsClient() {
     : null;
 
   async function submit(
-    action: "final_approve" | "return_for_edit",
+    action: "final_approve" | "return_for_edit" | "revoke_final",
     payload: {
       actualValue: number;
       whatHappened: string;
@@ -145,6 +150,12 @@ export default function ApprovalsClient() {
     ) {
       return;
     }
+    if (
+      action === "revoke_final" &&
+      !window.confirm("سيتم إلغاء الاعتماد النهائي وإعادة القياس للمدخل. متابعة؟")
+    ) {
+      return;
+    }
 
     setActing(true);
     const res = await fetch("/api/approvals", {
@@ -156,15 +167,20 @@ export default function ApprovalsClient() {
         actualValue: payload.actualValue,
         whatHappened: payload.whatHappened || null,
         howHappened: payload.howHappened || null,
-        fieldDecisions: payload.fieldDecisions,
-        evidenceDecisions: evidencePayload(payload.evidenceDecisions),
+        fieldDecisions: action === "revoke_final" ? undefined : payload.fieldDecisions,
+        evidenceDecisions:
+          action === "revoke_final" ? undefined : evidencePayload(payload.evidenceDecisions),
         notes: payload.notes,
       }),
     });
     setActing(false);
     if (res.ok) {
       notifyToast.success(
-        action === "final_approve" ? "تم الاعتماد النهائي" : "أُعيد للتعديل مع إشعار المعنيين",
+        action === "final_approve"
+          ? "تم الاعتماد النهائي"
+          : action === "revoke_final"
+            ? "أُلغي الاعتماد النهائي وأُعيد للمدخل"
+            : "أُعيد للتعديل مع إشعار المعنيين",
         { duration: "short" }
       );
       setOpenId(null);
@@ -180,12 +196,31 @@ export default function ApprovalsClient() {
       <div className="topbar">
         <div>
           <h1>الاعتماد النهائي</h1>
-          <div className="text-muted">بطاقات + نافذة مراجعة — مشرف النظام فقط</div>
+          <div className="text-muted">مراجعة · اعتماد · إلغاء اعتماد نهائي — مشرف النظام</div>
         </div>
       </div>
 
+      <div className="tab-bar" style={{ marginBottom: "1rem" }}>
+        <button
+          type="button"
+          className={queue === "pending" ? "active" : ""}
+          onClick={() => setQueue("pending")}
+        >
+          بانتظار الاعتماد
+        </button>
+        <button
+          type="button"
+          className={queue === "final" ? "active" : ""}
+          onClick={() => setQueue("final")}
+        >
+          معتمد نهائياً
+        </button>
+      </div>
+
       <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
-        افتح البطاقة، قرّر قبول/رفض كل حقل وشاهد، ثم اعتمد نهائياً أو أعد للتعديل مع ملاحظات.
+        {queue === "pending"
+          ? "افتح البطاقة، قرّر قبول/رفض كل حقل وشاهد، ثم اعتمد نهائياً أو أعد للتعديل."
+          : "افتح قياساً معتمداً نهائياً لإلغاء الاعتماد وإعادته للمدخل مع سبب واضح."}
       </div>
 
       {loading ? (
@@ -202,11 +237,15 @@ export default function ApprovalsClient() {
                 ownerName: c.ownerName,
                 enteredByName: c.enteredByName,
                 statusLabel: c.statusLabel,
-                statusClass: "badge-primary",
+                statusClass: queue === "final" ? "badge-success" : "badge-primary",
                 evidenceCount: c.evidenceCount,
                 meta: `${PERIOD_LABEL[c.period as Period] || c.period} ${c.year}`,
               }))}
-              emptyText="لا توجد قياسات بانتظار الاعتماد النهائي."
+              emptyText={
+                queue === "final"
+                  ? "لا توجد قياسات معتمدة نهائياً."
+                  : "لا توجد قياسات بانتظار الاعتماد النهائي."
+              }
               onOpen={setOpenId}
             />
           )}
@@ -216,12 +255,15 @@ export default function ApprovalsClient() {
       <ReviewWorkbenchModal
         open={!!workbenchItem}
         item={workbenchItem}
+        mode={queue === "final" ? "revoke" : "review"}
         approveLabel="اعتماد نهائي"
-        returnLabel="إعادة للتعديل"
+        returnLabel={queue === "final" ? "إلغاء الاعتماد النهائي" : "إعادة للتعديل"}
         busy={acting}
         onClose={() => setOpenId(null)}
         onApprove={(p) => void submit("final_approve", p)}
-        onReturn={(p) => void submit("return_for_edit", p)}
+        onReturn={(p) =>
+          void submit(queue === "final" ? "revoke_final" : "return_for_edit", p)
+        }
       />
     </>
   );
