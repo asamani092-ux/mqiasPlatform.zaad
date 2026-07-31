@@ -19,6 +19,10 @@ export default withAuth(
         // الاعتماد النهائي لمشرف النظام فقط
         return NextResponse.redirect(myUrl);
       }
+      // إسناد المسؤولين متاح لمدير الإدارة (RBAC + صفحة /admin/assign)
+      if (role === "DEPT_MANAGER" && path.startsWith("/admin/assign")) {
+        return NextResponse.next();
+      }
       if (
         path.startsWith("/dashboard") ||
         path.startsWith("/strategic") ||
@@ -31,9 +35,6 @@ export default withAuth(
         path.startsWith("/admin") ||
         path.startsWith("/uat")
       ) {
-        if (role === "DEPT_MANAGER" && path.startsWith("/dept-follow")) {
-          return NextResponse.next();
-        }
         return NextResponse.redirect(myUrl);
       }
       if (path === "/" || path === "") {

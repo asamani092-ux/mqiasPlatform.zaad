@@ -70,9 +70,24 @@ export default function AdminKpisClient({
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState<number | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [targetYear, setTargetYear] = useState(2026);
   const [targets, setTargets] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditId(null);
+    setForm(emptyForm);
+    setTargets({});
+  }
+
+  function openCreate() {
+    setEditId(null);
+    setForm(emptyForm);
+    setTargets({});
+    setFormOpen(true);
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -131,7 +146,8 @@ export default function AdminKpisClient({
       strategicGoalId: kpi.strategicGoalId ? String(kpi.strategicGoalId) : "",
       operationalGoalId: kpi.operationalGoalId ? String(kpi.operationalGoalId) : "",
     });
-    loadTargets(kpi.id, kpi.frequency);
+    setFormOpen(true);
+    void loadTargets(kpi.id, kpi.frequency);
   }
 
   function bodyFromForm() {
@@ -180,9 +196,7 @@ export default function AdminKpisClient({
     }
 
     setMsg("تم حفظ المؤشر");
-    setEditId(null);
-    setForm(emptyForm);
-    setTargets({});
+    closeForm();
     load();
   }
 
@@ -236,6 +250,9 @@ export default function AdminKpisClient({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            <button type="button" className="btn-primary btn-sm" onClick={openCreate}>
+              مؤشر جديد
+            </button>
           </div>
         )}
       </div>
@@ -274,75 +291,143 @@ export default function AdminKpisClient({
             </div>
           )}
 
-          <div className="card" style={{ marginBottom: "1rem" }}>
-            <h3>{editId ? "تعديل مؤشر" : "مؤشر جديد"}</h3>
-            <div className="grid grid-4" style={{ gap: ".75rem", marginBottom: ".75rem" }}>
-              {[
-                ["code", "رمز المؤشر"],
-                ["name", "اسم المؤشر"],
-                ["requiredData", "البيانات المطلوبة"],
-                ["baseline", "خط الأساس"],
-                ["annualTarget", "المستهدف السنوي"],
-                ["recommendation", "توصيات القسم"],
-              ].map(([key, label]) => (
-                <div key={key}>
-                  <label className="label-field">{label}</label>
-                  <input className="input-field" value={(form as Record<string, string>)[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
+          {formOpen && (
+            <div className="modal-overlay" role="presentation" onClick={closeForm}>
+              <div
+                className="modal-panel card wide"
+                role="dialog"
+                aria-modal="true"
+                aria-label={editId ? "تعديل مؤشر" : "مؤشر جديد"}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ marginBottom: "1rem" }}>{editId ? "تعديل مؤشر" : "مؤشر جديد"}</h3>
+                <div className="grid grid-4" style={{ gap: ".75rem", marginBottom: ".75rem" }}>
+                  {[
+                    ["code", "رمز المؤشر"],
+                    ["name", "اسم المؤشر"],
+                    ["requiredData", "البيانات المطلوبة"],
+                    ["baseline", "خط الأساس"],
+                    ["annualTarget", "المستهدف السنوي"],
+                    ["recommendation", "توصيات القسم"],
+                  ].map(([key, label]) => (
+                    <div key={key}>
+                      <label className="label-field">{label}</label>
+                      <input
+                        className="input-field"
+                        value={(form as Record<string, string>)[key]}
+                        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                      />
+                    </div>
+                  ))}
+                  <div>
+                    <label className="label-field">وحدة القياس</label>
+                    <select
+                      className="input-field"
+                      value={form.unit}
+                      onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                    >
+                      {KPI_UNITS.map((u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label-field">الإدارة المالكة</label>
+                    <select
+                      className="input-field"
+                      value={form.departmentId}
+                      onChange={(e) => setForm({ ...form, departmentId: e.target.value, ownerId: "" })}
+                    >
+                      <option value="">— اختر إدارة —</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label-field">الموظف المسؤول</label>
+                    <select
+                      className="input-field"
+                      value={form.ownerId}
+                      onChange={(e) => setForm({ ...form, ownerId: e.target.value })}
+                      disabled={!form.departmentId}
+                    >
+                      <option value="">— اختر موظف —</option>
+                      {deptUsers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              ))}
-              <div>
-                <label className="label-field">وحدة القياس</label>
-                <select className="input-field" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}>
-                  {KPI_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="label-field">الإدارة المالكة</label>
-                <select
-                  className="input-field"
-                  value={form.departmentId}
-                  onChange={(e) => setForm({ ...form, departmentId: e.target.value, ownerId: "" })}
-                >
-                  <option value="">— اختر إدارة —</option>
-                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="label-field">الموظف المسؤول</label>
-                <select
-                  className="input-field"
-                  value={form.ownerId}
-                  onChange={(e) => setForm({ ...form, ownerId: e.target.value })}
-                  disabled={!form.departmentId}
-                >
-                  <option value="">— اختر موظف —</option>
-                  {deptUsers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap", marginBottom: ".75rem" }}>
-              <select className="input-field" style={{ width: "auto" }} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as "STRATEGIC" })}>
-                {Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-              <select className="input-field" style={{ width: "auto" }} value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value as "QUARTERLY" })}>
-                {Object.entries(FREQUENCY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-              <select className="input-field" style={{ width: "auto" }} value={form.polarity} onChange={(e) => setForm({ ...form, polarity: e.target.value as "HIGHER_BETTER" })}>
-                {Object.entries(POLARITY_LABEL_API).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-            <h4 style={{ marginBottom: ".5rem" }}>المستهدفات — {targetYear}</h4>
-            <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginBottom: ".75rem" }}>
-              {periods.map((p) => (
-                <div key={p}>
-                  <label className="label-field">{PERIOD_LABEL[p as Period]}</label>
-                  <input className="input-field" style={{ width: 100 }} value={targets[p] ?? ""} onChange={(e) => setTargets({ ...targets, [p]: e.target.value })} />
+                <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap", marginBottom: ".75rem" }}>
+                  <select
+                    className="input-field"
+                    style={{ width: "auto" }}
+                    value={form.type}
+                    onChange={(e) => setForm({ ...form, type: e.target.value as "STRATEGIC" })}
+                  >
+                    {Object.entries(TYPE_LABEL).map(([k, v]) => (
+                      <option key={k} value={k}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="input-field"
+                    style={{ width: "auto" }}
+                    value={form.frequency}
+                    onChange={(e) => setForm({ ...form, frequency: e.target.value as "QUARTERLY" })}
+                  >
+                    {Object.entries(FREQUENCY_LABEL).map(([k, v]) => (
+                      <option key={k} value={k}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="input-field"
+                    style={{ width: "auto" }}
+                    value={form.polarity}
+                    onChange={(e) => setForm({ ...form, polarity: e.target.value as "HIGHER_BETTER" })}
+                  >
+                    {Object.entries(POLARITY_LABEL_API).map(([k, v]) => (
+                      <option key={k} value={k}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ))}
+                <h4 style={{ marginBottom: ".5rem" }}>المستهدفات — {targetYear}</h4>
+                <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginBottom: ".75rem" }}>
+                  {periods.map((p) => (
+                    <div key={p}>
+                      <label className="label-field">{PERIOD_LABEL[p as Period]}</label>
+                      <input
+                        className="input-field"
+                        style={{ width: 100 }}
+                        value={targets[p] ?? ""}
+                        onChange={(e) => setTargets({ ...targets, [p]: e.target.value })}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+                  <button type="button" className="btn-primary btn-sm" onClick={() => void saveKpi()}>
+                    {editId ? "تحديث" : "إنشاء"}
+                  </button>
+                  <button type="button" className="btn-secondary btn-sm" onClick={closeForm}>
+                    إلغاء
+                  </button>
+                </div>
+              </div>
             </div>
-            <button type="button" className="btn-primary btn-sm" onClick={saveKpi}>{editId ? "تحديث" : "إنشاء"}</button>
-            {editId && <button type="button" className="btn-secondary btn-sm" style={{ marginRight: ".5rem" }} onClick={() => { setEditId(null); setForm(emptyForm); }}>إلغاء</button>}
-          </div>
+          )}
 
           <div className="card" style={{ overflowX: "auto" }}>
             <table className="tmkeen-table">

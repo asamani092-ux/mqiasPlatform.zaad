@@ -7,7 +7,9 @@ import PeriodSelector from "@/components/PeriodSelector";
 import KpiDetailDrawer from "@/components/KpiDetailDrawer";
 import DonutChart from "@/components/charts/DonutChart";
 import { StatusBadge } from "@/components/TrackStatCards";
+import { TrackTitleRow } from "@/components/ui/TrackHelpButton";
 import { STATUS5_COLOR } from "@/lib/status5";
+import { EXECUTIVE_HELP } from "@/lib/track-help";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
 import type { ExecutiveSnapshot } from "@/lib/executive";
 import { ICON_PROPS } from "@/lib/icon-props";
@@ -62,13 +64,12 @@ export default function ExecutiveClient({
 
   return (
     <>
-      <div className="topbar">
-        <div>
-          <h1>لوحة الإدارة العليا</h1>
-          <div className="text-muted">انحرافات وإجراءات متأخرة — {PERIOD_LABEL[period]} {year}</div>
-        </div>
-        <PeriodSelector year={year} period={period} />
-      </div>
+      <TrackTitleRow
+        title="لوحة الإدارة العليا"
+        subtitle={`انحرافات وإجراءات متأخرة — قيم معتمدة نهائيًا فقط — ${PERIOD_LABEL[period]} ${year}`}
+        help={EXECUTIVE_HELP}
+        extra={<PeriodSelector year={year} period={period} />}
+      />
 
       <div className="grid grid-4" style={{ marginBottom: "1rem" }}>
         {statCards.map((s) => (

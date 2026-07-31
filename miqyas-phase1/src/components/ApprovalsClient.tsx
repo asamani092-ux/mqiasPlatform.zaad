@@ -33,7 +33,7 @@ type Entry = {
     department: { name: string } | null;
     kpis: { id: number; code: string; name: string; type: string }[];
   };
-  employee: { id: number; name: string; email: string };
+  employee: { id: number; name: string; email: string; role?: string };
   initialApprovedBy: { id: number; name: string } | null;
   evidences: {
     id: number;
@@ -65,6 +65,14 @@ function evidencePayload(map: Record<number, Decision>) {
       evidenceId: parseInt(evidenceId, 10),
       decision: decision as "accept" | "reject",
     }));
+}
+
+/** نص تأكيد إلغاء الاعتماد — متوافق مع API (مدير→مسودة، غيره→مراجعة إدارة) */
+function revokeFinalConfirmMessage(enteredByRole?: string): string {
+  if (enteredByRole === "DEPT_MANAGER") {
+    return "سيُلغى الاعتماد النهائي وتُعاد القيمة مسودةً لمدخل المدير، وتختفي من لوحات التحليل حتى يُعتمد نهائيًا من جديد. السبب مطلوب. متابعة؟";
+  }
+  return "سيُلغى الاعتماد النهائي ويُعاد القياس بانتظار مراجعة الإدارة، وتختفي القيمة من لوحات التحليل حتى يُعتمد نهائيًا من جديد. السبب مطلوب. متابعة؟";
 }
 
 export default function ApprovalsClient() {
@@ -122,6 +130,7 @@ export default function ApprovalsClient() {
         departmentName: openEntry.requirement.department?.name,
         ownerName: openEntry.requirement.owner?.name,
         enteredByName: openEntry.employee.name,
+        enteredByRole: openEntry.employee.role,
         initialApproverName: openEntry.initialApprovedBy?.name,
         periodLabel: `${PERIOD_LABEL[openEntry.period as Period] || openEntry.period} ${openEntry.year}`,
         requiredData: openEntry.requirement.requiredData,
@@ -159,9 +168,7 @@ export default function ApprovalsClient() {
     }
     if (
       action === "revoke_final" &&
-      !window.confirm(
-        "سيتم إلغاء الاعتماد النهائي وإعادته: موظف/رئيس → مراجعة الإدارة؛ مدير → مسودة. متابعة؟"
-      )
+      !window.confirm(revokeFinalConfirmMessage(openEntry.employee.role))
     ) {
       return;
     }
@@ -229,7 +236,7 @@ export default function ApprovalsClient() {
       <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
         {queue === "pending"
           ? "افتح البطاقة، قرّر قبول/رفض كل حقل وشاهد، ثم اعتمد نهائياً أو أعد للتعديل."
-          : "افتح قياساً معتمداً نهائياً لإلغاء الاعتماد وإعادته للمدخل مع سبب واضح."}
+          : "افتح قياساً معتمداً نهائياً لإلغائه بسبب واضح — تختفي القيمة من اللوحات، ويعود القياس لمراجعة الإدارة (أو مسودة إن كان المدخل مديراً)."}
       </div>
 
       {loading ? (

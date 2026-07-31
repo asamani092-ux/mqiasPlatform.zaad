@@ -29,6 +29,8 @@ export type ReviewWorkbenchItem = {
   departmentName?: string | null;
   ownerName?: string | null;
   enteredByName?: string | null;
+  /** دور من أدخل القياس — لرسالة إلغاء الاعتماد */
+  enteredByRole?: string | null;
   initialApproverName?: string | null;
   periodLabel?: string;
   requiredData?: string | null;
@@ -209,8 +211,9 @@ export default function ReviewWorkbenchModal({
 
         {revokeMode ? (
           <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
-            إلغاء الاعتماد النهائي: تقديم موظف/رئيس قسم → بانتظار مراجعة الإدارة؛ تقديم مدير → مسودة.
-            السبب مطلوب.
+            {item.enteredByRole === "DEPT_MANAGER"
+              ? "إلغاء الاعتماد النهائي يعيد القيمة مسودةً لمدخل المدير، ويزيلها من لوحات التحليل حتى الاعتماد النهائي من جديد. السبب مطلوب."
+              : "إلغاء الاعتماد النهائي يعيد القياس بانتظار مراجعة الإدارة، ويزيل القيمة من لوحات التحليل حتى الاعتماد النهائي من جديد. السبب مطلوب."}
           </div>
         ) : null}
 

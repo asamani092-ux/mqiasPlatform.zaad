@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
             kpis: { select: { id: true, code: true, name: true, type: true }, where: { active: true } },
           },
         },
-        enteredBy: { select: { id: true, name: true, email: true } },
+        enteredBy: { select: { id: true, name: true, email: true, role: true } },
         initialApprovedBy: { select: { id: true, name: true } },
         evidences: {
           where: { status: "ACTIVE" },
