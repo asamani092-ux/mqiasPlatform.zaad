@@ -9,6 +9,7 @@ import {
   roundTrackPct,
   type DashboardOverview,
 } from "@/lib/dashboard-overview-client";
+import { FINAL_APPROVED_STATUSES } from "@/lib/approval-status";
 
 export type { DashboardOverview, TrackBarItem } from "@/lib/dashboard-overview-client";
 export { trackBarData } from "@/lib/dashboard-overview-client";
@@ -29,7 +30,9 @@ export async function getDashboardOverview(
         select: { status: true },
       }),
       db.earlyWarningAlert.count({ where: { year, period } }),
-      db.kpiEntry.count({ where: { year, period, approvalStatus: "FINAL_APPROVED" } }),
+      db.kpiEntry.count({
+        where: { year, period, approvalStatus: { in: [...FINAL_APPROVED_STATUSES] } },
+      }),
       db.kpi.count({ where: { active: true } }),
     ]);
 

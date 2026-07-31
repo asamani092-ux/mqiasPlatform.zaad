@@ -4,6 +4,7 @@ import type { SessionUser } from "@/lib/rbac";
 import { scopeFilter } from "@/lib/rbac";
 import { achievementPct, deviationPct, kpiStatus } from "@/lib/kpi";
 import type { KpiStatus } from "@/lib/types";
+import { FINAL_APPROVED_STATUSES } from "@/lib/approval-status";
 
 export type KpiAnalyticsRow = {
   kpiId: number;
@@ -49,7 +50,11 @@ export async function getKpiRows(opts: {
       operationalGoal: { select: { title: true } },
       targets: { where: { year: opts.year, period: opts.period }, take: 1 },
       entries: {
-        where: { year: opts.year, period: opts.period, approvalStatus: "FINAL_APPROVED" },
+        where: {
+          year: opts.year,
+          period: opts.period,
+          approvalStatus: { in: [...FINAL_APPROVED_STATUSES] },
+        },
         take: 1,
       },
     },

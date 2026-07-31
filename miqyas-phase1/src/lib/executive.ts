@@ -8,6 +8,7 @@ import {
   type Status5,
 } from "@/lib/status5";
 import type { KpiStatus } from "@/lib/types";
+import { FINAL_APPROVED_STATUSES } from "@/lib/approval-status";
 
 export type DeviatedKpi = {
   kpiId: number;
@@ -84,7 +85,7 @@ export async function getExecutiveSnapshot(opts: {
     where: {
       year: opts.year,
       period: opts.period,
-      approvalStatus: "FINAL_APPROVED",
+      approvalStatus: { in: [...FINAL_APPROVED_STATUSES] },
     },
     include: {
       kpi: {

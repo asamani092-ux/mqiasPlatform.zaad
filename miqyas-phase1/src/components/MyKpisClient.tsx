@@ -154,11 +154,28 @@ export default function MyKpisClient({
       body: fd,
     });
     if (res.ok) {
-      notifyToast.success("تم رفع الشاهد", { duration: "short" });
+      notifyToast.success("تم رفع الشاهد — إن كان مرفوضاً اضغط إعادة التقديم", {
+        duration: "normal",
+      });
       await reload();
     } else {
       const err = await res.json().catch(() => ({}));
       notifyToast.error(err.error || "فشل الرفع");
+    }
+  }
+
+  async function softDeleteEvidence(measurementPeriodId: number, evidenceId: number) {
+    if (!window.confirm("حذف هذا الشاهد من القائمة؟ (يُحفظ السجل ولا يُتلف الملف)")) return;
+    const res = await fetch(
+      `/api/my/measurements/${measurementPeriodId}/evidence?evidenceId=${evidenceId}`,
+      { method: "DELETE" }
+    );
+    if (res.ok) {
+      notifyToast.success("أُزيل الشاهد", { duration: "short" });
+      await reload();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      notifyToast.error(err.error || "فشل الحذف");
     }
   }
 
@@ -173,6 +190,18 @@ export default function MyKpisClient({
         </div>
         <PeriodSelector year={year} period={period} />
       </div>
+
+      {items.some(
+        (it) =>
+          it.measurement?.approvalStatus === "REJECTED_EVIDENCE" ||
+          it.measurement?.approvalStatus === "REJECTED_WORDING" ||
+          it.measurement?.approvalStatus === "REJECTED"
+      ) ? (
+        <div className="alert alert-warn" style={{ marginBottom: "1rem" }}>
+          لديك قياسات مرفوضة — صحّح الحقول/الشواهد حسب ملاحظات القسم ثم اضغط{" "}
+          <strong>إعادة التقديم</strong> لإعادتها إلى مسار الاعتماد. رفع شاهد بديل وحده لا يكفي.
+        </div>
+      ) : null}
 
       {items.length === 0 ? (
         <div className="card">
@@ -308,7 +337,13 @@ export default function MyKpisClient({
                           />
                           <IconActionButton
                             icon={Send}
-                            label="تقديم للمراجعة"
+                            label={
+                              status === "REJECTED_EVIDENCE" ||
+                              status === "REJECTED_WORDING" ||
+                              status === "REJECTED"
+                                ? "إعادة التقديم"
+                                : "تقديم للمراجعة"
+                            }
                             variant="primary"
                             showLabel
                             disabled={saving === item.requirement.id || locked}
@@ -415,17 +450,51 @@ export default function MyKpisClient({
                             </div>
                           </div>
                           {item.measurement?.evidences.map((ev) => (
-                            <a
+                            <span
                               key={ev.id}
-                              href={`/api/evidence/${ev.id}`}
-                              className={ev.status === "REJECTED" ? "badge-danger" : "badge-primary"}
-                              style={{ marginInlineStart: ".4rem", display: "inline-block", marginTop: ".4rem" }}
-                              title={ev.rejectReason || undefined}
+                              style={{
+                                marginInlineStart: ".4rem",
+                                display: "inline-flex",
+                                gap: ".25rem",
+                                alignItems: "center",
+                                marginTop: ".4rem",
+                              }}
                             >
-                              {ev.fileName}
-                              {ev.status === "REJECTED" ? " (مرفوض)" : ""}
-                            </a>
+                              <a
+                                href={`/api/evidence/${ev.id}`}
+                                className="badge-primary"
+                                title={ev.rejectReason || undefined}
+                              >
+                                {ev.fileName}
+                              </a>
+                              {!locked ? (
+                                <button
+                                  type="button"
+                                  className="btn-secondary btn-sm"
+                                  onClick={() =>
+                                    void softDeleteEvidence(item.measurement!.id, ev.id)
+                                  }
+                                >
+                                  حذف
+                                </button>
+                              ) : null}
+                            </span>
                           ))}
+                          {(status === "REJECTED_EVIDENCE" ||
+                            status === "REJECTED_WORDING" ||
+                            status === "REJECTED") &&
+                          !locked ? (
+                            <div style={{ marginTop: ".75rem" }}>
+                              <button
+                                type="button"
+                                className="btn-primary btn-sm"
+                                disabled={saving === item.requirement.id}
+                                onClick={() => void save(item.requirement.id, "submit")}
+                              >
+                                إعادة التقديم بعد التصحيح
+                              </button>
+                            </div>
+                          ) : null}
                         </td>
                       </tr>
                     )}

@@ -5,7 +5,19 @@ export function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
+/** تعارض حالة القياس أثناء الاعتماد المتزامن */
+export class StatusConflictError extends Error {
+  readonly status = 409;
+  constructor(message = "تغيّرت حالة القياس، أعِد التحميل") {
+    super(message);
+    this.name = "StatusConflictError";
+  }
+}
+
 export function handleApiError(e: unknown) {
+  if (e instanceof StatusConflictError) {
+    return jsonError(e.message, 409);
+  }
   if (e && typeof e === "object" && "status" in e && (e as AuthError).status === 401) {
     return jsonError("غير مصرح", 401);
   }

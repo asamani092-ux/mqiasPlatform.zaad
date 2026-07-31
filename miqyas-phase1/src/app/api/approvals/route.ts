@@ -7,7 +7,7 @@ import { can } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 import { recordApprovalEvent, syncKpiEntriesFromMeasurement } from "@/lib/measurement-sync";
-import { handleApiError, jsonError } from "@/lib/api-helpers";
+import { handleApiError, jsonError, StatusConflictError } from "@/lib/api-helpers";
 import {
   allFieldsAccepted,
   anyRejected,
@@ -81,6 +81,7 @@ export async function GET(req: NextRequest) {
         enteredBy: { select: { id: true, name: true, email: true } },
         initialApprovedBy: { select: { id: true, name: true } },
         evidences: {
+          where: { status: "ACTIVE" },
           select: {
             id: true,
             fileName: true,
@@ -149,28 +150,32 @@ export async function POST(req: NextRequest) {
     if (!mp) return jsonError("فترة القياس غير موجودة", 404);
 
     if (body.action === "edit") {
-      await db.measurementPeriod.update({
-        where: { id: mp.id },
-        data: {
-          actualValue: body.actualValue ?? mp.actualValue,
-          whatHappened: body.whatHappened !== undefined ? body.whatHappened : mp.whatHappened,
-          howHappened: body.howHappened !== undefined ? body.howHappened : mp.howHappened,
-        },
-      });
-      await syncKpiEntriesFromMeasurement(mp.id);
-      await recordApprovalEvent({
-        measurementPeriodId: mp.id,
-        actorId: userId,
-        action: "ADMIN_EDIT",
-        comment: body.comment,
+      await db.$transaction(async (tx) => {
+        const current = await tx.measurementPeriod.findUnique({ where: { id: mp.id } });
+        if (!current) throw new StatusConflictError();
+        await tx.measurementPeriod.update({
+          where: { id: mp.id },
+          data: {
+            actualValue: body.actualValue ?? current.actualValue,
+            whatHappened: body.whatHappened !== undefined ? body.whatHappened : current.whatHappened,
+            howHappened: body.howHappened !== undefined ? body.howHappened : current.howHappened,
+          },
+        });
+        await syncKpiEntriesFromMeasurement(mp.id, tx);
+        await recordApprovalEvent(
+          {
+            measurementPeriodId: mp.id,
+            actorId: userId,
+            action: "ADMIN_EDIT",
+            comment: body.comment,
+          },
+          tx
+        );
       });
       return NextResponse.json({ ok: true });
     }
 
     if (body.action === "revoke_final") {
-      if (mp.approvalStatus !== "FINAL_APPROVED" && mp.approvalStatus !== "APPROVED") {
-        return jsonError("القياس ليس معتمداً نهائياً", 400);
-      }
       const notes = body.notes?.trim() || "";
       if (notes.length < 3) {
         return jsonError("سبب إلغاء الاعتماد النهائي مطلوب (3 أحرف على الأقل)", 400);
@@ -184,30 +189,43 @@ export async function POST(req: NextRequest) {
         revokedFinal: true,
       };
       const rejectReason = `أُلغي الاعتماد النهائي: ${notes}`;
-      // تقديم المدير → مسودة للمدخل؛ تقديم موظف/رئيس قسم → بانتظار مراجعة الإدارة مجدداً
-      const nextStatus =
-        mp.enteredBy.role === "DEPT_MANAGER" ? "DRAFT" : "SUBMITTED";
-      const updated = await db.measurementPeriod.update({
-        where: { id: mp.id },
-        data: {
-          approvalStatus: nextStatus,
-          rejectReason,
-          reviewFeedback: feedback as unknown as Prisma.InputJsonValue,
-          suggestedWording: null,
-          approvedById: null,
-          approvedAt: null,
-          initialApprovedById: null,
-          initialApprovedAt: null,
-        },
+      const nextStatus = mp.enteredBy.role === "DEPT_MANAGER" ? "DRAFT" : "SUBMITTED";
+
+      const updated = await db.$transaction(async (tx) => {
+        const current = await tx.measurementPeriod.findUnique({ where: { id: mp.id } });
+        if (
+          !current ||
+          (current.approvalStatus !== "FINAL_APPROVED" && current.approvalStatus !== "APPROVED")
+        ) {
+          throw new StatusConflictError();
+        }
+        const row = await tx.measurementPeriod.update({
+          where: { id: mp.id },
+          data: {
+            approvalStatus: nextStatus,
+            rejectReason,
+            reviewFeedback: feedback as unknown as Prisma.InputJsonValue,
+            suggestedWording: null,
+            approvedById: null,
+            approvedAt: null,
+            initialApprovedById: null,
+            initialApprovedAt: null,
+          },
+        });
+        await syncKpiEntriesFromMeasurement(mp.id, tx);
+        await recordApprovalEvent(
+          {
+            measurementPeriodId: mp.id,
+            actorId: userId,
+            action: "RETURN_EDIT",
+            comment: notes,
+            payload: { ...feedback, nextStatus },
+          },
+          tx
+        );
+        return row;
       });
-      await syncKpiEntriesFromMeasurement(mp.id);
-      await recordApprovalEvent({
-        measurementPeriodId: mp.id,
-        actorId: userId,
-        action: "RETURN_EDIT",
-        comment: notes,
-        payload: { ...feedback, nextStatus },
-      });
+
       const ownerId = await rebindOwnerIfMissing({
         requirementId: mp.requirement.id,
         ownerId: mp.requirement.ownerId,
@@ -233,10 +251,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ measurement: updated, nextStatus });
     }
 
-    if (mp.approvalStatus !== "INITIAL_APPROVED") {
-      return jsonError("القياس ليس بانتظار الاعتماد النهائي", 400);
-    }
-
     const activeEvidenceIds = mp.evidences.filter((e) => e.status !== "REJECTED").map((e) => e.id);
     const fieldDecisions = (body.fieldDecisions ?? null) as FieldDecisions | null;
     const evidenceMap = toDecisionMap(body.evidenceDecisions);
@@ -246,35 +260,41 @@ export async function POST(req: NextRequest) {
       if (!allFieldsAccepted(fieldDecisions, activeEvidenceIds, evidenceMap)) {
         return jsonError("يجب قبول كل الحقول والشواهد قبل الاعتماد النهائي", 400);
       }
-      if (body.actualValue != null || body.whatHappened !== undefined || body.howHappened !== undefined) {
-        await db.measurementPeriod.update({
+
+      const updated = await db.$transaction(async (tx) => {
+        const current = await tx.measurementPeriod.findUnique({ where: { id: mp.id } });
+        if (!current || current.approvalStatus !== "INITIAL_APPROVED") {
+          throw new StatusConflictError();
+        }
+        const row = await tx.measurementPeriod.update({
           where: { id: mp.id },
           data: {
-            actualValue: body.actualValue ?? mp.actualValue,
-            whatHappened: body.whatHappened !== undefined ? body.whatHappened : mp.whatHappened,
-            howHappened: body.howHappened !== undefined ? body.howHappened : mp.howHappened,
+            actualValue: body.actualValue ?? current.actualValue,
+            whatHappened:
+              body.whatHappened !== undefined ? body.whatHappened : current.whatHappened,
+            howHappened: body.howHappened !== undefined ? body.howHappened : current.howHappened,
+            approvalStatus: "FINAL_APPROVED",
+            approvedById: userId,
+            approvedAt: new Date(),
+            rejectReason: null,
+            suggestedWording: null,
+            reviewFeedback: Prisma.DbNull,
           },
         });
-      }
-      const updated = await db.measurementPeriod.update({
-        where: { id: mp.id },
-        data: {
-          approvalStatus: "FINAL_APPROVED",
-          approvedById: userId,
-          approvedAt: new Date(),
-          rejectReason: null,
-          suggestedWording: null,
-          reviewFeedback: Prisma.DbNull,
-        },
+        await syncKpiEntriesFromMeasurement(mp.id, tx);
+        await recordApprovalEvent(
+          {
+            measurementPeriodId: mp.id,
+            actorId: userId,
+            action: "FINAL_APPROVE",
+            comment: body.comment,
+            payload: { fieldDecisions },
+          },
+          tx
+        );
+        return row;
       });
-      await syncKpiEntriesFromMeasurement(mp.id);
-      await recordApprovalEvent({
-        measurementPeriodId: mp.id,
-        actorId: userId,
-        action: "FINAL_APPROVE",
-        comment: body.comment,
-        payload: { fieldDecisions },
-      });
+
       if (mp.requirement.ownerId) {
         await notify({
           userIds: [mp.requirement.ownerId],
@@ -289,7 +309,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ measurement: updated });
     }
 
-    // return_for_edit
+    // return_for_edit — STEP 7: لا تُسجَّل الرافض كمعتمِد
     if (!fieldDecisions) return jsonError("قرارات الحقول مطلوبة", 400);
     if (!anyRejected(fieldDecisions, evidenceMap)) {
       return jsonError("يجب رفض حقل أو شاهد واحد على الأقل", 400);
@@ -308,18 +328,6 @@ export async function POST(req: NextRequest) {
     );
     feedback.layer = "final";
 
-    for (const evidenceId of rejectedEvidenceIds) {
-      await db.evidence.updateMany({
-        where: { id: evidenceId, measurementPeriodId: mp.id },
-        data: {
-          status: "REJECTED",
-          rejectReason: body.notes.trim(),
-          rejectedById: userId,
-          rejectedAt: new Date(),
-        },
-      });
-    }
-
     const fieldRejected =
       fieldDecisions.actual === "reject" ||
       fieldDecisions.what === "reject" ||
@@ -332,28 +340,50 @@ export async function POST(req: NextRequest) {
           ? "REJECTED_EVIDENCE"
           : "REJECTED_WORDING";
 
-    const updated = await db.measurementPeriod.update({
-      where: { id: mp.id },
-      data: {
-        approvalStatus: nextStatus,
-        rejectReason,
-        reviewFeedback: feedback as unknown as Prisma.InputJsonValue,
-        approvedById: userId,
-        approvedAt: new Date(),
-        initialApprovedById: null,
-        initialApprovedAt: null,
-        actualValue: body.actualValue ?? mp.actualValue,
-        whatHappened: body.whatHappened !== undefined ? body.whatHappened : mp.whatHappened,
-        howHappened: body.howHappened !== undefined ? body.howHappened : mp.howHappened,
-      },
-    });
-    await syncKpiEntriesFromMeasurement(mp.id);
-    await recordApprovalEvent({
-      measurementPeriodId: mp.id,
-      actorId: userId,
-      action: evidenceRejected ? "REJECT_EVIDENCE" : "REJECT_WORDING",
-      comment: body.notes,
-      payload: feedback,
+    const updated = await db.$transaction(async (tx) => {
+      const current = await tx.measurementPeriod.findUnique({ where: { id: mp.id } });
+      if (!current || current.approvalStatus !== "INITIAL_APPROVED") {
+        throw new StatusConflictError();
+      }
+      for (const evidenceId of rejectedEvidenceIds) {
+        await tx.evidence.updateMany({
+          where: { id: evidenceId, measurementPeriodId: mp.id },
+          data: {
+            status: "REJECTED",
+            rejectReason: body.notes!.trim(),
+            rejectedById: userId,
+            rejectedAt: new Date(),
+          },
+        });
+      }
+      const row = await tx.measurementPeriod.update({
+        where: { id: mp.id },
+        data: {
+          approvalStatus: nextStatus,
+          rejectReason,
+          reviewFeedback: feedback as unknown as Prisma.InputJsonValue,
+          approvedById: null,
+          approvedAt: null,
+          initialApprovedById: null,
+          initialApprovedAt: null,
+          actualValue: body.actualValue ?? current.actualValue,
+          whatHappened:
+            body.whatHappened !== undefined ? body.whatHappened : current.whatHappened,
+          howHappened: body.howHappened !== undefined ? body.howHappened : current.howHappened,
+        },
+      });
+      await syncKpiEntriesFromMeasurement(mp.id, tx);
+      await recordApprovalEvent(
+        {
+          measurementPeriodId: mp.id,
+          actorId: userId,
+          action: evidenceRejected ? "REJECT_EVIDENCE" : "REJECT_WORDING",
+          comment: body.notes,
+          payload: feedback,
+        },
+        tx
+      );
+      return row;
     });
 
     const ownerId = await rebindOwnerIfMissing({

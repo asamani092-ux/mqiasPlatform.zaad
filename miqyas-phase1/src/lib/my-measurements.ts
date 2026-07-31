@@ -58,6 +58,7 @@ export async function getMyRequirements(
         take: 1,
         include: {
           evidences: {
+            where: { status: "ACTIVE" },
             select: {
               id: true,
               fileName: true,

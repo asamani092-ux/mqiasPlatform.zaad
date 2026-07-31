@@ -7,6 +7,7 @@ import { achievementPct, deviationPct } from "@/lib/kpi";
 import { classifyStatus5 } from "@/lib/status5";
 import { audit } from "@/lib/audit";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
+import { FINAL_APPROVED_STATUSES } from "@/lib/approval-status";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
       where: {
         year: body.year,
         period: body.period,
-        approvalStatus: "FINAL_APPROVED",
+        approvalStatus: { in: [...FINAL_APPROVED_STATUSES] },
         kpi: scope,
       },
       include: { kpi: { select: { polarity: true } } },

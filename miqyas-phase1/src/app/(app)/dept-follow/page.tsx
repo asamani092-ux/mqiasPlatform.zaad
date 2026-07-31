@@ -49,6 +49,7 @@ export default async function DeptFollowPage({
           rejectReason: true,
           enteredBy: { select: { id: true, name: true } },
           evidences: {
+            where: { status: "ACTIVE" },
             select: {
               id: true,
               fileName: true,

@@ -8,7 +8,7 @@ import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 import { recordApprovalEvent, syncKpiEntriesFromMeasurement } from "@/lib/measurement-sync";
 import { canDeptReturn, canDeptReview, isFinalApproved } from "@/lib/approval-status";
-import { handleApiError, jsonError } from "@/lib/api-helpers";
+import { handleApiError, jsonError, StatusConflictError } from "@/lib/api-helpers";
 import {
   allFieldsAccepted,
   anyRejected,
@@ -148,41 +148,51 @@ export async function PATCH(req: NextRequest) {
       );
       feedback.layer = "dept";
 
-      for (const evidenceId of rejectedEvidenceIds) {
-        await db.evidence.updateMany({
-          where: { id: evidenceId, measurementPeriodId: mp.id },
+      const updated = await db.$transaction(async (tx) => {
+        const current = await tx.measurementPeriod.findUnique({ where: { id: mp.id } });
+        if (!current || !canDeptReturn(current.approvalStatus)) {
+          throw new StatusConflictError();
+        }
+        for (const evidenceId of rejectedEvidenceIds) {
+          await tx.evidence.updateMany({
+            where: { id: evidenceId, measurementPeriodId: mp.id },
+            data: {
+              status: "REJECTED",
+              rejectReason: notes,
+              rejectedById: userId,
+              rejectedAt: new Date(),
+            },
+          });
+        }
+        const row = await tx.measurementPeriod.update({
+          where: { id: mp.id },
           data: {
-            status: "REJECTED",
-            rejectReason: notes,
-            rejectedById: userId,
-            rejectedAt: new Date(),
+            approvalStatus: "DRAFT",
+            rejectReason,
+            reviewFeedback: feedback as unknown as Prisma.InputJsonValue,
+            suggestedWording: null,
+            initialApprovedById: null,
+            initialApprovedAt: null,
+            approvedById: null,
+            approvedAt: null,
+            actualValue: body.actualValue ?? current.actualValue,
+            whatHappened:
+              body.whatHappened !== undefined ? body.whatHappened : current.whatHappened,
+            howHappened: body.howHappened !== undefined ? body.howHappened : current.howHappened,
           },
         });
-      }
-
-      const updated = await db.measurementPeriod.update({
-        where: { id: mp.id },
-        data: {
-          approvalStatus: "DRAFT",
-          rejectReason,
-          reviewFeedback: feedback as unknown as Prisma.InputJsonValue,
-          suggestedWording: null,
-          initialApprovedById: null,
-          initialApprovedAt: null,
-          approvedById: null,
-          approvedAt: null,
-          actualValue: body.actualValue ?? mp.actualValue,
-          whatHappened: body.whatHappened !== undefined ? body.whatHappened : mp.whatHappened,
-          howHappened: body.howHappened !== undefined ? body.howHappened : mp.howHappened,
-        },
-      });
-      await syncKpiEntriesFromMeasurement(mp.id);
-      await recordApprovalEvent({
-        measurementPeriodId: mp.id,
-        actorId: userId,
-        action: "RETURN_EDIT",
-        comment: notes,
-        payload: feedback,
+        await syncKpiEntriesFromMeasurement(mp.id, tx);
+        await recordApprovalEvent(
+          {
+            measurementPeriodId: mp.id,
+            actorId: userId,
+            action: "RETURN_EDIT",
+            comment: notes,
+            payload: feedback,
+          },
+          tx
+        );
+        return row;
       });
 
       const ownerId = await rebindOwnerIfMissing({
@@ -209,9 +219,6 @@ export async function PATCH(req: NextRequest) {
     }
 
     // initial_approve — للموظف/رئيس القسم فقط؛ لا اعتماد ذاتي لما أدخله المدير
-    if (!["SUBMITTED", "PENDING"].includes(mp.approvalStatus)) {
-      return jsonError("القياس ليس بانتظار الاعتماد المبدئي", 400);
-    }
     if (mp.enteredBy.id === userId || mp.requirement.ownerId === userId) {
       return jsonError(
         "لا يمكن الاعتماد المبدئي لما أدخلته أو تملكه — تقديم المدير يتجاوز هذه الطبقة",
@@ -223,27 +230,38 @@ export async function PATCH(req: NextRequest) {
       return jsonError("يجب قبول كل الحقول والشواهد قبل الاعتماد المبدئي", 400);
     }
 
-    const updated = await db.measurementPeriod.update({
-      where: { id: mp.id },
-      data: {
-        actualValue: body.actualValue ?? mp.actualValue,
-        whatHappened: body.whatHappened !== undefined ? body.whatHappened : mp.whatHappened,
-        howHappened: body.howHappened !== undefined ? body.howHappened : mp.howHappened,
-        note: body.note !== undefined ? body.note : mp.note,
-        approvalStatus: "INITIAL_APPROVED",
-        initialApprovedById: userId,
-        initialApprovedAt: new Date(),
-        rejectReason: null,
-        reviewFeedback: Prisma.DbNull,
-      },
-    });
-    await syncKpiEntriesFromMeasurement(mp.id);
-    await recordApprovalEvent({
-      measurementPeriodId: mp.id,
-      actorId: userId,
-      action: "INITIAL_APPROVE",
-      comment: body.comment,
-      payload: { fieldDecisions },
+    const updated = await db.$transaction(async (tx) => {
+      const current = await tx.measurementPeriod.findUnique({ where: { id: mp.id } });
+      if (!current || !["SUBMITTED", "PENDING"].includes(current.approvalStatus)) {
+        throw new StatusConflictError();
+      }
+      const row = await tx.measurementPeriod.update({
+        where: { id: mp.id },
+        data: {
+          actualValue: body.actualValue ?? current.actualValue,
+          whatHappened:
+            body.whatHappened !== undefined ? body.whatHappened : current.whatHappened,
+          howHappened: body.howHappened !== undefined ? body.howHappened : current.howHappened,
+          note: body.note !== undefined ? body.note : current.note,
+          approvalStatus: "INITIAL_APPROVED",
+          initialApprovedById: userId,
+          initialApprovedAt: new Date(),
+          rejectReason: null,
+          reviewFeedback: Prisma.DbNull,
+        },
+      });
+      await syncKpiEntriesFromMeasurement(mp.id, tx);
+      await recordApprovalEvent(
+        {
+          measurementPeriodId: mp.id,
+          actorId: userId,
+          action: "INITIAL_APPROVE",
+          comment: body.comment,
+          payload: { fieldDecisions },
+        },
+        tx
+      );
+      return row;
     });
 
     const admins = await db.user.findMany({

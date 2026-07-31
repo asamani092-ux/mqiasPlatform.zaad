@@ -9,6 +9,7 @@ import { audit } from "@/lib/audit";
 import { deviationPct } from "@/lib/kpi";
 import { summarizeDeviationCards } from "@/lib/deviation-stats";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
+import { FINAL_APPROVED_STATUSES } from "@/lib/approval-status";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
         kpiId: body.kpiId,
         year: body.year,
         period: body.period,
-        approvalStatus: "FINAL_APPROVED",
+        approvalStatus: { in: [...FINAL_APPROVED_STATUSES] },
       },
     });
     if (!entry) return jsonError("لا يوجد قياس معتمد لهذه الفترة", 400);

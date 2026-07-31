@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { scopedKpiWhere } from "@/lib/analytics";
 import { resolvePeriods } from "@/lib/kpi";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
+import { FINAL_APPROVED_STATUSES } from "@/lib/approval-status";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +26,13 @@ export async function GET(
         strategicGoal: true,
         targets: { where: { year } },
         entries: {
-          where: { year, approvalStatus: "FINAL_APPROVED" },
-          include: { evidences: { select: { id: true, fileName: true } } },
+          where: { year, approvalStatus: { in: [...FINAL_APPROVED_STATUSES] } },
+          include: {
+            evidences: {
+              where: { status: "ACTIVE" },
+              select: { id: true, fileName: true },
+            },
+          },
         },
         deviationCards: { where: { year } },
       },

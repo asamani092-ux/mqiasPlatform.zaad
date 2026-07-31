@@ -1,6 +1,7 @@
 import { Prisma, type ApprovalStatus, type Period } from "@prisma/client";
 import { db } from "@/lib/db";
 import { achievementPct, deviationValue, kpiStatus } from "@/lib/kpi";
+import { FINAL_APPROVED_STATUSES, isFinalApproved } from "@/lib/approval-status";
 
 export type MeasurementWriteInput = {
   requirementId: number;
@@ -22,20 +23,55 @@ export type MeasurementWriteInput = {
   reviewFeedback?: Prisma.InputJsonValue | null;
 };
 
-/** يزامن كل KpiEntry المرتبطة بالمتطلب من MeasurementPeriod — O(k) */
-export async function syncKpiEntriesFromMeasurement(measurementPeriodId: number) {
-  const mp = await db.measurementPeriod.findUnique({
+/**
+ * جسر التحليل ← الاعتماد: يكتب KpiEntry فقط عند الاعتماد النهائي.
+ * غير النهائي: يفك ربط الشواهد ثم يحذف أي إسقاط سابق لنفس (kpi,year,period).
+ * Time O(k) · Space O(1)
+ */
+export async function syncKpiEntriesFromMeasurement(
+  measurementPeriodId: number,
+  tx?: Prisma.TransactionClient
+) {
+  const client = tx ?? db;
+  const mp = await client.measurementPeriod.findUnique({
     where: { id: measurementPeriodId },
     include: {
       requirement: { include: { kpis: { select: { id: true, polarity: true } } } },
-      evidences: true,
+      evidences: { where: { status: "ACTIVE" } },
     },
   });
-  if (!mp) return { synced: 0 };
+  if (!mp) return { synced: 0, removed: 0 };
+
+  const kpiIds = mp.requirement.kpis.map((k) => k.id);
+  if (kpiIds.length === 0) return { synced: 0, removed: 0 };
+
+  // خارج النهائي → إزالة إسقاطات التحليل فقط (لا مساس بـ MeasurementPeriod/Evidence)
+  if (!isFinalApproved(mp.approvalStatus)) {
+    const existing = await client.kpiEntry.findMany({
+      where: {
+        kpiId: { in: kpiIds },
+        year: mp.year,
+        period: mp.period,
+      },
+      select: { id: true },
+    });
+    if (existing.length === 0) return { synced: 0, removed: 0 };
+
+    const entryIds = existing.map((e) => e.id);
+    // فك الربط حتى لا Cascade يحذف شواهد فترة القياس
+    await client.evidence.updateMany({
+      where: { kpiEntryId: { in: entryIds } },
+      data: { kpiEntryId: null },
+    });
+    const del = await client.kpiEntry.deleteMany({
+      where: { id: { in: entryIds } },
+    });
+    return { synced: 0, removed: del.count };
+  }
 
   let synced = 0;
   for (const kpi of mp.requirement.kpis) {
-    const target = await db.kpiTarget.findUnique({
+    const target = await client.kpiTarget.findUnique({
       where: {
         kpiId_year_period: { kpiId: kpi.id, year: mp.year, period: mp.period },
       },
@@ -45,7 +81,7 @@ export async function syncKpiEntriesFromMeasurement(measurementPeriodId: number)
     const dev = target != null ? deviationValue(mp.actualValue, target.targetValue) : null;
     const status = kpiStatus(pct);
 
-    const entry = await db.kpiEntry.upsert({
+    const entry = await client.kpiEntry.upsert({
       where: {
         kpiId_year_period: { kpiId: kpi.id, year: mp.year, period: mp.period },
       },
@@ -61,10 +97,10 @@ export async function syncKpiEntriesFromMeasurement(measurementPeriodId: number)
         deviationValue: dev,
         status,
         enteredById: mp.enteredById,
-        approvalStatus: mp.approvalStatus,
+        approvalStatus: "FINAL_APPROVED",
         approvedById: mp.approvedById,
         approvedAt: mp.approvedAt,
-        rejectReason: mp.rejectReason,
+        rejectReason: null,
       },
       update: {
         actualValue: mp.actualValue,
@@ -74,17 +110,18 @@ export async function syncKpiEntriesFromMeasurement(measurementPeriodId: number)
         achievementPct: pct,
         deviationValue: dev,
         status,
-        approvalStatus: mp.approvalStatus,
+        approvalStatus: "FINAL_APPROVED",
         approvedById: mp.approvedById,
         approvedAt: mp.approvedAt,
-        rejectReason: mp.rejectReason,
+        rejectReason: null,
+        enteredById: mp.enteredById,
       },
     });
 
     for (const ev of mp.evidences) {
       if (ev.kpiEntryId === entry.id) continue;
       if (ev.kpiEntryId == null) {
-        await db.evidence.update({
+        await client.evidence.update({
           where: { id: ev.id },
           data: { kpiEntryId: entry.id },
         });
@@ -93,25 +130,31 @@ export async function syncKpiEntriesFromMeasurement(measurementPeriodId: number)
     synced++;
   }
 
-  return { synced };
+  return { synced, removed: 0 };
 }
 
-export async function recordApprovalEvent(input: {
-  measurementPeriodId: number;
-  actorId: number;
-  action:
-    | "SAVE_DRAFT"
-    | "SUBMIT"
-    | "INITIAL_APPROVE"
-    | "FINAL_APPROVE"
-    | "REJECT_WORDING"
-    | "REJECT_EVIDENCE"
-    | "RETURN_EDIT"
-    | "ADMIN_EDIT";
-  comment?: string | null;
-  payload?: unknown;
-}) {
-  await db.approvalEvent.create({
+export { FINAL_APPROVED_STATUSES };
+
+export async function recordApprovalEvent(
+  input: {
+    measurementPeriodId: number;
+    actorId: number;
+    action:
+      | "SAVE_DRAFT"
+      | "SUBMIT"
+      | "INITIAL_APPROVE"
+      | "FINAL_APPROVE"
+      | "REJECT_WORDING"
+      | "REJECT_EVIDENCE"
+      | "RETURN_EDIT"
+      | "ADMIN_EDIT";
+    comment?: string | null;
+    payload?: unknown;
+  },
+  tx?: Prisma.TransactionClient
+) {
+  const client = tx ?? db;
+  await client.approvalEvent.create({
     data: {
       measurementPeriodId: input.measurementPeriodId,
       actorId: input.actorId,
@@ -122,7 +165,7 @@ export async function recordApprovalEvent(input: {
   });
 }
 
-/** كتابة قياس الفترة الموحّد ثم مزامنة المؤشرات المرتبطة */
+/** كتابة قياس الفترة الموحّد ثم مزامنة المؤشرات المرتبطة (النهائي فقط) */
 export async function upsertMeasurementPeriod(input: MeasurementWriteInput) {
   const mp = await db.measurementPeriod.upsert({
     where: {

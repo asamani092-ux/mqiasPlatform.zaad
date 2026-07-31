@@ -1,37 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import type { Period } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { scopeFilter } from "@/lib/rbac";
-import { audit } from "@/lib/audit";
-import { notify } from "@/lib/notify";
-import { getApprovalDelegationFlags } from "@/lib/approval-settings";
-import { upsertMeasurementPeriod } from "@/lib/measurement-sync";
-import {
-  achievementPct,
-  deviationValue,
-  deviationPct,
-  kpiStatus,
-  resolvePeriods,
-} from "@/lib/kpi";
+import { deviationPct, resolvePeriods } from "@/lib/kpi";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
 
 const querySchema = z.object({
   year: z.coerce.number().int().min(2000).max(2100),
   period: z.enum(["Q1", "Q2", "Q3", "Q4", "H1", "H2", "Y"]),
 });
-
-const postSchema = z
-  .object({
-    kpiId: z.number().int().positive(),
-    year: z.number().int().min(2000).max(2100),
-    period: z.enum(["Q1", "Q2", "Q3", "Q4", "H1", "H2", "Y"]),
-    actualValue: z.number(),
-    whatHappened: z.string().max(5000).optional().nullable(),
-    howHappened: z.string().max(5000).optional().nullable(),
-  })
-  .strict();
 
 export async function GET(req: NextRequest) {
   try {
@@ -59,7 +37,14 @@ export async function GET(req: NextRequest) {
           take: 1,
           include: {
             evidences: {
-              select: { id: true, fileName: true, mimeType: true, sizeBytes: true, createdAt: true },
+              where: { status: "ACTIVE" },
+              select: {
+                id: true,
+                fileName: true,
+                mimeType: true,
+                sizeBytes: true,
+                createdAt: true,
+              },
             },
           },
         },
@@ -112,207 +97,15 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const user = await requireUser();
-    const body = postSchema.parse(await req.json());
-    const userId = parseInt(user.id, 10);
+/** STEP 8 — الكتابة عبر المسار التراثي معطّلة؛ استخدم /api/my/measurements */
+export async function POST(_req: NextRequest) {
+  return jsonError("استخدم مسار القياسات الموحّد (/my · /api/my/measurements)", 410);
+}
 
-    const kpi = await db.kpi.findUnique({
-      where: { id: body.kpiId },
-      select: {
-        id: true,
-        ownerId: true,
-        polarity: true,
-        frequency: true,
-        sectionId: true,
-        departmentId: true,
-        name: true,
-        code: true,
-        requirementId: true,
-      },
-    });
+export async function PUT(_req: NextRequest) {
+  return jsonError("استخدم مسار القياسات الموحّد (/my · /api/my/measurements)", 410);
+}
 
-    if (!kpi) return jsonError("المؤشر غير موجود", 404);
-    if (kpi.ownerId !== userId) return jsonError("غير مصرح — هذا المؤشر ليس من مهامك", 403);
-
-    const allowedPeriods = resolvePeriods(kpi.frequency);
-    if (!allowedPeriods.includes(body.period as Period)) {
-      return jsonError("الفترة لا تتوافق مع دورية المؤشر", 400);
-    }
-
-    // مسار موحّد: إن وُجد متطلب مرتبط نكتب عبر MeasurementPeriod ثم نزامن KpiEntry
-    if (kpi.requirementId != null) {
-      const mp = await upsertMeasurementPeriod({
-        requirementId: kpi.requirementId,
-        year: body.year,
-        period: body.period as Period,
-        actualValue: body.actualValue,
-        whatHappened: body.whatHappened ?? null,
-        howHappened: body.howHappened ?? null,
-        enteredById: userId,
-        approvalStatus: "SUBMITTED",
-        approvedById: null,
-        approvedAt: null,
-        rejectReason: null,
-      });
-
-      const flags = await getApprovalDelegationFlags();
-      const approverIds: number[] = [];
-
-      const admins = await db.user.findMany({
-        where: { role: "SYSTEM_ADMIN", status: "ACTIVE" },
-        select: { id: true },
-      });
-      approverIds.push(...admins.map((a) => a.id));
-
-      if (flags.sectionHeadDelegation && kpi.sectionId) {
-        const heads = await db.user.findMany({
-          where: { role: "SECTION_HEAD", sectionId: kpi.sectionId, status: "ACTIVE" },
-          select: { id: true },
-        });
-        for (const h of heads) {
-          if (!approverIds.includes(h.id)) approverIds.push(h.id);
-        }
-      }
-
-      if (flags.deptManagerDelegation && kpi.departmentId) {
-        const managers = await db.user.findMany({
-          where: { role: "DEPT_MANAGER", departmentId: kpi.departmentId, status: "ACTIVE" },
-          select: { id: true },
-        });
-        for (const m of managers) {
-          if (!approverIds.includes(m.id)) approverIds.push(m.id);
-        }
-      }
-
-      await notify({
-        userIds: approverIds,
-        type: "APPROVAL_REQUEST",
-        title: "طلب اعتماد قياس جديد",
-        body: `${user.name} أرسل قياسًا للمؤشر ${kpi.code} — ${kpi.name}`,
-        link: "/approvals",
-        email: true,
-      });
-
-      const entry = await db.kpiEntry.findUnique({
-        where: {
-          kpiId_year_period: { kpiId: body.kpiId, year: body.year, period: body.period },
-        },
-      });
-
-      await audit(userId, "SUBMIT_ENTRY", "KpiEntry", entry?.id ?? mp.id, {
-        kpiId: body.kpiId,
-        requirementId: kpi.requirementId,
-        measurementPeriodId: mp.id,
-        year: body.year,
-        period: body.period,
-      });
-
-      return NextResponse.json({
-        entry: entry
-          ? { ...entry, deviationPct: deviationPct(entry.achievementPct) }
-          : null,
-        measurement: mp,
-      });
-    }
-
-    const target = await db.kpiTarget.findUnique({
-      where: {
-        kpiId_year_period: { kpiId: body.kpiId, year: body.year, period: body.period },
-      },
-    });
-
-    if (!target) return jsonError("لا يوجد مستهدف لهذه الفترة", 400);
-
-    const pct = achievementPct(body.actualValue, target.targetValue, kpi.polarity);
-    const devVal = deviationValue(body.actualValue, target.targetValue);
-    const status = kpiStatus(pct);
-
-    const entry = await db.kpiEntry.upsert({
-      where: {
-        kpiId_year_period: { kpiId: body.kpiId, year: body.year, period: body.period },
-      },
-      create: {
-        kpiId: body.kpiId,
-        year: body.year,
-        period: body.period,
-        actualValue: body.actualValue,
-        whatHappened: body.whatHappened ?? null,
-        howHappened: body.howHappened ?? null,
-        achievementPct: pct,
-        deviationValue: devVal,
-        status,
-        enteredById: userId,
-        approvalStatus: "SUBMITTED",
-      },
-      update: {
-        actualValue: body.actualValue,
-        whatHappened: body.whatHappened ?? null,
-        howHappened: body.howHappened ?? null,
-        achievementPct: pct,
-        deviationValue: devVal,
-        status,
-        enteredById: userId,
-        approvalStatus: "SUBMITTED",
-        approvedById: null,
-        approvedAt: null,
-        rejectReason: null,
-      },
-    });
-
-    const flags = await getApprovalDelegationFlags();
-    const approverIds: number[] = [];
-
-    const admins = await db.user.findMany({
-      where: { role: "SYSTEM_ADMIN", status: "ACTIVE" },
-      select: { id: true },
-    });
-    approverIds.push(...admins.map((a) => a.id));
-
-    if (flags.sectionHeadDelegation && kpi.sectionId) {
-      const heads = await db.user.findMany({
-        where: { role: "SECTION_HEAD", sectionId: kpi.sectionId, status: "ACTIVE" },
-        select: { id: true },
-      });
-      for (const h of heads) {
-        if (!approverIds.includes(h.id)) approverIds.push(h.id);
-      }
-    }
-
-    if (flags.deptManagerDelegation && kpi.departmentId) {
-      const managers = await db.user.findMany({
-        where: { role: "DEPT_MANAGER", departmentId: kpi.departmentId, status: "ACTIVE" },
-        select: { id: true },
-      });
-      for (const m of managers) {
-        if (!approverIds.includes(m.id)) approverIds.push(m.id);
-      }
-    }
-
-    await notify({
-      userIds: approverIds,
-      type: "APPROVAL_REQUEST",
-      title: "طلب اعتماد قياس جديد",
-      body: `${user.name} أرسل قياسًا للمؤشر ${kpi.code} — ${kpi.name}`,
-      link: "/approvals",
-      email: true,
-    });
-
-    await audit(userId, "SUBMIT_ENTRY", "KpiEntry", entry.id, {
-      kpiId: body.kpiId,
-      year: body.year,
-      period: body.period,
-    });
-
-    return NextResponse.json({
-      entry: {
-        ...entry,
-        deviationPct: deviationPct(entry.achievementPct),
-      },
-    });
-  } catch (e) {
-    if (e instanceof z.ZodError) return jsonError("بيانات غير صالحة", 400);
-    return handleApiError(e);
-  }
+export async function DELETE(_req: NextRequest) {
+  return jsonError("استخدم مسار القياسات الموحّد (/my · /api/my/measurements)", 410);
 }

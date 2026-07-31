@@ -5,6 +5,7 @@ import { can } from "@/lib/rbac";
 import { parseTrackParams } from "@/lib/track-params";
 import { db } from "@/lib/db";
 import DashboardClient from "@/components/DashboardClient";
+import { FINAL_APPROVED_STATUSES } from "@/lib/approval-status";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export default async function DashboardPage({
   const [overview, entries, departments] = await Promise.all([
     getDashboardOverview(user, year, period),
     db.kpiEntry.findMany({
-      where: { year, period, approvalStatus: "FINAL_APPROVED" },
+      where: { year, period, approvalStatus: { in: [...FINAL_APPROVED_STATUSES] } },
       select: { status: true },
     }),
     db.department.findMany({

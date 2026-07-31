@@ -1,4 +1,4 @@
-import { mkdir, writeFile, unlink } from "fs/promises";
+import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
@@ -76,6 +76,7 @@ export async function POST(
         mimeType: file.type,
         sizeBytes: file.size,
         uploadedById: userId,
+        status: "ACTIVE",
       },
     });
 
@@ -113,28 +114,41 @@ export async function DELETE(
     });
 
     if (!mp) return jsonError("فترة القياس غير موجودة", 404);
-    if (mp.requirement.ownerId !== userId) return jsonError("غير مصرح", 403);
-    if (mp.approvalStatus === "FINAL_APPROVED" || mp.approvalStatus === "APPROVED") {
-      return jsonError("لا يمكن حذف الشواهد بعد الاعتماد النهائي", 400);
+    if (mp.requirement.ownerId !== userId && user.role !== "SYSTEM_ADMIN") {
+      return jsonError("غير مصرح", 403);
+    }
+    // STEP 3: الحذف فقط حين يمكن للمدخل التعديل (مسودة أو رفض)
+    if (!canFillerEdit(mp.approvalStatus)) {
+      return jsonError(
+        "لا يمكن حذف الشواهد بعد التقديم — الحذف متاح في المسودة أو بعد الإرجاع/الرفض فقط",
+        400
+      );
     }
 
     const evidence = await db.evidence.findFirst({
-      where: { id: evidenceId, measurementPeriodId },
+      where: { id: evidenceId, measurementPeriodId, status: "ACTIVE" },
     });
 
     if (!evidence) return jsonError("الشاهد غير موجود", 404);
 
-    try {
-      await unlink(path.join(STORAGE_DIR, evidence.storedName));
-    } catch {
-      /* الملف قد يكون محذوفًا مسبقًا */
-    }
+    // STEP 4: حذف ناعم — الإبقاء على الملف والسجل
+    await db.evidence.update({
+      where: { id: evidenceId },
+      data: {
+        status: "REJECTED",
+        rejectReason: "حُذف من المدخل",
+        rejectedById: userId,
+        rejectedAt: new Date(),
+      },
+    });
 
-    await db.evidence.delete({ where: { id: evidenceId } });
     await syncKpiEntriesFromMeasurement(measurementPeriodId);
-    await audit(userId, "DELETE_EVIDENCE", "Evidence", evidenceId, { measurementPeriodId });
+    await audit(userId, "DELETE_EVIDENCE", "Evidence", evidenceId, {
+      measurementPeriodId,
+      soft: true,
+    });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, softDeleted: true });
   } catch (e) {
     return handleApiError(e);
   }

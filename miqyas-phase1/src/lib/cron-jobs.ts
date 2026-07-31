@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { achievementPct, currentQuarter } from "@/lib/kpi";
 import { getSetting } from "@/lib/settings";
 import { notify } from "@/lib/notify";
+import { FINAL_APPROVED_STATUSES } from "@/lib/approval-status";
 
 function quarterStart(year: number, period: Period): Date {
   const map: Record<string, number> = { Q1: 0, Q2: 3, Q3: 6, Q4: 9, H1: 0, H2: 6, Y: 0 };
@@ -101,7 +102,7 @@ export async function runEarlyWarning(date = new Date()) {
     include: {
       targets: { where: { year, period }, take: 1 },
       entries: {
-        where: { year, period, approvalStatus: "FINAL_APPROVED" },
+        where: { year, period, approvalStatus: { in: [...FINAL_APPROVED_STATUSES] } },
         take: 1,
       },
     },
