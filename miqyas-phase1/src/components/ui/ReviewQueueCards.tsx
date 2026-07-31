@@ -13,6 +13,8 @@ export type ReviewCardModel = {
   statusClass?: string;
   evidenceCount: number;
   meta?: string;
+  /** مقتطف ملاحظات القسم / المشرف */
+  notesSnippet?: string | null;
 };
 
 export default function ReviewQueueCards({
@@ -55,11 +57,16 @@ export default function ReviewQueueCards({
           </div>
           <div className="review-queue-card-meta text-muted">
             {item.departmentName ? <span>الإدارة: {item.departmentName}</span> : null}
-            {item.ownerName ? <span>المسؤول: {item.ownerName}</span> : null}
+            <span>المسؤول: {item.ownerName?.trim() ? item.ownerName : "بلا مسؤول"}</span>
             {item.enteredByName ? <span>أدخلها: {item.enteredByName}</span> : null}
             <span>شواهد: {item.evidenceCount}</span>
             {item.meta ? <span>{item.meta}</span> : null}
           </div>
+          {item.notesSnippet ? (
+            <div className="review-queue-card-notes alert alert-warn" style={{ marginTop: ".5rem", textAlign: "start" }}>
+              <strong>ملاحظات القسم / المشرف:</strong> {item.notesSnippet}
+            </div>
+          ) : null}
           {trailing ? <div className="review-queue-card-trail">{trailing(item.id)}</div> : null}
         </button>
       ))}

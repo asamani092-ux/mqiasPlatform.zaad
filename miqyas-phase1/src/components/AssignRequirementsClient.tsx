@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FilterBar, { FilterField } from "@/components/ui/FilterBar";
-import { FILLER_ROLE_LABEL, ROLE_LABEL } from "@/lib/types";
+import { ROLE_LABEL } from "@/lib/types";
 import { notifyToast } from "@/lib/ui-toast";
+import { filterAssignCandidates } from "@/lib/requirement-owner-scope";
+import { roleToFillerRole } from "@/lib/approval-status";
 
 type ReqRow = {
   id: number;
@@ -43,11 +45,12 @@ export default function AssignRequirementsClient() {
   const [fillerRole, setFillerRole] = useState("");
   const [search, setSearch] = useState("");
   const [unassigned, setUnassigned] = useState(false);
-  const [selected, setSelected] = useState<number[]>([]);
-  const [ownerId, setOwnerId] = useState("");
-  const [assignRole, setAssignRole] = useState("EMPLOYEE");
+  const [scopedDepartmentId, setScopedDepartmentId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [savingId, setSavingId] = useState<number | null>(null);
+  const autoAssigned = useRef<Set<number>>(new Set());
+
+  const isManagerScoped = scopedDepartmentId != null;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,11 +63,17 @@ export default function AssignRequirementsClient() {
     const res = await fetch(`/api/admin/assign?${params}`);
     if (res.ok) {
       const data = await res.json();
+      autoAssigned.current.clear();
       setRequirements(data.requirements);
       setUsers(data.users);
       setDepartments(data.departments);
       setSections(data.sections);
-      setSelected([]);
+      setScopedDepartmentId(data.scopedDepartmentId ?? null);
+      if (data.scopedDepartmentId != null) {
+        setDepartmentId((prev) =>
+          prev === String(data.scopedDepartmentId) ? prev : String(data.scopedDepartmentId)
+        );
+      }
     } else {
       notifyToast.error("تعذّر تحميل المتطلبات");
     }
@@ -80,193 +89,160 @@ export default function AssignRequirementsClient() {
     [sections, departmentId]
   );
 
-  const selectedReqs = useMemo(
-    () => requirements.filter((r) => selected.includes(r.id)),
-    [requirements, selected]
-  );
-
-  const owners = useMemo(() => {
-    return users.filter((u) => {
-      if (u.role !== assignRole) return false;
-      if (selectedReqs.length === 0) return true;
-      // توافق مع إدارة/قسم المحدد
-      return selectedReqs.every((r) => {
-        if (assignRole === "SECTION_HEAD" && r.sectionId != null) {
-          return u.sectionId === r.sectionId;
-        }
-        if (r.departmentId != null) return u.departmentId === r.departmentId;
-        return true;
-      });
-    });
-  }, [users, assignRole, selectedReqs]);
-
-  function toggle(id: number) {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  function candidatesFor(r: ReqRow): UserRow[] {
+    return filterAssignCandidates(users, r);
   }
 
-  function toggleAll() {
-    if (selected.length === requirements.length) setSelected([]);
-    else setSelected(requirements.map((r) => r.id));
-  }
+  async function assignOne(requirementId: number, ownerId: number | null, silent = false) {
+    setSavingId(requirementId);
+    const body =
+      ownerId == null
+        ? { requirementIds: [requirementId], ownerId: null, action: "unassign" as const }
+        : (() => {
+            const owner = users.find((u) => u.id === ownerId);
+            const filler = owner ? roleToFillerRole(owner.role as never) : null;
+            return {
+              requirementIds: [requirementId],
+              ownerId,
+              fillerRole: filler ?? undefined,
+              action: "assign" as const,
+            };
+          })();
 
-  async function assign() {
-    if (selected.length === 0) {
-      notifyToast.error("حدّد متطلباً واحداً على الأقل");
-      return;
-    }
-    if (!ownerId) {
-      notifyToast.error("اختر المسؤول");
-      return;
-    }
-    setSaving(true);
     const res = await fetch("/api/admin/assign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "assign",
-        requirementIds: selected,
-        ownerId: parseInt(ownerId, 10),
-        fillerRole: assignRole,
-      }),
+      body: JSON.stringify(body),
     });
-    setSaving(false);
+    setSavingId(null);
     if (res.ok) {
-      const data = await res.json();
-      notifyToast.success(`تم إسناد ${data.updated} متطلباً وإشعار المسؤول`);
-      await load();
+      if (!silent) {
+        notifyToast.success(ownerId == null ? "أُلغي الإسناد" : "تم الإسناد", {
+          duration: "short",
+        });
+      }
+      setRequirements((prev) =>
+        prev.map((r) => {
+          if (r.id !== requirementId) return r;
+          if (ownerId == null) {
+            return { ...r, ownerId: null, owner: null };
+          }
+          const u = users.find((x) => x.id === ownerId);
+          return {
+            ...r,
+            ownerId,
+            fillerRole: u ? roleToFillerRole(u.role as never) || r.fillerRole : r.fillerRole,
+            owner: u
+              ? {
+                  id: u.id,
+                  name: u.name,
+                  role: u.role,
+                  departmentId: u.departmentId,
+                  department: u.department ?? null,
+                }
+              : r.owner,
+          };
+        })
+      );
     } else {
       const err = await res.json().catch(() => ({}));
-      notifyToast.error(err.error || "فشل الإسناد");
+      if (!silent) notifyToast.error(err.error || "فشل الإسناد");
+      await load();
     }
   }
 
-  async function unassign() {
-    if (selected.length === 0) {
-      notifyToast.error("حدّد متطلباً واحداً على الأقل");
-      return;
+  // إسناد تلقائي عند مرشح واحد فقط — Time O(n)
+  useEffect(() => {
+    if (loading) return;
+    for (const r of requirements) {
+      if (r.ownerId != null) continue;
+      if (autoAssigned.current.has(r.id)) continue;
+      const cands = candidatesFor(r);
+      if (cands.length !== 1) continue;
+      autoAssigned.current.add(r.id);
+      void assignOne(r.id, cands[0].id, true);
     }
-    if (!window.confirm("إلغاء إسناد المتطلبات المحددة؟")) return;
-    setSaving(true);
-    const res = await fetch("/api/admin/assign", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "unassign",
-        requirementIds: selected,
-        ownerId: null,
-      }),
-    });
-    setSaving(false);
-    if (res.ok) {
-      const data = await res.json();
-      notifyToast.success(`أُلغي إسناد ${data.updated} متطلباً`, { duration: "short" });
-      await load();
-    } else {
-      const err = await res.json().catch(() => ({}));
-      notifyToast.error(err.error || "فشل إلغاء الإسناد");
-    }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- مرّة لكل تحميل قائمة
+  }, [loading, requirements, users]);
 
   return (
     <>
       <div className="topbar">
         <div>
-          <h1>إسناد المتطلبات</h1>
+          <h1>إسناد المسؤولين</h1>
           <div className="text-muted">
-            الإسناد للمالك ضمن إدارة المتطلب — نقل المستخدم لإدارة أخرى يلغي إسناده خارج إدارته الجديدة
+            قائمة منسدلة داخل كل مؤشر — الاسم مع الدور · مرشح واحد يُسند تلقائياً
+            {isManagerScoped ? " · نطاق إدارتك فقط" : ""}
           </div>
         </div>
       </div>
 
       <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
-        اختر إدارة المتطلب أولاً، ثم المسؤول من نفس الإدارة. ما يظهر في «شواهد المؤشرات» للمستخدم هو ما أُسند إليه كمالك وليس كل مؤشرات إدارته.
+        كل متطلب له مسؤول واحد يظهر في شواهد المؤشرات. غيّر المسؤول من القائمة في الصف مباشرة.
       </div>
 
-      <FilterBar
-        actions={
-          <>
-            <button type="button" className="btn-primary btn-sm" disabled={saving} onClick={() => void assign()}>
-              {saving ? "..." : `إسناد (${selected.length})`}
-            </button>
-            <button type="button" className="btn-secondary btn-sm" disabled={saving} onClick={() => void unassign()}>
-              إلغاء الإسناد
-            </button>
-          </>
-        }
-      >
-        <FilterField label="بحث">
-          <input
-            className="input-field"
-            placeholder="رمز أو اسم"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </FilterField>
-        <FilterField label="الإدارة">
+      <FilterBar>
+        {!isManagerScoped ? (
+          <FilterField label="الإدارة">
+            <select
+              className="input-field"
+              value={departmentId}
+              onChange={(e) => {
+                setDepartmentId(e.target.value);
+                setSectionId("");
+              }}
+            >
+              <option value="">الكل</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+        ) : null}
+        <FilterField label="القسم">
           <select
             className="input-field"
-            value={departmentId}
-            onChange={(e) => {
-              setDepartmentId(e.target.value);
-              setSectionId("");
-            }}
+            value={sectionId}
+            onChange={(e) => setSectionId(e.target.value)}
           >
             <option value="">الكل</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-        </FilterField>
-        <FilterField label="القسم">
-          <select className="input-field" value={sectionId} onChange={(e) => setSectionId(e.target.value)}>
-            <option value="">الكل</option>
             {filteredSections.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
             ))}
           </select>
         </FilterField>
         <FilterField label="دور التعبئة الحالي">
-          <select className="input-field" value={fillerRole} onChange={(e) => setFillerRole(e.target.value)}>
-            <option value="">الكل</option>
-            {Object.entries(FILLER_ROLE_LABEL).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-        </FilterField>
-        <label style={{ display: "flex", alignItems: "end", gap: ".4rem", paddingBottom: ".35rem" }}>
-          <input type="checkbox" checked={unassigned} onChange={(e) => setUnassigned(e.target.checked)} />
-          غير المسند فقط
-        </label>
-      </FilterBar>
-
-      <div className="card" style={{ marginBottom: "1rem", display: "flex", gap: ".75rem", flexWrap: "wrap", alignItems: "end" }}>
-        <FilterField label="دور التعبئة عند الإسناد">
           <select
             className="input-field"
-            value={assignRole}
-            onChange={(e) => {
-              setAssignRole(e.target.value);
-              setOwnerId("");
-            }}
+            value={fillerRole}
+            onChange={(e) => setFillerRole(e.target.value)}
           >
-            {Object.entries(FILLER_ROLE_LABEL).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
+            <option value="">الكل</option>
+            <option value="EMPLOYEE">موظف</option>
+            <option value="SECTION_HEAD">رئيس قسم</option>
+            <option value="DEPT_MANAGER">مدير إدارة</option>
           </select>
         </FilterField>
-        <div style={{ minWidth: "14rem" }}>
-          <label className="label-field">المسؤول (ضمن نطاق المحدد)</label>
-          <select className="input-field" value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
-            <option value="">— اختر —</option>
-            {owners.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name} ({ROLE_LABEL[u.role] || u.role}
-                {u.department?.name ? ` · ${u.department.name}` : ""})
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+        <FilterField label="بحث">
+          <input
+            className="input-field"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="رمز أو اسم"
+          />
+        </FilterField>
+        <FilterField label="بلا مسؤول فقط">
+          <input
+            type="checkbox"
+            checked={unassigned}
+            onChange={(e) => setUnassigned(e.target.checked)}
+          />
+        </FilterField>
+      </FilterBar>
 
       {loading ? (
         <p className="text-muted">جاري التحميل...</p>
@@ -275,59 +251,74 @@ export default function AssignRequirementsClient() {
           <table className="tmkeen-table">
             <thead>
               <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    checked={requirements.length > 0 && selected.length === requirements.length}
-                    onChange={toggleAll}
-                  />
-                </th>
                 <th>الرمز</th>
                 <th>المتطلب</th>
                 <th>الإدارة</th>
                 <th>القسم</th>
-                <th>دور التعبئة</th>
                 <th>المسؤول</th>
-                <th>تنبيه</th>
               </tr>
             </thead>
             <tbody>
-              {requirements.map((r) => {
-                const mismatch =
-                  r.owner &&
-                  r.departmentId != null &&
-                  r.owner.departmentId != null &&
-                  r.owner.departmentId !== r.departmentId;
-                return (
-                <tr key={r.id}>
-                  <td>
-                    <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} />
-                  </td>
-                  <td>{r.code}</td>
-                  <td>{r.name}</td>
-                  <td>{r.department?.name || "—"}</td>
-                  <td>{r.section?.name || "—"}</td>
-                  <td>{FILLER_ROLE_LABEL[r.fillerRole] || r.fillerRole}</td>
-                  <td>
-                    {r.owner
-                      ? `${r.owner.name}${r.owner.department?.name ? ` (${r.owner.department.name})` : ""}`
-                      : "—"}
-                  </td>
-                  <td>
-                    {mismatch ? (
-                      <span className="badge-danger">إدارة المسؤول ≠ إدارة المتطلب</span>
-                    ) : (
-                      "—"
-                    )}
+              {requirements.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-muted">
+                    لا متطلبات مطابقة للفلتر
                   </td>
                 </tr>
-                );
-              })}
+              ) : (
+                requirements.map((r) => {
+                  const cands = candidatesFor(r);
+                  const mismatched =
+                    r.owner &&
+                    r.departmentId != null &&
+                    r.owner.departmentId != null &&
+                    r.owner.departmentId !== r.departmentId;
+                  return (
+                    <tr key={r.id}>
+                      <td>{r.code}</td>
+                      <td>{r.name}</td>
+                      <td>{r.department?.name || "—"}</td>
+                      <td>{r.section?.name || "—"}</td>
+                      <td>
+                        <select
+                          className="input-field"
+                          style={{ minWidth: 220 }}
+                          disabled={savingId === r.id}
+                          value={r.ownerId ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            void assignOne(r.id, v ? parseInt(v, 10) : null);
+                          }}
+                        >
+                          <option value="">بلا مسؤول</option>
+                          {cands.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name} — {ROLE_LABEL[u.role] || u.role}
+                            </option>
+                          ))}
+                          {r.ownerId && !cands.some((c) => c.id === r.ownerId) && r.owner ? (
+                            <option value={r.ownerId}>
+                              {r.owner.name} — {ROLE_LABEL[r.owner.role] || r.owner.role} (خارج النطاق)
+                            </option>
+                          ) : null}
+                        </select>
+                        {mismatched ? (
+                          <div className="text-danger" style={{ fontSize: ".75rem" }}>
+                            تعارض إدارة المسؤول
+                          </div>
+                        ) : null}
+                        {cands.length === 0 ? (
+                          <div className="text-muted" style={{ fontSize: ".75rem" }}>
+                            لا مرشحين في النطاق
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
-          {requirements.length === 0 && (
-            <p className="text-muted" style={{ padding: "1rem" }}>لا نتائج</p>
-          )}
         </div>
       )}
     </>

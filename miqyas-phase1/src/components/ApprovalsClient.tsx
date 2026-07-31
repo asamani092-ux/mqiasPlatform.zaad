@@ -11,6 +11,7 @@ import ReviewWorkbenchModal, {
   type ReviewWorkbenchItem,
 } from "@/components/ui/ReviewWorkbenchModal";
 import type { Decision, FieldDecisions } from "@/lib/review-feedback";
+import { notesCardSnippet } from "@/lib/review-feedback";
 
 type Entry = {
   id: number;
@@ -21,6 +22,8 @@ type Entry = {
   whatHappened: string | null;
   howHappened: string | null;
   approvalStatus?: string;
+  rejectReason?: string | null;
+  reviewFeedback?: unknown;
   requirement: {
     code: string;
     name: string;
@@ -97,7 +100,10 @@ export default function ApprovalsClient() {
         departmentName: e.requirement.department?.name ?? null,
         ownerName: e.requirement.owner?.name ?? null,
         enteredByName: e.employee.name,
-        statusLabel: displayApprovalLabel(e.approvalStatus || (queue === "final" ? "FINAL_APPROVED" : "INITIAL_APPROVED")),
+        statusLabel: displayApprovalLabel(
+          e.approvalStatus || (queue === "final" ? "FINAL_APPROVED" : "INITIAL_APPROVED"),
+          e.rejectReason
+        ),
         kpiCodes: e.requirement.kpis.map((k) => k.code),
         evidenceCount: e.evidences.filter((x) => x.status !== "REJECTED").length,
         awaiting: queue === "pending",
@@ -125,6 +131,7 @@ export default function ApprovalsClient() {
         actualValue: openEntry.actualValue,
         whatHappened: openEntry.whatHappened,
         howHappened: openEntry.howHappened,
+        priorNotes: openEntry.rejectReason,
         evidences: openEntry.evidences,
       }
     : null;
@@ -152,7 +159,9 @@ export default function ApprovalsClient() {
     }
     if (
       action === "revoke_final" &&
-      !window.confirm("سيتم إلغاء الاعتماد النهائي وإعادة القياس للمدخل. متابعة؟")
+      !window.confirm(
+        "سيتم إلغاء الاعتماد النهائي وإعادته: موظف/رئيس → مراجعة الإدارة؛ مدير → مسودة. متابعة؟"
+      )
     ) {
       return;
     }
@@ -179,7 +188,7 @@ export default function ApprovalsClient() {
         action === "final_approve"
           ? "تم الاعتماد النهائي"
           : action === "revoke_final"
-            ? "أُلغي الاعتماد النهائي وأُعيد للمدخل"
+            ? "أُلغي الاعتماد النهائي"
             : "أُعيد للتعديل مع إشعار المعنيين",
         { duration: "short" }
       );
@@ -240,6 +249,7 @@ export default function ApprovalsClient() {
                 statusClass: queue === "final" ? "badge-success" : "badge-primary",
                 evidenceCount: c.evidenceCount,
                 meta: `${PERIOD_LABEL[c.period as Period] || c.period} ${c.year}`,
+                notesSnippet: notesCardSnippet(c.rejectReason),
               }))}
               emptyText={
                 queue === "final"

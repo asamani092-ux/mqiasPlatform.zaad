@@ -12,6 +12,8 @@ import { APPROVAL_BADGE, type Period } from "@/lib/types";
 import { displayApprovalLabel, isAwaitingDept } from "@/lib/approval-status";
 import { notifyToast } from "@/lib/ui-toast";
 import type { Decision, FieldDecisions } from "@/lib/review-feedback";
+import { notesCardSnippet } from "@/lib/review-feedback";
+import Link from "next/link";
 
 type Evidence = {
   id: number;
@@ -104,13 +106,14 @@ export default function DeptFollowClient({
           name: openRow.name,
           unit: openRow.unit,
           departmentName: openRow.departmentName,
-          ownerName: openRow.ownerName,
+          ownerName: openRow.ownerName === "—" ? null : openRow.ownerName,
           enteredByName: openRow.enteredByName,
           requiredData: openRow.requiredData,
           kpiLabels: openRow.kpiLabels,
           actualValue: openRow.actualValue,
           whatHappened: openRow.whatHappened,
           howHappened: openRow.howHappened,
+          priorNotes: openRow.rejectReason,
           evidences: openRow.evidences,
         }
       : null;
@@ -195,7 +198,9 @@ export default function DeptFollowClient({
       </div>
 
       <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
-        الاعتماد المبدئي لما يقدّمه الموظف أو رئيس القسم فقط. تقديم مدير الإدارة يتجاوز هذه الطبقة إلى الاعتماد النهائي.
+        الاعتماد المبدئي لما يقدّمه الموظف أو رئيس القسم فقط. تقديم مدير الإدارة يتجاوز هذه الطبقة إلى
+        الاعتماد النهائي.{" "}
+        <Link href="/admin/assign">إسناد المسؤولين</Link>
       </div>
 
       <ReviewSmartSearch items={cards} showAwaitingChip>
@@ -206,7 +211,7 @@ export default function DeptFollowClient({
               code: c.code,
               name: c.name,
               departmentName: c.departmentName,
-              ownerName: c.ownerName,
+              ownerName: c.ownerName === "—" ? null : c.ownerName,
               enteredByName: c.enteredByName,
               statusLabel: c.statusLabel,
               statusClass: c.approvalStatus
@@ -214,6 +219,7 @@ export default function DeptFollowClient({
                 : "badge-neutral",
               evidenceCount: c.evidenceCount,
               meta: c.awaiting ? "بانتظارك" : undefined,
+              notesSnippet: notesCardSnippet(c.rejectReason),
             }))}
             emptyText="لا قياسات في هذه الفترة ضمن نطاق إدارتك."
             onOpen={(id) => {

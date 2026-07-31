@@ -62,10 +62,16 @@ const TRACK_NAV: NavItem[] = [
   { href: "/knowledge", label: "المعرفة المؤسسية", Icon: BookOpen },
 ];
 
+const ASSIGN_NAV: NavItem = {
+  href: "/admin/assign",
+  label: "إسناد المسؤولين",
+  Icon: UserPlus,
+};
+
 const ADMIN_NAV: NavItem[] = [
   { href: "/admin/users", label: "إدارة المستخدمين", Icon: Users },
   { href: "/admin/kpis", label: "إدارة المؤشرات", Icon: Ruler },
-  { href: "/admin/assign", label: "إسناد المتطلبات", Icon: UserPlus },
+  ASSIGN_NAV,
   { href: "/admin/settings", label: "إعدادات النظام", Icon: Settings2 },
 ];
 
@@ -103,7 +109,7 @@ export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[]
   }
 
   if (role === "DEPT_MANAGER") {
-    sections.push({ label: "الرئيسية", items: [MY_NAV, DEPT_FOLLOW_NAV] });
+    sections.push({ label: "الرئيسية", items: [MY_NAV, DEPT_FOLLOW_NAV, ASSIGN_NAV] });
     return sections;
   }
 

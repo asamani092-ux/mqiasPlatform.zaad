@@ -36,6 +36,8 @@ export type ReviewWorkbenchItem = {
   actualValue: number | null;
   whatHappened: string | null;
   howHappened: string | null;
+  /** ملاحظات سابقة من إرجاع/إلغاء */
+  priorNotes?: string | null;
   evidences: ReviewEvidence[];
 };
 
@@ -198,9 +200,17 @@ export default function ReviewWorkbenchModal({
           </div>
         ) : null}
 
+        {item.priorNotes ? (
+          <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
+            <strong>ملاحظات القسم / المشرف:</strong>
+            <div style={{ marginTop: ".35rem", whiteSpace: "pre-wrap" }}>{item.priorNotes}</div>
+          </div>
+        ) : null}
+
         {revokeMode ? (
           <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
-            إلغاء الاعتماد النهائي يعيد القياس للمدخل كمسودة مع إشعار مدير الإدارة. السبب مطلوب.
+            إلغاء الاعتماد النهائي: تقديم موظف/رئيس قسم → بانتظار مراجعة الإدارة؛ تقديم مدير → مسودة.
+            السبب مطلوب.
           </div>
         ) : null}
 

@@ -17,6 +17,7 @@ import {
   type FieldDecisions,
 } from "@/lib/review-feedback";
 import { notifyMeasurementReturn } from "@/lib/review-notify";
+import { rebindOwnerIfMissing } from "@/lib/requirement-owner";
 
 export const dynamic = "force-dynamic";
 
@@ -69,13 +70,17 @@ export async function PATCH(req: NextRequest) {
       include: {
         requirement: {
           select: {
+            id: true,
             code: true,
             name: true,
             departmentId: true,
+            sectionId: true,
             ownerId: true,
           },
         },
-        enteredBy: { select: { id: true } },
+        enteredBy: {
+          select: { id: true, role: true, departmentId: true, sectionId: true, status: true },
+        },
         evidences: { select: { id: true, fileName: true, status: true } },
       },
     });
@@ -180,12 +185,20 @@ export async function PATCH(req: NextRequest) {
         payload: feedback,
       });
 
+      const ownerId = await rebindOwnerIfMissing({
+        requirementId: mp.requirement.id,
+        ownerId: mp.requirement.ownerId,
+        departmentId: mp.requirement.departmentId,
+        sectionId: mp.requirement.sectionId,
+        enteredBy: mp.enteredBy,
+      });
+
       await notifyMeasurementReturn({
         measurementPeriodId: mp.id,
         requirementCode: mp.requirement.code,
         requirementName: mp.requirement.name,
         departmentId: mp.requirement.departmentId,
-        ownerId: mp.requirement.ownerId,
+        ownerId,
         enteredById: mp.enteredBy.id,
         title: "أُعيد القياس للتعديل من مراجعة الإدارة",
         body: rejectReason,

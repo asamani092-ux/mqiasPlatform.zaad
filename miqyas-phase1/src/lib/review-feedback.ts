@@ -99,3 +99,10 @@ export function matchesSmartSearch(haystackParts: Array<string | null | undefine
     .toLowerCase();
   return words.every((w) => hay.includes(w));
 }
+
+/** مقتطف قصير لبطاقة الطابور من rejectReason */
+export function notesCardSnippet(rejectReason?: string | null, max = 120): string | null {
+  const t = rejectReason?.trim();
+  if (!t) return null;
+  return t.length > max ? `${t.slice(0, max)}…` : t;
+}

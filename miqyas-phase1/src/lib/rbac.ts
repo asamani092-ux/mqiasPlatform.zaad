@@ -31,8 +31,8 @@ export const can = {
   reviewDepartment: (u: SessionUser) => isAdmin(u) || u.role === "DEPT_MANAGER",
   /** متابعة/مراجعة مؤشرات الإدارة */
   followDepartment: (u: SessionUser) => isAdmin(u) || u.role === "DEPT_MANAGER",
-  /** إسناد جماعي للمتطلبات */
-  assignRequirements: (u: SessionUser) => isAdmin(u),
+  /** إسناد المتطلبات — مشرف أو مدير إدارة */
+  assignRequirements: (u: SessionUser) => isAdmin(u) || u.role === "DEPT_MANAGER",
 };
 
 /** نطاق مؤشرات KPI للمسارات التحليلية */

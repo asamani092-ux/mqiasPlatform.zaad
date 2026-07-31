@@ -16,6 +16,7 @@ import {
   type FieldDecisions,
 } from "@/lib/review-feedback";
 import { notifyMeasurementReturn } from "@/lib/review-notify";
+import { rebindOwnerIfMissing } from "@/lib/requirement-owner";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +108,7 @@ export async function GET(req: NextRequest) {
         approvalStatus: mp.approvalStatus,
         suggestedWording: mp.suggestedWording,
         reviewFeedback: mp.reviewFeedback,
+        rejectReason: mp.rejectReason,
         requirement: mp.requirement,
         employee: mp.enteredBy,
         initialApprovedBy: mp.initialApprovedBy,
@@ -130,14 +132,18 @@ export async function POST(req: NextRequest) {
       include: {
         requirement: {
           select: {
+            id: true,
             code: true,
             name: true,
             ownerId: true,
             departmentId: true,
+            sectionId: true,
           },
         },
         evidences: { select: { id: true, fileName: true, status: true } },
-        enteredBy: { select: { id: true, role: true } },
+        enteredBy: {
+          select: { id: true, role: true, departmentId: true, sectionId: true, status: true },
+        },
       },
     });
     if (!mp) return jsonError("فترة القياس غير موجودة", 404);
@@ -202,12 +208,19 @@ export async function POST(req: NextRequest) {
         comment: notes,
         payload: { ...feedback, nextStatus },
       });
+      const ownerId = await rebindOwnerIfMissing({
+        requirementId: mp.requirement.id,
+        ownerId: mp.requirement.ownerId,
+        departmentId: mp.requirement.departmentId,
+        sectionId: mp.requirement.sectionId,
+        enteredBy: mp.enteredBy,
+      });
       await notifyMeasurementReturn({
         measurementPeriodId: mp.id,
         requirementCode: mp.requirement.code,
         requirementName: mp.requirement.name,
         departmentId: mp.requirement.departmentId,
-        ownerId: mp.requirement.ownerId,
+        ownerId,
         enteredById: mp.enteredBy.id,
         title:
           nextStatus === "SUBMITTED"
@@ -343,12 +356,20 @@ export async function POST(req: NextRequest) {
       payload: feedback,
     });
 
+    const ownerId = await rebindOwnerIfMissing({
+      requirementId: mp.requirement.id,
+      ownerId: mp.requirement.ownerId,
+      departmentId: mp.requirement.departmentId,
+      sectionId: mp.requirement.sectionId,
+      enteredBy: mp.enteredBy,
+    });
+
     await notifyMeasurementReturn({
       measurementPeriodId: mp.id,
       requirementCode: mp.requirement.code,
       requirementName: mp.requirement.name,
       departmentId: mp.requirement.departmentId,
-      ownerId: mp.requirement.ownerId,
+      ownerId,
       enteredById: mp.enteredBy.id,
       title: "أُعيد القياس للتعديل بعد الاعتماد النهائي",
       body: rejectReason,

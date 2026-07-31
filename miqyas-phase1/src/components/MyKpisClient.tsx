@@ -168,7 +168,7 @@ export default function MyKpisClient({
         <div>
           <h1>شواهد المؤشرات</h1>
           <div className="text-muted">
-            أدخل المتحقق وارفع الشواهد ثم قدّم — بعد التقديم تُقفل حتى الإرجاع أو الرفض
+            مهامك المسندة فقط — المسؤول: أنت · أدخل المتحقق وارفع الشواهد ثم قدّم
           </div>
         </div>
         <PeriodSelector year={year} period={period} />
@@ -176,7 +176,9 @@ export default function MyKpisClient({
 
       {items.length === 0 ? (
         <div className="card">
-          <p className="text-muted">لا توجد متطلبات مسندة لك لهذه الفترة.</p>
+          <p className="text-muted">
+            لا مهام مسندة — راجع مدير الإدارة / إسناد المسؤولين.
+          </p>
         </div>
       ) : (
         <div className="card" style={{ overflowX: "auto" }}>
@@ -215,7 +217,22 @@ export default function MyKpisClient({
                   <Fragment key={item.requirement.id}>
                     <tr id={`req-row-${item.requirement.id}`}>
                       <td>{item.requirement.code}</td>
-                      <td>{item.requirement.name}</td>
+                      <td>
+                        {item.requirement.name}
+                        <div className="text-muted" style={{ fontSize: ".75rem" }}>
+                          المسؤول: أنت
+                        </div>
+                        {showReturnAlert && !isExpanded ? (
+                          <button
+                            type="button"
+                            className="badge-warning"
+                            style={{ marginTop: ".25rem", border: 0, cursor: "pointer" }}
+                            onClick={() => setExpanded(item.requirement.id)}
+                          >
+                            ملاحظات القسم
+                          </button>
+                        ) : null}
+                      </td>
                       <td style={{ fontSize: ".8rem" }}>
                         {item.requirement.departmentName || "—"}
                         {item.requirement.sectionName
@@ -311,9 +328,7 @@ export default function MyKpisClient({
                           {showReturnAlert && (
                             <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
                               <div>
-                                <strong>
-                                  {status === "DRAFT" ? "أُعيد للتعديل: " : "ملاحظات المراجعة: "}
-                                </strong>
+                                <strong>ملاحظات القسم / المشرف: </strong>
                                 {item.measurement!.rejectReason}
                               </div>
                               {typeof item.measurement!.reviewFeedback === "object" &&
@@ -334,12 +349,6 @@ export default function MyKpisClient({
                                       {ev.reason ? ` — ${ev.reason}` : ""}
                                     </li>
                                   ))}
-                                  {(item.measurement!.reviewFeedback as ReviewFeedback).notes ? (
-                                    <li>
-                                      الملاحظات:{" "}
-                                      {(item.measurement!.reviewFeedback as ReviewFeedback).notes}
-                                    </li>
-                                  ) : null}
                                 </ul>
                               ) : null}
                               {item.measurement!.suggestedWording && (

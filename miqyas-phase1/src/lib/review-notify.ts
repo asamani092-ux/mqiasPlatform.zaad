@@ -1,7 +1,10 @@
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
 
-/** إشعار المدخل + المالك + مديري إدارة المتطلب عند الإعادة/الرفض */
+/**
+ * إشعار المالك بـ /my والمديرين بـ /dept-follow.
+ * لا يُشعر المدخل بـ /my إن لم يكن المالك الحالي (لن يظهر في شواهد المؤشرات).
+ */
 export async function notifyMeasurementReturn(params: {
   measurementPeriodId: number;
   requirementCode: string;
@@ -13,9 +16,27 @@ export async function notifyMeasurementReturn(params: {
   body: string;
   includeDeptManagers: boolean;
 }): Promise<void> {
-  const userIds = new Set<number>();
-  if (params.enteredById) userIds.add(params.enteredById);
-  if (params.ownerId) userIds.add(params.ownerId);
+  const bodyText = `${params.requirementCode} — ${params.requirementName}\n${params.body}`;
+  const myLink = `/my?mp=${params.measurementPeriodId}`;
+  const deptLink = "/dept-follow";
+
+  const ownerIds = new Set<number>();
+  if (params.ownerId) ownerIds.add(params.ownerId);
+  // المدخل فقط إن بقي مالكاً (يمرّ بفلتر /my)
+  if (params.enteredById && params.enteredById === params.ownerId) {
+    ownerIds.add(params.enteredById);
+  }
+
+  if (ownerIds.size > 0) {
+    await notify({
+      userIds: Array.from(ownerIds),
+      type: "APPROVAL_RESULT",
+      title: params.title,
+      body: bodyText,
+      link: myLink,
+      email: true,
+    });
+  }
 
   if (params.includeDeptManagers && params.departmentId != null) {
     const managers = await db.user.findMany({
@@ -26,19 +47,16 @@ export async function notifyMeasurementReturn(params: {
       },
       select: { id: true },
     });
-    for (const m of managers) userIds.add(m.id);
+    const managerIds = managers.map((m) => m.id).filter((id) => !ownerIds.has(id));
+    if (managerIds.length > 0) {
+      await notify({
+        userIds: managerIds,
+        type: "APPROVAL_RESULT",
+        title: params.title,
+        body: bodyText,
+        link: deptLink,
+        email: true,
+      });
+    }
   }
-
-  const ids = Array.from(userIds);
-  if (ids.length === 0) return;
-
-  const link = `/my?mp=${params.measurementPeriodId}`;
-  await notify({
-    userIds: ids,
-    type: "APPROVAL_RESULT",
-    title: params.title,
-    body: `${params.requirementCode} — ${params.requirementName}\n${params.body}`,
-    link,
-    email: true,
-  });
 }
