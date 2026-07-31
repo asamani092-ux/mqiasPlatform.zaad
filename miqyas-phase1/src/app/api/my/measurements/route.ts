@@ -36,7 +36,16 @@ export async function GET(req: Request) {
     const user = await requireUser();
     const params = querySchema.parse(Object.fromEntries(new URL(req.url).searchParams));
     const userId = parseInt(user.id, 10);
-    const items = await getMyRequirements(userId, params.year, params.period, user.role);
+    const items = await getMyRequirements(
+      {
+        userId,
+        role: user.role,
+        departmentId: user.departmentId,
+        sectionId: user.sectionId,
+      },
+      params.year,
+      params.period
+    );
     return NextResponse.json({ year: params.year, period: params.period, items });
   } catch (e) {
     if (e instanceof z.ZodError) return jsonError("معاملات غير صالحة", 400);
@@ -67,6 +76,13 @@ export async function POST(req: Request) {
 
     if (!requirement || !requirement.active) return jsonError("المتطلب غير موجود", 404);
     if (requirement.ownerId !== userId) return jsonError("غير مصرح — هذا المتطلب ليس من مهامك", 403);
+    if (
+      user.departmentId != null &&
+      requirement.departmentId != null &&
+      requirement.departmentId !== user.departmentId
+    ) {
+      return jsonError("غير مصرح — المتطلب خارج إدارتك", 403);
+    }
     if (fillerRole && requirement.fillerRole !== fillerRole) {
       return jsonError("دور التعبئة لا يطابق دورك", 403);
     }

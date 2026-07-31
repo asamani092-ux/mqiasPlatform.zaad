@@ -60,5 +60,10 @@ export function requirementOwnerFilter(u: SessionUser): Record<string, unknown> 
     active: true,
   };
   if (fillerRole) base.fillerRole = fillerRole;
+  if (u.role === "SECTION_HEAD" && u.sectionId != null) {
+    base.sectionId = u.sectionId;
+  } else if (u.departmentId != null) {
+    base.departmentId = u.departmentId;
+  }
   return base;
 }

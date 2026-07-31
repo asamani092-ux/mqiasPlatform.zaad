@@ -16,7 +16,16 @@ export default async function MyPage({
 
   const userId = parseInt(user.id, 10);
   const { year, period } = await parseTrackParams(searchParams);
-  const initialItems = await getMyRequirements(userId, year, period, user.role);
+  const initialItems = await getMyRequirements(
+    {
+      userId,
+      role: user.role,
+      departmentId: user.departmentId,
+      sectionId: user.sectionId,
+    },
+    year,
+    period
+  );
 
   return (
     <MyKpisClient

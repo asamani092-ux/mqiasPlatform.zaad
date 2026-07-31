@@ -11,6 +11,7 @@ import {
   resolveRoleScope,
   updateUserSchema,
 } from "@/lib/user-schemas";
+import { clearCrossDepartmentAssignments } from "@/lib/my-measurements";
 
 const userSelect = {
   id: true,
@@ -75,30 +76,10 @@ export async function PUT(
       select: userSelect,
     });
 
-    // نقل الإدارة: إلغاء إسناد المتطلبات التي ليست ضمن الإدارة الجديدة
+    // نقل الإدارة: إلغاء إسناد المتطلبات خارج الإدارة الجديدة
     let clearedAssignments = 0;
     if (scope.departmentId !== existing.departmentId) {
-      const toClear = await db.measurementRequirement.findMany({
-        where: {
-          ownerId: id,
-          ...(scope.departmentId != null
-            ? { NOT: { departmentId: scope.departmentId } }
-            : {}),
-        },
-        select: { id: true },
-      });
-      if (toClear.length > 0) {
-        const ids = toClear.map((r) => r.id);
-        await db.measurementRequirement.updateMany({
-          where: { id: { in: ids } },
-          data: { ownerId: null },
-        });
-        await db.kpi.updateMany({
-          where: { requirementId: { in: ids } },
-          data: { ownerId: null },
-        });
-        clearedAssignments = ids.length;
-      }
+      clearedAssignments = await clearCrossDepartmentAssignments(id);
     }
 
     await audit(parseInt(user.id, 10), "UPDATE_USER", "User", updated.id, {

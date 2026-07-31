@@ -3,16 +3,39 @@ import { db } from "@/lib/db";
 import { resolvePeriods } from "@/lib/kpi";
 import { roleToFillerRole } from "@/lib/approval-status";
 
-/** متطلبات القياس المسندة للمستخدم مع فترة القياس والشواهد والمؤشرات المرتبطة */
+export type MyRequirementsScope = {
+  userId: number;
+  role?: Role;
+  departmentId?: number | null;
+  sectionId?: number | null;
+};
+
+/** متطلبات القياس المسندة للمستخدم ضمن إدارته/قسمه فقط */
 export async function getMyRequirements(
-  userId: number,
+  userIdOrScope: number | MyRequirementsScope,
   year: number,
   period: Period,
-  role?: Role
+  roleArg?: Role
 ) {
+  const scope: MyRequirementsScope =
+    typeof userIdOrScope === "number"
+      ? { userId: userIdOrScope, role: roleArg }
+      : userIdOrScope;
+
+  const { userId, role, departmentId, sectionId } = scope;
   const fillerRole = role ? roleToFillerRole(role) : null;
   const where: Record<string, unknown> = { active: true, ownerId: userId };
   if (fillerRole) where.fillerRole = fillerRole;
+
+  // منع ظهور متطلبات إدارة أخرى بسبب إسناد قديم عالق
+  if (role === "SECTION_HEAD" && sectionId != null) {
+    where.sectionId = sectionId;
+  } else if (departmentId != null) {
+    where.departmentId = departmentId;
+  } else if (role === "EMPLOYEE" || role === "DEPT_MANAGER" || role === "SECTION_HEAD") {
+    // مستخدم بلا إدارة لا يرى متطلبات مسندة لإدارات أخرى بالخطأ
+    where.departmentId = -1;
+  }
 
   const requirements = await db.measurementRequirement.findMany({
     where,
@@ -97,4 +120,42 @@ export async function getMyRequirements(
       periods: resolvePeriods(req.frequency),
     };
   });
+}
+
+/** يلغي إسناد المتطلبات التي لا تطابق إدارة/قسم المالك الحالي — تراكمياً لا يحذف التاريخ */
+export async function clearCrossDepartmentAssignments(userId?: number) {
+  const owners = await db.user.findMany({
+    where: {
+      ...(userId != null ? { id: userId } : {}),
+      status: "ACTIVE",
+      role: { in: ["EMPLOYEE", "SECTION_HEAD", "DEPT_MANAGER"] },
+      departmentId: { not: null },
+    },
+    select: { id: true, departmentId: true, sectionId: true, role: true },
+  });
+
+  let cleared = 0;
+  for (const u of owners) {
+    if (u.departmentId == null) continue;
+    const mismatched = await db.measurementRequirement.findMany({
+      where: {
+        ownerId: u.id,
+        active: true,
+        NOT: { departmentId: u.departmentId },
+      },
+      select: { id: true },
+    });
+    if (mismatched.length === 0) continue;
+    const ids = mismatched.map((r) => r.id);
+    await db.measurementRequirement.updateMany({
+      where: { id: { in: ids } },
+      data: { ownerId: null },
+    });
+    await db.kpi.updateMany({
+      where: { requirementId: { in: ids } },
+      data: { ownerId: null },
+    });
+    cleared += ids.length;
+  }
+  return cleared;
 }
