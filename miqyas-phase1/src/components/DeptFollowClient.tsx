@@ -195,7 +195,7 @@ export default function DeptFollowClient({
       </div>
 
       <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
-        نفس نافذة المراجعة كمشرف النظام: قبول/رفض لكل حقل وشاهد، ثم اعتماد مبدئي أو إعادة للتعديل.
+        الاعتماد المبدئي لما يقدّمه الموظف أو رئيس القسم فقط. تقديم مدير الإدارة يتجاوز هذه الطبقة إلى الاعتماد النهائي.
       </div>
 
       <ReviewSmartSearch items={cards} showAwaitingChip>

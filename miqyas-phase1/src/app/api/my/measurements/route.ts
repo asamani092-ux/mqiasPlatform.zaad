@@ -96,7 +96,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const nextStatus = body.action === "draft" ? "DRAFT" : "SUBMITTED";
+    // تقديم المدير يتجاوز الاعتماد المبدئي (لا اعتماد ذاتي) → مباشرة بانتظار النهائي
+    const skipDeptInitial =
+      body.action === "submit" && user.role === "DEPT_MANAGER";
+    const nextStatus =
+      body.action === "draft" ? "DRAFT" : skipDeptInitial ? "INITIAL_APPROVED" : "SUBMITTED";
+    const now = new Date();
 
     const mp = await upsertMeasurementPeriod({
       requirementId: body.requirementId,
@@ -110,8 +115,8 @@ export async function POST(req: Request) {
       approvalStatus: nextStatus,
       approvedById: null,
       approvedAt: null,
-      initialApprovedById: null,
-      initialApprovedAt: null,
+      initialApprovedById: skipDeptInitial ? userId : null,
+      initialApprovedAt: skipDeptInitial ? now : null,
       rejectReason: body.action === "submit" ? null : existing ? undefined : null,
       suggestedWording: body.action === "submit" ? null : existing ? undefined : null,
       reviewFeedback: body.action === "submit" ? null : existing ? undefined : null,
@@ -121,9 +126,32 @@ export async function POST(req: Request) {
       measurementPeriodId: mp.id,
       actorId: userId,
       action: body.action === "draft" ? "SAVE_DRAFT" : "SUBMIT",
+      payload: skipDeptInitial ? { skipDeptInitial: true } : undefined,
     });
 
-    if (body.action === "submit" && requirement.departmentId != null) {
+    if (skipDeptInitial) {
+      await recordApprovalEvent({
+        measurementPeriodId: mp.id,
+        actorId: userId,
+        action: "INITIAL_APPROVE",
+        comment: "تجاوز الاعتماد المبدئي — تقديم مدير الإدارة",
+        payload: { skipDeptInitial: true },
+      });
+      const admins = await db.user.findMany({
+        where: { role: "SYSTEM_ADMIN", status: "ACTIVE" },
+        select: { id: true },
+      });
+      if (admins.length > 0) {
+        await notify({
+          userIds: admins.map((a) => a.id),
+          type: "APPROVAL_REQUEST",
+          title: "قياس بانتظار الاعتماد النهائي",
+          body: `قدّمه مدير الإدارة ${user.name}: ${requirement.code} — ${requirement.name}`,
+          link: "/approvals",
+          email: true,
+        });
+      }
+    } else if (body.action === "submit" && requirement.departmentId != null) {
       const managers = await db.user.findMany({
         where: {
           role: "DEPT_MANAGER",
@@ -148,9 +176,16 @@ export async function POST(req: Request) {
       requirementId: body.requirementId,
       year: body.year,
       period: body.period,
+      skipDeptInitial,
     });
 
-    return NextResponse.json({ measurement: mp });
+    return NextResponse.json({
+      measurement: mp,
+      skipDeptInitial,
+      message: skipDeptInitial
+        ? "قُدِّم مباشرة للاعتماد النهائي (بدون اعتماد مبدئي)"
+        : undefined,
+    });
   } catch (e) {
     if (e instanceof z.ZodError) return jsonError("بيانات غير صالحة", 400);
     return handleApiError(e);

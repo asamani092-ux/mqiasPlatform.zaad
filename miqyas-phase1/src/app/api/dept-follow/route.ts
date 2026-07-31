@@ -195,9 +195,15 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ measurement: updated });
     }
 
-    // initial_approve
+    // initial_approve — للموظف/رئيس القسم فقط؛ لا اعتماد ذاتي لما أدخله المدير
     if (!["SUBMITTED", "PENDING"].includes(mp.approvalStatus)) {
       return jsonError("القياس ليس بانتظار الاعتماد المبدئي", 400);
+    }
+    if (mp.enteredBy.id === userId || mp.requirement.ownerId === userId) {
+      return jsonError(
+        "لا يمكن الاعتماد المبدئي لما أدخلته أو تملكه — تقديم المدير يتجاوز هذه الطبقة",
+        400
+      );
     }
     if (!fieldDecisions) return jsonError("قرارات الحقول مطلوبة", 400);
     if (!allFieldsAccepted(fieldDecisions, activeEvidenceIds, evidenceMap)) {

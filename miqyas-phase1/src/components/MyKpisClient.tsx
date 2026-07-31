@@ -127,8 +127,14 @@ export default function MyKpisClient({
     });
     setSaving(null);
     if (res.ok) {
+      const data = await res.json().catch(() => ({}));
       notifyToast.success(
-        action === "draft" ? "تم حفظ المسودة" : "تم تقديم القياس لمراجعة الإدارة",
+        action === "draft"
+          ? "تم حفظ المسودة"
+          : data.message ||
+              (data.skipDeptInitial
+                ? "قُدِّم مباشرة للاعتماد النهائي"
+                : "تم تقديم القياس لمراجعة الإدارة"),
         { duration: action === "submit" ? "normal" : "short" }
       );
       await reload();
