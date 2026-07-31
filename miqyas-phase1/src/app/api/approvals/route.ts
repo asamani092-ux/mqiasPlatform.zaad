@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
           },
         },
         evidences: { select: { id: true, fileName: true, status: true } },
-        enteredBy: { select: { id: true } },
+        enteredBy: { select: { id: true, role: true } },
       },
     });
     if (!mp) return jsonError("فترة القياس غير موجودة", 404);
@@ -178,10 +178,13 @@ export async function POST(req: NextRequest) {
         revokedFinal: true,
       };
       const rejectReason = `أُلغي الاعتماد النهائي: ${notes}`;
+      // تقديم المدير → مسودة للمدخل؛ تقديم موظف/رئيس قسم → بانتظار مراجعة الإدارة مجدداً
+      const nextStatus =
+        mp.enteredBy.role === "DEPT_MANAGER" ? "DRAFT" : "SUBMITTED";
       const updated = await db.measurementPeriod.update({
         where: { id: mp.id },
         data: {
-          approvalStatus: "DRAFT",
+          approvalStatus: nextStatus,
           rejectReason,
           reviewFeedback: feedback as unknown as Prisma.InputJsonValue,
           suggestedWording: null,
@@ -197,7 +200,7 @@ export async function POST(req: NextRequest) {
         actorId: userId,
         action: "RETURN_EDIT",
         comment: notes,
-        payload: feedback,
+        payload: { ...feedback, nextStatus },
       });
       await notifyMeasurementReturn({
         measurementPeriodId: mp.id,
@@ -206,12 +209,15 @@ export async function POST(req: NextRequest) {
         departmentId: mp.requirement.departmentId,
         ownerId: mp.requirement.ownerId,
         enteredById: mp.enteredBy.id,
-        title: "أُلغي الاعتماد النهائي وأُعيد للتعديل",
+        title:
+          nextStatus === "SUBMITTED"
+            ? "أُلغي الاعتماد النهائي — بانتظار مراجعة الإدارة"
+            : "أُلغي الاعتماد النهائي وأُعيد للتعديل",
         body: rejectReason,
         includeDeptManagers: true,
       });
-      await audit(userId, "REVOKE_FINAL", "MeasurementPeriod", mp.id, {});
-      return NextResponse.json({ measurement: updated });
+      await audit(userId, "REVOKE_FINAL", "MeasurementPeriod", mp.id, { nextStatus });
+      return NextResponse.json({ measurement: updated, nextStatus });
     }
 
     if (mp.approvalStatus !== "INITIAL_APPROVED") {

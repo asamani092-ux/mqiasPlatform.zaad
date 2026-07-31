@@ -28,6 +28,8 @@ export async function getMyRequirements(
       fillerRole: true,
       departmentId: true,
       sectionId: true,
+      department: { select: { id: true, name: true } },
+      section: { select: { id: true, name: true } },
       periods: {
         where: { year, period },
         take: 1,
@@ -69,6 +71,8 @@ export async function getMyRequirements(
         fillerRole: req.fillerRole,
         departmentId: req.departmentId,
         sectionId: req.sectionId,
+        departmentName: req.department?.name ?? null,
+        sectionName: req.section?.name ?? null,
       },
       measurement: measurement
         ? {

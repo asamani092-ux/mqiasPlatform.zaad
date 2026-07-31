@@ -13,7 +13,13 @@ type ReqRow = {
   ownerId: number | null;
   departmentId: number | null;
   sectionId: number | null;
-  owner: { id: number; name: string; role: string } | null;
+  owner: {
+    id: number;
+    name: string;
+    role: string;
+    departmentId: number | null;
+    department?: { name: string } | null;
+  } | null;
   department: { id: number; name: string } | null;
   section: { id: number; name: string } | null;
 };
@@ -24,6 +30,7 @@ type UserRow = {
   role: string;
   departmentId: number | null;
   sectionId: number | null;
+  department?: { name: string } | null;
 };
 
 export default function AssignRequirementsClient() {
@@ -165,8 +172,14 @@ export default function AssignRequirementsClient() {
       <div className="topbar">
         <div>
           <h1>إسناد المتطلبات</h1>
-          <div className="text-muted">تعيين جماعي لمن يملأ متطلب القياس ودور التعبئة</div>
+          <div className="text-muted">
+            الإسناد للمالك ضمن إدارة المتطلب — نقل المستخدم لإدارة أخرى يلغي إسناده خارج إدارته الجديدة
+          </div>
         </div>
+      </div>
+
+      <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
+        اختر إدارة المتطلب أولاً، ثم المسؤول من نفس الإدارة. ما يظهر في «شواهد المؤشرات» للمستخدم هو ما أُسند إليه كمالك وليس كل مؤشرات إدارته.
       </div>
 
       <FilterBar
@@ -247,7 +260,8 @@ export default function AssignRequirementsClient() {
             <option value="">— اختر —</option>
             {owners.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.name} ({ROLE_LABEL[u.role] || u.role})
+                {u.name} ({ROLE_LABEL[u.role] || u.role}
+                {u.department?.name ? ` · ${u.department.name}` : ""})
               </option>
             ))}
           </select>
@@ -274,10 +288,17 @@ export default function AssignRequirementsClient() {
                 <th>القسم</th>
                 <th>دور التعبئة</th>
                 <th>المسؤول</th>
+                <th>تنبيه</th>
               </tr>
             </thead>
             <tbody>
-              {requirements.map((r) => (
+              {requirements.map((r) => {
+                const mismatch =
+                  r.owner &&
+                  r.departmentId != null &&
+                  r.owner.departmentId != null &&
+                  r.owner.departmentId !== r.departmentId;
+                return (
                 <tr key={r.id}>
                   <td>
                     <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} />
@@ -287,9 +308,21 @@ export default function AssignRequirementsClient() {
                   <td>{r.department?.name || "—"}</td>
                   <td>{r.section?.name || "—"}</td>
                   <td>{FILLER_ROLE_LABEL[r.fillerRole] || r.fillerRole}</td>
-                  <td>{r.owner?.name || "—"}</td>
+                  <td>
+                    {r.owner
+                      ? `${r.owner.name}${r.owner.department?.name ? ` (${r.owner.department.name})` : ""}`
+                      : "—"}
+                  </td>
+                  <td>
+                    {mismatch ? (
+                      <span className="badge-danger">إدارة المسؤول ≠ إدارة المتطلب</span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           {requirements.length === 0 && (

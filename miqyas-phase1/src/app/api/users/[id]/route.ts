@@ -75,12 +75,39 @@ export async function PUT(
       select: userSelect,
     });
 
+    // نقل الإدارة: إلغاء إسناد المتطلبات التي ليست ضمن الإدارة الجديدة
+    let clearedAssignments = 0;
+    if (scope.departmentId !== existing.departmentId) {
+      const toClear = await db.measurementRequirement.findMany({
+        where: {
+          ownerId: id,
+          ...(scope.departmentId != null
+            ? { NOT: { departmentId: scope.departmentId } }
+            : {}),
+        },
+        select: { id: true },
+      });
+      if (toClear.length > 0) {
+        const ids = toClear.map((r) => r.id);
+        await db.measurementRequirement.updateMany({
+          where: { id: { in: ids } },
+          data: { ownerId: null },
+        });
+        await db.kpi.updateMany({
+          where: { requirementId: { in: ids } },
+          data: { ownerId: null },
+        });
+        clearedAssignments = ids.length;
+      }
+    }
+
     await audit(parseInt(user.id, 10), "UPDATE_USER", "User", updated.id, {
       role: updated.role,
       status: updated.status,
+      clearedAssignments,
     });
 
-    return NextResponse.json({ user: updated });
+    return NextResponse.json({ user: updated, clearedAssignments });
   } catch (e) {
     if (e instanceof z.ZodError) return jsonError("بيانات غير صالحة", 400);
     return handleApiError(e);

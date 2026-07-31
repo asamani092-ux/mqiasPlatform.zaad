@@ -55,6 +55,7 @@ export function displayApprovalLabel(
 ): string {
   if (!status) return "جديد";
   if (isReturnedDraft(status as ApprovalStatus, rejectReason)) return "أُعيد للتعديل";
+  if (status === "SUBMITTED" && rejectReason?.trim()) return "أُعيد لمراجعة الإدارة";
   const map: Record<string, string> = {
     DRAFT: "مسودة",
     SUBMITTED: "مقدَّم",

@@ -225,7 +225,13 @@ export default function UsersClient({ departments }: { departments: Department[]
       return;
     }
 
-    setMsg("تم تحديث المستخدم");
+    const data = await res.json().catch(() => ({}));
+    const cleared = typeof data.clearedAssignments === "number" ? data.clearedAssignments : 0;
+    setMsg(
+      cleared > 0
+        ? `تم تحديث المستخدم وأُلغي إسناد ${cleared} متطلباً خارج إدارته الجديدة`
+        : "تم تحديث المستخدم"
+    );
     setEditOpen(false);
     setEditId(null);
     load();

@@ -18,7 +18,12 @@ export default function AppShell({
   showUat = false,
   children,
 }: {
-  user: { name: string; role: Role };
+  user: {
+    name: string;
+    role: Role;
+    departmentName?: string | null;
+    sectionName?: string | null;
+  };
   showApprovals: boolean;
   showUat?: boolean;
   children: React.ReactNode;
@@ -27,6 +32,7 @@ export default function AppShell({
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const sections = buildNavSections(user.role, { showApprovals, showUat });
+  const orgLine = [user.departmentName, user.sectionName].filter(Boolean).join(" · ");
 
   useEffect(() => {
     setOpen(false);
@@ -63,7 +69,10 @@ export default function AppShell({
           <NotifBell />
           <div className="app-user-chip">
             <div className="app-user-name">{user.name}</div>
-            <div className="app-user-role">{ROLE_LABEL[user.role] || user.role}</div>
+            <div className="app-user-role">
+              {ROLE_LABEL[user.role] || user.role}
+              {orgLine ? ` · ${orgLine}` : ""}
+            </div>
           </div>
           <button
             type="button"
@@ -134,6 +143,11 @@ export default function AppShell({
             <div className="nav-drawer-footer">
               <div className="app-user-name">{user.name}</div>
               <div className="app-user-role">{ROLE_LABEL[user.role] || user.role}</div>
+              {orgLine ? (
+                <div className="text-muted" style={{ marginTop: "0.25rem", fontSize: ".8rem" }}>
+                  {orgLine}
+                </div>
+              ) : null}
               <div className="text-muted" style={{ marginTop: "0.25rem" }}>
                 جمعية الزاد
               </div>

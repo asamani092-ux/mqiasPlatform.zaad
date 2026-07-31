@@ -26,6 +26,8 @@ type MeasurementItem = {
     frequency: string;
     requiredData: string | null;
     ownerId: number | null;
+    departmentName?: string | null;
+    sectionName?: string | null;
   };
   measurement: {
     id: number;
@@ -183,6 +185,7 @@ export default function MyKpisClient({
               <tr>
                 <th>الرمز</th>
                 <th>المتطلب</th>
+                <th>الإدارة</th>
                 <th>المؤشرات</th>
                 <th>المتحقق</th>
                 <th>الحالة</th>
@@ -202,6 +205,8 @@ export default function MyKpisClient({
                 const showReturnAlert =
                   !!item.measurement?.rejectReason &&
                   (status === "DRAFT" ||
+                    status === "SUBMITTED" ||
+                    status === "PENDING" ||
                     status === "REJECTED_WORDING" ||
                     status === "REJECTED_EVIDENCE" ||
                     status === "REJECTED");
@@ -211,6 +216,12 @@ export default function MyKpisClient({
                     <tr id={`req-row-${item.requirement.id}`}>
                       <td>{item.requirement.code}</td>
                       <td>{item.requirement.name}</td>
+                      <td style={{ fontSize: ".8rem" }}>
+                        {item.requirement.departmentName || "—"}
+                        {item.requirement.sectionName
+                          ? ` · ${item.requirement.sectionName}`
+                          : ""}
+                      </td>
                       <td style={{ fontSize: ".75rem" }}>
                         {item.kpis.length === 0
                           ? "—"
@@ -296,7 +307,7 @@ export default function MyKpisClient({
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={7} style={{ background: "var(--tmkeen-surface-muted)" }}>
+                        <td colSpan={8} style={{ background: "var(--tmkeen-surface-muted)" }}>
                           {showReturnAlert && (
                             <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
                               <div>
