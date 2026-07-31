@@ -2,27 +2,54 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, RotateCcw, Save } from "lucide-react";
 import PeriodSelector from "@/components/PeriodSelector";
-import ActionToolbar, { IconActionButton } from "@/components/ui/ActionToolbar";
+import ReviewSmartSearch from "@/components/ui/ReviewSmartSearch";
+import ReviewQueueCards from "@/components/ui/ReviewQueueCards";
+import ReviewWorkbenchModal, {
+  type ReviewWorkbenchItem,
+} from "@/components/ui/ReviewWorkbenchModal";
 import { APPROVAL_BADGE, type Period } from "@/lib/types";
 import { displayApprovalLabel, isAwaitingDept } from "@/lib/approval-status";
 import { notifyToast } from "@/lib/ui-toast";
+import type { Decision, FieldDecisions } from "@/lib/review-feedback";
+
+type Evidence = {
+  id: number;
+  fileName: string;
+  mimeType?: string | null;
+  status: string;
+  rejectReason?: string | null;
+};
 
 type Row = {
   id: number;
   code: string;
   name: string;
   unit: string;
+  requiredData?: string | null;
   ownerName: string;
+  departmentName: string;
+  kpiCodes: string[];
+  kpiLabels: string[];
   measurementPeriodId: number | null;
   actualValue: number | null;
   whatHappened: string | null;
   howHappened: string | null;
   approvalStatus: string | null;
   rejectReason?: string | null;
+  enteredByName?: string | null;
+  evidences: Evidence[];
   evidenceCount: number;
 };
+
+function evidencePayload(map: Record<number, Decision>) {
+  return Object.entries(map)
+    .filter(([, d]) => d === "accept" || d === "reject")
+    .map(([evidenceId, decision]) => ({
+      evidenceId: parseInt(evidenceId, 10),
+      decision: decision as "accept" | "reject",
+    }));
+}
 
 export default function DeptFollowClient({
   year,
@@ -35,45 +62,93 @@ export default function DeptFollowClient({
 }) {
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState({ actual: "", what: "", how: "", comment: "" });
+  const [openReqId, setOpenReqId] = useState<number | null>(null);
   const [acting, setActing] = useState(false);
 
-  const pending = useMemo(
-    () => rows.filter((r) => r.approvalStatus && isAwaitingDept(r.approvalStatus as never)),
+  const pendingCount = useMemo(
+    () => rows.filter((r) => r.approvalStatus && isAwaitingDept(r.approvalStatus as never)).length,
     [rows]
   );
 
-  function openEdit(row: Row) {
-    setEditId(row.id);
-    setForm({
-      actual: row.actualValue?.toString() ?? "",
-      what: row.whatHappened ?? "",
-      how: row.howHappened ?? "",
-      comment: "",
-    });
-  }
+  const cards = useMemo(
+    () =>
+      rows
+        .filter((r) => r.measurementPeriodId)
+        .map((r) => {
+          const awaiting = !!(r.approvalStatus && isAwaitingDept(r.approvalStatus as never));
+          return {
+            ...r,
+            departmentName: r.departmentName,
+            ownerName: r.ownerName,
+            enteredByName: r.enteredByName ?? null,
+            statusLabel: displayApprovalLabel(r.approvalStatus, r.rejectReason),
+            kpiCodes: r.kpiCodes,
+            evidenceCount: r.evidenceCount,
+            awaiting,
+          };
+        }),
+    [rows]
+  );
 
-  async function act(row: Row, action: "update" | "initial_approve" | "return_edit") {
-    if (!row.measurementPeriodId) {
+  const openRow = rows.find((r) => r.id === openReqId) ?? null;
+  const canReview =
+    !!openRow?.measurementPeriodId &&
+    !!openRow.approvalStatus &&
+    (openRow.approvalStatus === "SUBMITTED" || openRow.approvalStatus === "PENDING");
+
+  const workbenchItem: ReviewWorkbenchItem | null =
+    openRow && openRow.measurementPeriodId && canReview
+      ? {
+          measurementPeriodId: openRow.measurementPeriodId,
+          code: openRow.code,
+          name: openRow.name,
+          unit: openRow.unit,
+          departmentName: openRow.departmentName,
+          ownerName: openRow.ownerName,
+          enteredByName: openRow.enteredByName,
+          requiredData: openRow.requiredData,
+          kpiLabels: openRow.kpiLabels,
+          actualValue: openRow.actualValue,
+          whatHappened: openRow.whatHappened,
+          howHappened: openRow.howHappened,
+          evidences: openRow.evidences,
+        }
+      : null;
+
+  async function submit(
+    action: "initial_approve" | "return_edit",
+    payload: {
+      actualValue: number;
+      whatHappened: string;
+      howHappened: string;
+      fieldDecisions: FieldDecisions;
+      evidenceDecisions: Record<number, Decision>;
+      notes?: string;
+    }
+  ) {
+    if (!openRow?.measurementPeriodId) {
       notifyToast.error("لا يوجد قياس مقدَّم بعد");
       return;
     }
-    if (action === "return_edit" && form.comment.trim().length < 3) {
-      notifyToast.error("سبب الإرجاع مطلوب");
+    if (action === "initial_approve" && openRow.approvalStatus === "INITIAL_APPROVED") {
+      notifyToast.error("القياس معتمد مبدئياً مسبقاً");
       return;
     }
+
     setActing(true);
     const res = await fetch("/api/dept-follow", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        measurementPeriodId: row.measurementPeriodId,
+        measurementPeriodId: openRow.measurementPeriodId,
         action,
-        actualValue: form.actual ? parseFloat(form.actual) : undefined,
-        whatHappened: form.what || null,
-        howHappened: form.how || null,
-        comment: form.comment || null,
+        actualValue: payload.actualValue,
+        whatHappened: payload.whatHappened || null,
+        howHappened: payload.howHappened || null,
+        fieldDecisions: payload.fieldDecisions,
+        evidenceDecisions: evidencePayload(payload.evidenceDecisions),
+        notes: payload.notes,
+        comment: payload.notes,
       }),
     });
     setActing(false);
@@ -81,29 +156,22 @@ export default function DeptFollowClient({
       notifyToast.success(
         action === "initial_approve"
           ? "تم الاعتماد المبدئي — بانتظار مشرف النظام"
-          : action === "return_edit"
-            ? "أُعيد للتعديل مع إشعار المدخل"
-            : "تم حفظ التعديل",
+          : "أُعيد للتعديل مع إشعار المدخل",
         { duration: "short" }
       );
-      setEditId(null);
+      setOpenReqId(null);
       router.refresh();
       setRows((prev) =>
         prev.map((r) =>
-          r.id !== row.id
+          r.id !== openRow.id
             ? r
             : {
                 ...r,
-                actualValue: form.actual ? parseFloat(form.actual) : r.actualValue,
-                whatHappened: form.what || r.whatHappened,
-                howHappened: form.how || r.howHappened,
-                approvalStatus:
-                  action === "initial_approve"
-                    ? "INITIAL_APPROVED"
-                    : action === "return_edit"
-                      ? "DRAFT"
-                      : r.approvalStatus,
-                rejectReason: action === "return_edit" ? form.comment : r.rejectReason,
+                actualValue: payload.actualValue,
+                whatHappened: payload.whatHappened,
+                howHappened: payload.howHappened,
+                approvalStatus: action === "initial_approve" ? "INITIAL_APPROVED" : "DRAFT",
+                rejectReason: action === "return_edit" ? payload.notes ?? r.rejectReason : null,
               }
         )
       );
@@ -119,88 +187,68 @@ export default function DeptFollowClient({
         <div>
           <h1>مراجعة الإدارة</h1>
           <div className="text-muted">
-            اعتماد مبدئي لمدير الإدارة فقط — الاعتماد النهائي لمشرف النظام
-            {pending.length > 0 ? ` · ${pending.length} بانتظارك` : ""}
+            اعتماد مبدئي لمدير الإدارة
+            {pendingCount > 0 ? ` · ${pendingCount} بانتظارك` : ""}
           </div>
         </div>
         <PeriodSelector year={year} period={period} />
       </div>
 
       <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
-        يمكنك تعديل «ماذا حصل / كيف حصل» ثم الاعتماد المبدئي، أو إرجاع القياس للمدخل مع سبب واضح.
+        نفس نافذة المراجعة كمشرف النظام: قبول/رفض لكل حقل وشاهد، ثم اعتماد مبدئي أو إعادة للتعديل.
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        {rows.length === 0 ? (
-          <div className="card"><p className="text-muted">لا متطلبات لهذه الإدارة</p></div>
-        ) : (
-          rows.map((row) => {
-            const status = row.approvalStatus;
-            const label = displayApprovalLabel(status, row.rejectReason);
-            return (
-              <div key={row.id} className="card">
-                <div style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", flexWrap: "wrap" }}>
-                  <div>
-                    <strong>{row.code}</strong> — {row.name}
-                    <div className="text-muted" style={{ fontSize: ".82rem" }}>
-                      المسؤول: {row.ownerName} · شواهد: {row.evidenceCount}
-                      {row.actualValue != null ? ` · المتحقق: ${row.actualValue} ${row.unit}` : ""}
-                    </div>
-                  </div>
-                  {status ? (
-                    <span className={APPROVAL_BADGE[status] || "badge-neutral"}>{label}</span>
-                  ) : (
-                    <span className="badge-neutral">بدون إدخال</span>
-                  )}
-                </div>
-
-                {(row.whatHappened || row.howHappened) && editId !== row.id && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: ".75rem", fontSize: ".85rem" }}>
-                    <div><div className="label-field">ماذا حصل؟</div><p>{row.whatHappened || "—"}</p></div>
-                    <div><div className="label-field">كيف حصل؟</div><p>{row.howHappened || "—"}</p></div>
-                  </div>
-                )}
-
-                {editId === row.id ? (
-                  <div style={{ marginTop: ".75rem", display: "grid", gap: ".65rem" }}>
-                    <div>
-                      <label className="label-field">المتحقق</label>
-                      <input className="input-field" type="number" step="any" value={form.actual} onChange={(e) => setForm((f) => ({ ...f, actual: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="label-field">ماذا حصل؟</label>
-                      <textarea className="input-field" rows={3} value={form.what} onChange={(e) => setForm((f) => ({ ...f, what: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="label-field">كيف حصل؟</label>
-                      <textarea className="input-field" rows={3} value={form.how} onChange={(e) => setForm((f) => ({ ...f, how: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="label-field">ملاحظة / سبب الإرجاع</label>
-                      <input className="input-field" value={form.comment} onChange={(e) => setForm((f) => ({ ...f, comment: e.target.value }))} placeholder="مطلوب عند الإرجاع" />
-                    </div>
-                    <ActionToolbar>
-                      <IconActionButton icon={Save} label="حفظ التعديل" showLabel disabled={acting} onClick={() => void act(row, "update")} />
-                      <IconActionButton icon={CheckCircle2} label="اعتماد مبدئي" variant="primary" showLabel disabled={acting} onClick={() => void act(row, "initial_approve")} />
-                      <IconActionButton icon={RotateCcw} label="إرجاع للتعديل" variant="danger" showLabel disabled={acting} onClick={() => void act(row, "return_edit")} />
-                      <button type="button" className="btn-secondary btn-sm" onClick={() => setEditId(null)}>إلغاء</button>
-                    </ActionToolbar>
-                  </div>
-                ) : (
-                  row.measurementPeriodId &&
-                  (status === "SUBMITTED" || status === "PENDING" || status === "INITIAL_APPROVED") && (
-                    <div style={{ marginTop: ".75rem" }}>
-                      <button type="button" className="btn-primary btn-sm" onClick={() => openEdit(row)}>
-                        مراجعة / تعديل
-                      </button>
-                    </div>
-                  )
-                )}
-              </div>
-            );
-          })
+      <ReviewSmartSearch items={cards} showAwaitingChip>
+        {(filtered) => (
+          <ReviewQueueCards
+            items={filtered.map((c) => ({
+              id: c.id,
+              code: c.code,
+              name: c.name,
+              departmentName: c.departmentName,
+              ownerName: c.ownerName,
+              enteredByName: c.enteredByName,
+              statusLabel: c.statusLabel,
+              statusClass: c.approvalStatus
+                ? APPROVAL_BADGE[c.approvalStatus] || "badge-neutral"
+                : "badge-neutral",
+              evidenceCount: c.evidenceCount,
+              meta: c.awaiting ? "بانتظارك" : undefined,
+            }))}
+            emptyText="لا قياسات في هذه الفترة ضمن نطاق إدارتك."
+            onOpen={(id) => {
+              const row = rows.find((r) => r.id === id);
+              if (!row?.measurementPeriodId) {
+                notifyToast.error("لا يوجد قياس مقدَّم بعد");
+                return;
+              }
+              if (
+                !row.approvalStatus ||
+                (row.approvalStatus !== "SUBMITTED" && row.approvalStatus !== "PENDING")
+              ) {
+                notifyToast.error(
+                  row.approvalStatus === "INITIAL_APPROVED"
+                    ? "معتمد مبدئياً — بانتظار مشرف النظام"
+                    : "هذا القياس ليس بانتظار مراجعتك"
+                );
+                return;
+              }
+              setOpenReqId(id);
+            }}
+          />
         )}
-      </div>
+      </ReviewSmartSearch>
+
+      <ReviewWorkbenchModal
+        open={!!workbenchItem && canReview}
+        item={workbenchItem}
+        approveLabel="اعتماد مبدئي"
+        returnLabel="إعادة للتعديل"
+        busy={acting}
+        onClose={() => setOpenReqId(null)}
+        onApprove={(p) => void submit("initial_approve", p)}
+        onReturn={(p) => void submit("return_edit", p)}
+      />
     </>
   );
 }

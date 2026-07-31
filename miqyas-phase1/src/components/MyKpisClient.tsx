@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp, Plus, Save, Send } from "lucide-react";
 import PeriodSelector from "@/components/PeriodSelector";
 import ActionToolbar, { IconActionButton } from "@/components/ui/ActionToolbar";
@@ -14,6 +14,7 @@ import { TYPE_LABEL } from "@/lib/kpi-schemas";
 import { canFillerEdit, displayApprovalLabel } from "@/lib/approval-status";
 import { notifyToast } from "@/lib/ui-toast";
 import { ICON_PROPS } from "@/lib/icon-props";
+import { FIELD_LABELS, type FieldKey, type ReviewFeedback } from "@/lib/review-feedback";
 
 type MeasurementItem = {
   requirement: {
@@ -35,6 +36,7 @@ type MeasurementItem = {
     approvalStatus: string;
     rejectReason: string | null;
     suggestedWording?: string | null;
+    reviewFeedback?: unknown;
     evidences: { id: number; fileName: string; status?: string; rejectReason?: string | null }[];
   } | null;
   kpis: { id: number; code: string; type: string; name: string }[];
@@ -63,6 +65,7 @@ export default function MyKpisClient({
   initialItems: MeasurementItem[];
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const year = initialYear;
   const period = initialPeriod;
   const [items, setItems] = useState(initialItems);
@@ -74,6 +77,23 @@ export default function MyKpisClient({
     setItems(initialItems);
     setDrafts(buildDrafts(initialItems));
   }, [initialItems]);
+
+  useEffect(() => {
+    const mp = searchParams.get("mp");
+    if (!mp) return;
+    const id = parseInt(mp, 10);
+    if (Number.isNaN(id)) return;
+    const hit = initialItems.find((it) => it.measurement?.id === id);
+    if (hit) {
+      setExpanded(hit.requirement.id);
+      requestAnimationFrame(() => {
+        document.getElementById(`req-row-${hit.requirement.id}`)?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
+    }
+  }, [searchParams, initialItems]);
 
   async function reload() {
     const res = await fetch(`/api/my/measurements?year=${year}&period=${period}`);
@@ -182,7 +202,7 @@ export default function MyKpisClient({
 
                 return (
                   <Fragment key={item.requirement.id}>
-                    <tr>
+                    <tr id={`req-row-${item.requirement.id}`}>
                       <td>{item.requirement.code}</td>
                       <td>{item.requirement.name}</td>
                       <td style={{ fontSize: ".75rem" }}>
@@ -275,10 +295,36 @@ export default function MyKpisClient({
                             <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
                               <div>
                                 <strong>
-                                  {status === "DRAFT" ? "أُعيد للتعديل: " : "ملاحظات المشرف: "}
+                                  {status === "DRAFT" ? "أُعيد للتعديل: " : "ملاحظات المراجعة: "}
                                 </strong>
                                 {item.measurement!.rejectReason}
                               </div>
+                              {typeof item.measurement!.reviewFeedback === "object" &&
+                              item.measurement!.reviewFeedback != null ? (
+                                <ul style={{ margin: ".4rem 0 0", paddingInlineStart: "1.1rem" }}>
+                                  {Object.entries(
+                                    (item.measurement!.reviewFeedback as ReviewFeedback).fields || {}
+                                  ).map(([key]) => (
+                                    <li key={key}>
+                                      رُفض الحقل: {FIELD_LABELS[key as FieldKey] || key}
+                                    </li>
+                                  ))}
+                                  {(
+                                    (item.measurement!.reviewFeedback as ReviewFeedback).evidences || []
+                                  ).map((ev) => (
+                                    <li key={ev.evidenceId}>
+                                      رُفض شاهد: {ev.fileName || ev.evidenceId}
+                                      {ev.reason ? ` — ${ev.reason}` : ""}
+                                    </li>
+                                  ))}
+                                  {(item.measurement!.reviewFeedback as ReviewFeedback).notes ? (
+                                    <li>
+                                      الملاحظات:{" "}
+                                      {(item.measurement!.reviewFeedback as ReviewFeedback).notes}
+                                    </li>
+                                  ) : null}
+                                </ul>
+                              ) : null}
                               {item.measurement!.suggestedWording && (
                                 <div style={{ marginTop: ".35rem" }}>
                                   الصياغة المقترحة: {item.measurement!.suggestedWording}

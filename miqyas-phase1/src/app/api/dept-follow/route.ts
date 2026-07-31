@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { can } from "@/lib/rbac";
@@ -8,8 +9,24 @@ import { notify } from "@/lib/notify";
 import { recordApprovalEvent, syncKpiEntriesFromMeasurement } from "@/lib/measurement-sync";
 import { canDeptReturn, canDeptReview, isFinalApproved } from "@/lib/approval-status";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
+import {
+  allFieldsAccepted,
+  anyRejected,
+  buildRejectSummary,
+  type Decision,
+  type FieldDecisions,
+} from "@/lib/review-feedback";
+import { notifyMeasurementReturn } from "@/lib/review-notify";
 
 export const dynamic = "force-dynamic";
+
+const decisionEnum = z.enum(["accept", "reject"]);
+
+const fieldDecisionsSchema = z.object({
+  actual: decisionEnum,
+  what: decisionEnum,
+  how: decisionEnum,
+});
 
 const patchSchema = z
   .object({
@@ -20,8 +37,24 @@ const patchSchema = z
     howHappened: z.string().max(5000).optional().nullable(),
     note: z.string().max(5000).optional().nullable(),
     comment: z.string().max(2000).optional().nullable(),
+    notes: z.string().max(5000).optional(),
+    fieldDecisions: fieldDecisionsSchema.optional(),
+    evidenceDecisions: z
+      .array(
+        z.object({
+          evidenceId: z.number().int().positive(),
+          decision: decisionEnum,
+        })
+      )
+      .optional(),
   })
   .strict();
+
+function toDecisionMap(list?: { evidenceId: number; decision: "accept" | "reject" }[]): Record<number, Decision> {
+  const map: Record<number, Decision> = {};
+  for (const row of list ?? []) map[row.evidenceId] = row.decision;
+  return map;
+}
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -43,6 +76,7 @@ export async function PATCH(req: NextRequest) {
           },
         },
         enteredBy: { select: { id: true } },
+        evidences: { select: { id: true, fileName: true, status: true } },
       },
     });
     if (!mp) return jsonError("فترة القياس غير موجودة", 404);
@@ -82,23 +116,59 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ measurement: updated });
     }
 
+    const activeEvidenceIds = mp.evidences.filter((e) => e.status !== "REJECTED").map((e) => e.id);
+    const fieldDecisions = (body.fieldDecisions ?? null) as FieldDecisions | null;
+    const evidenceMap = toDecisionMap(body.evidenceDecisions);
+
     if (body.action === "return_edit") {
       if (!canDeptReturn(mp.approvalStatus)) {
         return jsonError("لا يمكن إرجاع القياس في هذه الحالة", 400);
       }
-      if (!body.comment?.trim() || body.comment.trim().length < 3) {
-        return jsonError("سبب الإرجاع مطلوب (3 أحرف على الأقل)", 400);
+      const notes = (body.notes || body.comment || "").trim();
+      if (!fieldDecisions) return jsonError("قرارات الحقول مطلوبة", 400);
+      if (!anyRejected(fieldDecisions, evidenceMap)) {
+        return jsonError("يجب رفض حقل أو شاهد واحد على الأقل", 400);
       }
+      if (notes.length < 3) {
+        return jsonError("ملاحظات الإعادة مطلوبة (3 أحرف على الأقل)", 400);
+      }
+
+      const evidenceNames: Record<number, string> = {};
+      for (const e of mp.evidences) evidenceNames[e.id] = e.fileName;
+      const { feedback, rejectReason, rejectedEvidenceIds } = buildRejectSummary(
+        fieldDecisions,
+        evidenceMap,
+        evidenceNames,
+        notes
+      );
+      feedback.layer = "dept";
+
+      for (const evidenceId of rejectedEvidenceIds) {
+        await db.evidence.updateMany({
+          where: { id: evidenceId, measurementPeriodId: mp.id },
+          data: {
+            status: "REJECTED",
+            rejectReason: notes,
+            rejectedById: userId,
+            rejectedAt: new Date(),
+          },
+        });
+      }
+
       const updated = await db.measurementPeriod.update({
         where: { id: mp.id },
         data: {
           approvalStatus: "DRAFT",
-          rejectReason: body.comment.trim(),
+          rejectReason,
+          reviewFeedback: feedback as unknown as Prisma.InputJsonValue,
           suggestedWording: null,
           initialApprovedById: null,
           initialApprovedAt: null,
           approvedById: null,
           approvedAt: null,
+          actualValue: body.actualValue ?? mp.actualValue,
+          whatHappened: body.whatHappened !== undefined ? body.whatHappened : mp.whatHappened,
+          howHappened: body.howHappened !== undefined ? body.howHappened : mp.howHappened,
         },
       });
       await syncKpiEntriesFromMeasurement(mp.id);
@@ -106,24 +176,32 @@ export async function PATCH(req: NextRequest) {
         measurementPeriodId: mp.id,
         actorId: userId,
         action: "RETURN_EDIT",
-        comment: body.comment,
+        comment: notes,
+        payload: feedback,
       });
-      if (mp.requirement.ownerId) {
-        await notify({
-          userIds: [mp.requirement.ownerId],
-          type: "APPROVAL_RESULT",
-          title: "أُعيد القياس للتعديل",
-          body: `${mp.requirement.code}: ${body.comment || "يرجى المراجعة وإعادة التقديم"}`,
-          link: "/my",
-          email: true,
-        });
-      }
+
+      await notifyMeasurementReturn({
+        measurementPeriodId: mp.id,
+        requirementCode: mp.requirement.code,
+        requirementName: mp.requirement.name,
+        departmentId: mp.requirement.departmentId,
+        ownerId: mp.requirement.ownerId,
+        enteredById: mp.enteredBy.id,
+        title: "أُعيد القياس للتعديل من مراجعة الإدارة",
+        body: rejectReason,
+        includeDeptManagers: false,
+      });
+
       return NextResponse.json({ measurement: updated });
     }
 
     // initial_approve
     if (!["SUBMITTED", "PENDING"].includes(mp.approvalStatus)) {
       return jsonError("القياس ليس بانتظار الاعتماد المبدئي", 400);
+    }
+    if (!fieldDecisions) return jsonError("قرارات الحقول مطلوبة", 400);
+    if (!allFieldsAccepted(fieldDecisions, activeEvidenceIds, evidenceMap)) {
+      return jsonError("يجب قبول كل الحقول والشواهد قبل الاعتماد المبدئي", 400);
     }
 
     const updated = await db.measurementPeriod.update({
@@ -137,6 +215,7 @@ export async function PATCH(req: NextRequest) {
         initialApprovedById: userId,
         initialApprovedAt: new Date(),
         rejectReason: null,
+        reviewFeedback: Prisma.DbNull,
       },
     });
     await syncKpiEntriesFromMeasurement(mp.id);
@@ -145,6 +224,7 @@ export async function PATCH(req: NextRequest) {
       actorId: userId,
       action: "INITIAL_APPROVE",
       comment: body.comment,
+      payload: { fieldDecisions },
     });
 
     const admins = await db.user.findMany({

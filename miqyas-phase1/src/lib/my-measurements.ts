@@ -80,6 +80,7 @@ export async function getMyRequirements(
             approvalStatus: measurement.approvalStatus,
             rejectReason: measurement.rejectReason,
             suggestedWording: measurement.suggestedWording,
+            reviewFeedback: measurement.reviewFeedback,
             evidences: measurement.evidences,
           }
         : null,

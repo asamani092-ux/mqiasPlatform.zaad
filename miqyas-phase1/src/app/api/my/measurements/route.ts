@@ -114,6 +114,7 @@ export async function POST(req: Request) {
       initialApprovedAt: null,
       rejectReason: body.action === "submit" ? null : existing ? undefined : null,
       suggestedWording: body.action === "submit" ? null : existing ? undefined : null,
+      reviewFeedback: body.action === "submit" ? null : existing ? undefined : null,
     });
 
     await recordApprovalEvent({

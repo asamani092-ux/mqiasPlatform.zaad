@@ -1,4 +1,4 @@
-import type { ApprovalStatus, Period } from "@prisma/client";
+import { Prisma, type ApprovalStatus, type Period } from "@prisma/client";
 import { db } from "@/lib/db";
 import { achievementPct, deviationValue, kpiStatus } from "@/lib/kpi";
 
@@ -18,6 +18,8 @@ export type MeasurementWriteInput = {
   initialApprovedAt?: Date | null;
   rejectReason?: string | null;
   suggestedWording?: string | null;
+  /** undefined = لا تغيّر · null = امسح */
+  reviewFeedback?: Prisma.InputJsonValue | null;
 };
 
 /** يزامن كل KpiEntry المرتبطة بالمتطلب من MeasurementPeriod — O(k) */
@@ -146,6 +148,12 @@ export async function upsertMeasurementPeriod(input: MeasurementWriteInput) {
       initialApprovedAt: input.initialApprovedAt ?? null,
       rejectReason: input.rejectReason ?? null,
       suggestedWording: input.suggestedWording ?? null,
+      reviewFeedback:
+        input.reviewFeedback === null
+          ? Prisma.DbNull
+          : input.reviewFeedback !== undefined
+            ? input.reviewFeedback
+            : undefined,
     },
     update: {
       actualValue: input.actualValue,
@@ -162,6 +170,12 @@ export async function upsertMeasurementPeriod(input: MeasurementWriteInput) {
       rejectReason: input.rejectReason !== undefined ? input.rejectReason : undefined,
       suggestedWording:
         input.suggestedWording !== undefined ? input.suggestedWording : undefined,
+      reviewFeedback:
+        input.reviewFeedback === null
+          ? Prisma.DbNull
+          : input.reviewFeedback !== undefined
+            ? input.reviewFeedback
+            : undefined,
     },
   });
 

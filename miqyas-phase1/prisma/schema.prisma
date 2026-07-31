@@ -221,6 +221,7 @@ model MeasurementPeriod {
   initialApprovedAt   DateTime?
   rejectReason        String?
   suggestedWording    String? // صياغة مقترحة عند رفض الصياغة
+  reviewFeedback      Json? // ملاحظات مراجعة منظمة (حقول/شواهد)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 

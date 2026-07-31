@@ -1,0 +1,68 @@
+"use client";
+
+import type { ReactNode } from "react";
+
+export type ReviewCardModel = {
+  id: number;
+  code: string;
+  name: string;
+  departmentName?: string | null;
+  ownerName?: string | null;
+  enteredByName?: string | null;
+  statusLabel: string;
+  statusClass?: string;
+  evidenceCount: number;
+  meta?: string;
+};
+
+export default function ReviewQueueCards({
+  items,
+  emptyText = "لا عناصر في الطابور",
+  onOpen,
+  trailing,
+}: {
+  items: ReviewCardModel[];
+  emptyText?: string;
+  onOpen: (id: number) => void;
+  trailing?: (id: number) => ReactNode;
+}) {
+  if (items.length === 0) {
+    return (
+      <div className="card">
+        <p className="text-muted">{emptyText}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="review-queue">
+      {items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          className="review-queue-card card"
+          onClick={() => onOpen(item.id)}
+        >
+          <div className="review-queue-card-head">
+            <div>
+              <strong>
+                {item.code}
+              </strong>
+              {" — "}
+              {item.name}
+            </div>
+            <span className={item.statusClass || "badge-neutral"}>{item.statusLabel}</span>
+          </div>
+          <div className="review-queue-card-meta text-muted">
+            {item.departmentName ? <span>الإدارة: {item.departmentName}</span> : null}
+            {item.ownerName ? <span>المسؤول: {item.ownerName}</span> : null}
+            {item.enteredByName ? <span>أدخلها: {item.enteredByName}</span> : null}
+            <span>شواهد: {item.evidenceCount}</span>
+            {item.meta ? <span>{item.meta}</span> : null}
+          </div>
+          {trailing ? <div className="review-queue-card-trail">{trailing(item.id)}</div> : null}
+        </button>
+      ))}
+    </div>
+  );
+}
