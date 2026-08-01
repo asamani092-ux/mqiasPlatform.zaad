@@ -11,6 +11,9 @@ const QUARTER_PERIODS: Period[] = ["Q1", "Q2", "Q3", "Q4"];
 
 export default function SettingsClient() {
   const [settings, setSettings] = useState<Setting[]>([]);
+  const [testTo, setTestTo] = useState("");
+  const [testBusy, setTestBusy] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const defaults = currentQuarter();
 
   const load = useCallback(async () => {
@@ -40,6 +43,28 @@ export default function SettingsClient() {
   function getValue(key: string, fallback: string): string {
     const s = settings.find((x) => x.key === key);
     return s?.value || fallback;
+  }
+
+  async function sendTestEmail() {
+    setTestBusy(true);
+    setTestResult(null);
+    const res = await fetch("/api/settings/test-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(testTo.trim() ? { to: testTo.trim() } : {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    setTestBusy(false);
+    if (res.ok && data.sent) {
+      setTestResult({ ok: true, msg: `أُرسلت رسالة تجريبية إلى ${data.to} من ${data.from}` });
+      notifyToast.success("أُرسلت رسالة التجربة", { duration: "short" });
+    } else {
+      setTestResult({
+        ok: false,
+        msg: `${data.error || "فشل الإرسال"}${data.hint ? ` — ${data.hint}` : ""}`,
+      });
+      notifyToast.error("لم تُرسل رسالة التجربة");
+    }
   }
 
   function onYearBlur(e: FocusEvent<HTMLInputElement>) {
@@ -103,9 +128,13 @@ export default function SettingsClient() {
         {settings
           .filter(
             (s) =>
-              !["current_year", "current_period", "section_head_can_approve", "dept_manager_can_approve"].includes(
-                s.key
-              )
+              ![
+                "current_year",
+                "current_period",
+                "section_head_can_approve",
+                "dept_manager_can_approve",
+                "notify_from_email",
+              ].includes(s.key)
           )
           .map((s) => (
             <div key={s.key} style={{ marginBottom: "1.25rem" }}>
@@ -130,6 +159,72 @@ export default function SettingsClient() {
               </div>
             </div>
           ))}
+
+        <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px solid var(--border, #e5e7eb)" }} />
+
+        <h3 style={{ marginBottom: ".5rem" }}>البريد والتنبيهات</h3>
+        <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
+          الاعتماد الأساسي للتنبيهات هو إشعارات المنصة الداخلية، ويُرسل البريد بالتوازي عند ضبطه.
+          بريد المرسل يُضبط هنا؛ بيانات خادم SMTP تُضبط في <code>.env</code> على الخادم (الربط لاحقاً).
+        </div>
+
+        <div style={{ marginBottom: "1.25rem" }}>
+          <label className="label-field">بريد المرسل للتنبيهات</label>
+          <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+            <input
+              type="email"
+              className="input-field"
+              style={{ maxWidth: 280 }}
+              placeholder="miqyas@zad.org.sa"
+              defaultValue={getValue("notify_from_email", "")}
+              key={`from-${getValue("notify_from_email", "")}`}
+              id="setting-notify_from_email"
+            />
+            <button
+              type="button"
+              className="btn-primary btn-sm"
+              onClick={() => {
+                const el = document.getElementById("setting-notify_from_email") as HTMLInputElement;
+                save("notify_from_email", el.value);
+              }}
+            >
+              حفظ
+            </button>
+          </div>
+          <div className="text-muted" style={{ fontSize: ".78rem", marginTop: ".35rem" }}>
+            اتركه فارغاً للعودة إلى قيمة <code>SMTP_FROM</code> من الخادم.
+          </div>
+        </div>
+
+        <div style={{ marginBottom: ".5rem" }}>
+          <label className="label-field">إرسال رسالة تجريبية</label>
+          <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+            <input
+              type="email"
+              className="input-field"
+              style={{ maxWidth: 280 }}
+              placeholder="بريد المستلم — فارغ = بريدك"
+              value={testTo}
+              onChange={(e) => setTestTo(e.target.value)}
+            />
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              disabled={testBusy}
+              onClick={() => void sendTestEmail()}
+            >
+              {testBusy ? "جارٍ الإرسال..." : "إرسال تجربة"}
+            </button>
+          </div>
+          {testResult && (
+            <div
+              className={`alert ${testResult.ok ? "alert-success" : "alert-warn"}`}
+              style={{ marginTop: ".6rem" }}
+            >
+              {testResult.msg}
+            </div>
+          )}
+        </div>
       </div>
     </>
   );

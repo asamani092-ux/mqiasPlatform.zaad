@@ -5,6 +5,8 @@ const DEFAULTS: Record<string, string> = {
   dept_manager_can_approve: "0",
   early_warning_gap_pct: "20",
   action_escalation_days: "0",
+  // بريد المرسل للتنبيهات — بيانات SMTP نفسها تبقى في .env (الربط لاحقاً)
+  notify_from_email: "",
   current_year: String(new Date().getFullYear()),
   current_period: (() => {
     const month = new Date().getMonth() + 1;

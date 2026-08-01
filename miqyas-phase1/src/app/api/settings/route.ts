@@ -13,12 +13,24 @@ const ALLOWED_KEYS = [
   "action_escalation_days",
   "current_year",
   "current_period",
+  "notify_from_email",
 ] as const;
 
-const postSchema = z.object({
-  key: z.enum(ALLOWED_KEYS),
-  value: z.string().min(1).max(500),
-});
+const postSchema = z
+  .object({
+    key: z.enum(ALLOWED_KEYS),
+    value: z.string().max(500),
+  })
+  .superRefine((data, ctx) => {
+    if (data.key === "notify_from_email") {
+      // يُسمح بالإفراغ (عودة لقيمة .env) أو بريد صالح
+      if (data.value.trim() && !z.string().email().safeParse(data.value.trim()).success) {
+        ctx.addIssue({ code: "custom", message: "بريد المرسل غير صالح" });
+      }
+    } else if (data.value.length === 0) {
+      ctx.addIssue({ code: "custom", message: "القيمة مطلوبة" });
+    }
+  });
 
 const LABELS: Record<string, string> = {
   section_head_can_approve: "تفويض رؤساء الأقسام باعتماد مؤشرات موظفيهم",
@@ -27,6 +39,7 @@ const LABELS: Record<string, string> = {
   action_escalation_days: "مهلة تصعيد الإجراءات المتأخرة (أيام)",
   current_year: "سنة القياس الحالية",
   current_period: "الفترة الحالية",
+  notify_from_email: "بريد المرسل للتنبيهات",
 };
 
 export async function GET() {
@@ -54,7 +67,7 @@ export async function POST(req: NextRequest) {
     requireManageKpis(user);
 
     const body = postSchema.parse(await req.json());
-    await setSetting(body.key, body.value);
+    await setSetting(body.key, body.key === "notify_from_email" ? body.value.trim() : body.value);
     await audit(parseInt(user.id, 10), "UPDATE_SETTING", "SystemSetting", undefined, body);
 
     return NextResponse.json({ ok: true, key: body.key, value: body.value });

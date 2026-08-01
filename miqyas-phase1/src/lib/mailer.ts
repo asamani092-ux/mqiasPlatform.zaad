@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { db } from "@/lib/db";
+import { getSetting } from "@/lib/settings";
 import { CHART_COLORS } from "@/lib/chart-colors";
 
 function buildHtml(subject: string, body: string): string {
@@ -39,7 +40,9 @@ export async function sendMail(to: string, subject: string, html: string): Promi
   const smtpPass = process.env.SMTP_PASS;
   const smtpHost = process.env.SMTP_HOST || "smtp.office365.com";
   const smtpPort = parseInt(process.env.SMTP_PORT || "587", 10);
-  const smtpFrom = process.env.SMTP_FROM || smtpUser || "miqyas@zad.org.sa";
+  // بريد المرسل من الإعدادات أولاً (قابل للضبط من /admin/settings)، ثم .env
+  const settingFrom = (await getSetting("notify_from_email").catch(() => "")).trim();
+  const smtpFrom = settingFrom || process.env.SMTP_FROM || smtpUser || "miqyas@zad.org.sa";
 
   if (!smtpUser || !smtpPass) {
     try {
