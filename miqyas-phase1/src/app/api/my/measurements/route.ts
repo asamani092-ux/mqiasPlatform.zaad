@@ -163,7 +163,8 @@ export async function POST(req: Request) {
           type: "APPROVAL_REQUEST",
           title: "قياس بانتظار الاعتماد النهائي",
           body: `قدّمه مدير الإدارة ${user.name}: ${requirement.code} — ${requirement.name}`,
-          link: "/approvals",
+          link: `/approvals?mp=${mp.id}`,
+          linkLabel: `فتح القياس ${requirement.code} للاعتماد النهائي`,
           email: true,
         });
       }
@@ -182,7 +183,8 @@ export async function POST(req: Request) {
           type: "APPROVAL_REQUEST",
           title: "قياس بانتظار المراجعة المبدئية",
           body: `${user.name} قدّم قياساً للمتطلب ${requirement.code} — ${requirement.name}`,
-          link: "/dept-follow",
+          link: `/dept-follow?mp=${mp.id}`,
+          linkLabel: `فتح القياس ${requirement.code} للمراجعة`,
           email: true,
         });
       }

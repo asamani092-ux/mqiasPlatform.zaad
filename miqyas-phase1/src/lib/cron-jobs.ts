@@ -157,6 +157,7 @@ export async function runEarlyWarning(date = new Date()) {
         title: `إنذار مبكر — ${kpi.name}`,
         body: message,
         link: "/early-warning",
+        linkLabel: `فتح مسار الإنذار المبكر — ${kpi.code}`,
         email: true,
       });
       await db.earlyWarningAlert.update({

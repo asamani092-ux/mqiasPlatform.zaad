@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
 import { TYPE_LABEL as KPI_TYPE } from "@/lib/kpi-schemas";
 import { displayApprovalLabel } from "@/lib/approval-status";
@@ -76,11 +77,13 @@ function revokeFinalConfirmMessage(enteredByRole?: string): string {
 }
 
 export default function ApprovalsClient() {
+  const searchParams = useSearchParams();
   const [queue, setQueue] = useState<QueueMode>("pending");
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
+  const deepLinkConsumed = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -98,6 +101,15 @@ export default function ApprovalsClient() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // فتح القياس القادم من رابط الإشعار/البريد (?mp=) بعد تحميل القائمة — مرة واحدة
+  useEffect(() => {
+    if (deepLinkConsumed.current || loading) return;
+    const mp = parseInt(searchParams.get("mp") ?? "", 10);
+    if (Number.isNaN(mp)) return;
+    deepLinkConsumed.current = true;
+    if (entries.some((e) => e.id === mp)) setOpenId(mp);
+  }, [loading, entries, searchParams]);
 
   const cards: CardItem[] = useMemo(
     () =>

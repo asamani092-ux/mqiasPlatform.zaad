@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import PeriodSelector from "@/components/PeriodSelector";
 import ReviewSmartSearch from "@/components/ui/ReviewSmartSearch";
 import ReviewQueueCards from "@/components/ui/ReviewQueueCards";
@@ -63,9 +63,18 @@ export default function DeptFollowClient({
   rows: Row[];
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [rows, setRows] = useState(initialRows);
   const [openReqId, setOpenReqId] = useState<number | null>(null);
   const [acting, setActing] = useState(false);
+
+  // فتح القياس القادم من رابط الإشعار/البريد (?mp=)
+  useEffect(() => {
+    const mp = parseInt(searchParams.get("mp") ?? "", 10);
+    if (Number.isNaN(mp)) return;
+    const hit = initialRows.find((r) => r.measurementPeriodId === mp);
+    if (hit) setOpenReqId(hit.id);
+  }, [searchParams, initialRows]);
 
   const pendingCount = useMemo(
     () => rows.filter((r) => r.approvalStatus && isAwaitingDept(r.approvalStatus as never)).length,

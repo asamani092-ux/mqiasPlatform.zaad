@@ -274,7 +274,8 @@ export async function PATCH(req: NextRequest) {
         type: "APPROVAL_REQUEST",
         title: "قياس بانتظار الاعتماد النهائي",
         body: `${mp.requirement.code} — ${mp.requirement.name}`,
-        link: "/approvals",
+        link: `/approvals?mp=${mp.id}`,
+        linkLabel: `فتح القياس ${mp.requirement.code} للاعتماد النهائي`,
         email: true,
       });
     }

@@ -9,16 +9,18 @@ type NotifyParams = {
   title: string;
   body: string;
   link?: string;
+  /** نص رابط البريد — مثال: «فتح القياس KPI-05» (افتراضي: عرض التفاصيل) */
+  linkLabel?: string;
   email?: boolean;
 };
 
 export type NotifyResult = { emailSent: boolean };
 
 export async function notify(params: NotifyParams): Promise<NotifyResult> {
-  const { userIds, type, title, body, link, email } = params;
+  const { userIds, type, title, body, link, linkLabel, email } = params;
   if (userIds.length === 0) return { emailSent: false };
 
-  const appUrl = process.env.APP_URL || "http://localhost:3000";
+  const appUrl = process.env.APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
 
   await db.notification.createMany({
     data: userIds.map((userId) => ({
@@ -40,6 +42,7 @@ export async function notify(params: NotifyParams): Promise<NotifyResult> {
   if (users.length === 0) return { emailSent: false };
 
   const fullLink = link ? `${appUrl}${link.startsWith("/") ? link : `/${link}`}` : appUrl;
+  const anchorText = linkLabel || "عرض التفاصيل";
 
   const results = await Promise.all(
     users.map((u) =>
@@ -47,7 +50,9 @@ export async function notify(params: NotifyParams): Promise<NotifyResult> {
         u.email,
         title,
         `<p>مرحبًا ${u.name}،</p><p>${body}</p>${
-          link ? `<p><a href="${fullLink}" style="color:${CHART_COLORS.primary};font-weight:700;">عرض التفاصيل</a></p>` : ""
+          link
+            ? `<p><a href="${fullLink}" style="color:${CHART_COLORS.primary};font-weight:700;">${anchorText}</a></p>`
+            : ""
         }`,
       ),
     ),

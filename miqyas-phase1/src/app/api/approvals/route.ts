@@ -303,6 +303,7 @@ export async function POST(req: NextRequest) {
           title: "اعتُمد القياس نهائياً",
           body: `${mp.requirement.code} — ${mp.requirement.name}`,
           link: `/my?mp=${mp.id}`,
+          linkLabel: `فتح القياس ${mp.requirement.code}`,
           email: true,
         });
       }

@@ -18,7 +18,8 @@ export async function notifyMeasurementReturn(params: {
 }): Promise<void> {
   const bodyText = `${params.requirementCode} — ${params.requirementName}\n${params.body}`;
   const myLink = `/my?mp=${params.measurementPeriodId}`;
-  const deptLink = "/dept-follow";
+  const deptLink = `/dept-follow?mp=${params.measurementPeriodId}`;
+  const linkLabel = `فتح القياس ${params.requirementCode}`;
 
   const ownerIds = new Set<number>();
   if (params.ownerId) ownerIds.add(params.ownerId);
@@ -34,6 +35,7 @@ export async function notifyMeasurementReturn(params: {
       title: params.title,
       body: bodyText,
       link: myLink,
+      linkLabel,
       email: true,
     });
   }
@@ -55,6 +57,7 @@ export async function notifyMeasurementReturn(params: {
         title: params.title,
         body: bodyText,
         link: deptLink,
+        linkLabel,
         email: true,
       });
     }
