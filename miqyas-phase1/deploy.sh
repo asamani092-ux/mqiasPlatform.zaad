@@ -11,6 +11,9 @@ git pull --ff-only
 echo "==> npm ci"
 npm ci
 
+echo "==> prisma baseline guard"
+node scripts/ensure-baseline.js
+
 echo "==> prisma migrate deploy"
 npx prisma migrate deploy
 
