@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
 
     const kpis = await db.kpi.findMany({
       where,
+      take: 1000,
       include: {
         department: { select: { id: true, name: true } },
         section: { select: { id: true, name: true, code: true } },

@@ -166,6 +166,9 @@ model Kpi {
   knowledgeAssets KnowledgeAsset[]
 
   @@index([requirementId])
+  @@index([departmentId])
+  @@index([ownerId])
+  @@index([active, type])
 }
 
 // دور من يملأ متطلب القياس (الطبقة 1)
@@ -234,6 +237,7 @@ model MeasurementPeriod {
 
   @@unique([requirementId, year, period])
   @@index([approvalStatus])
+  @@index([year, period, approvalStatus])
 }
 
 // الفترة: Q1..Q4 / H1,H2 / Y
@@ -334,6 +338,7 @@ model KpiEntry {
   evidences  Evidence[] // توافق مؤقت — المصدر المفضّل MeasurementPeriod.evidences
 
   @@unique([kpiId, year, period])
+  @@index([year, period, approvalStatus])
 }
 
 enum EvidenceStatus {

@@ -108,6 +108,13 @@ export async function runEarlyWarning(date = new Date()) {
     },
   });
 
+  // استعلام واحد بدل findFirst لكل مؤشر (N+1)
+  const recentAlerts = await db.earlyWarningAlert.findMany({
+    where: { year, period, createdAt: { gte: sevenDaysAgo } },
+    select: { kpiId: true },
+  });
+  const recentlyAlertedKpiIds = new Set(recentAlerts.map((a) => a.kpiId));
+
   let created = 0;
 
   for (const kpi of kpis) {
@@ -122,15 +129,7 @@ export async function runEarlyWarning(date = new Date()) {
     const gapPct = Math.round((100 - ach) * 10) / 10;
     if (gapPct < gapThreshold) continue;
 
-    const recent = await db.earlyWarningAlert.findFirst({
-      where: {
-        kpiId: kpi.id,
-        year,
-        period,
-        createdAt: { gte: sevenDaysAgo },
-      },
-    });
-    if (recent) continue;
+    if (recentlyAlertedKpiIds.has(kpi.id)) continue;
 
     const riskLevel = riskFromGap(gapPct);
     const { userIds, emails } = await resolveAlertRecipients(kpi);

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
 import type { AuthError } from "@/lib/auth";
 
 export function jsonError(message: string, status: number) {
@@ -29,7 +30,7 @@ export function handleApiError(e: unknown) {
       400,
     );
   }
-  if (e instanceof Error && e.message.startsWith("Zod")) {
+  if (e instanceof ZodError) {
     return jsonError("بيانات غير صالحة", 400);
   }
   console.error(e);

@@ -87,7 +87,11 @@ export async function GET(
     );
     if (!check.ok || !check.evidence) return jsonError("غير مصرح", 403);
 
-    const filePath = path.join(STORAGE_DIR, check.evidence.storedName);
+    // احتواء المسار: basename + تحقق أن الناتج داخل مجلد التخزين
+    const filePath = path.resolve(STORAGE_DIR, path.basename(check.evidence.storedName));
+    if (!filePath.startsWith(path.resolve(STORAGE_DIR) + path.sep)) {
+      return jsonError("غير مصرح", 403);
+    }
     const buffer = await readFile(filePath);
 
     const wantInline = req.nextUrl.searchParams.get("inline") === "1";

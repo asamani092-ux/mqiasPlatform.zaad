@@ -37,7 +37,6 @@ yarn-error.log*
 next-env.d.ts
 
 # prisma
-/prisma/migrations/**/migration_lock.toml
 
 # uploads
 /public/uploads

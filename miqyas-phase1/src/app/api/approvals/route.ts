@@ -93,6 +93,7 @@ export async function GET(req: NextRequest) {
         },
       },
       orderBy: queue === "final" ? { approvedAt: "desc" } : { initialApprovedAt: "desc" },
+      take: 500,
     });
 
     return NextResponse.json({

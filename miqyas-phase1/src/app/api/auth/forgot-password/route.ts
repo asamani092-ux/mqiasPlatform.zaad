@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { sendMail } from "@/lib/mailer";
 import { jsonError } from "@/lib/api-helpers";
+import { hashResetToken } from "@/lib/reset-token";
 
 const forgotPasswordSchema = z.object({
   email: z.string().trim().email().max(200),
@@ -12,10 +13,22 @@ const forgotPasswordSchema = z.object({
 const SUCCESS_MESSAGE =
   "إذا كان البريد مسجّلاً لدينا، ستصلك رسالة برابط إعادة التعيين خلال دقائق.";
 
+// حد أقصى 3 طلبات استعادة للبريد الواحد خلال الساعة
+const RESET_WINDOW_MS = 60 * 60 * 1000;
+const RESET_MAX_PER_WINDOW = 3;
+
 export async function POST(req: NextRequest) {
   try {
     const body = forgotPasswordSchema.parse(await req.json());
     const email = body.email.toLowerCase();
+
+    const recentRequests = await db.passwordResetToken.count({
+      where: { email, createdAt: { gte: new Date(Date.now() - RESET_WINDOW_MS) } },
+    });
+    if (recentRequests >= RESET_MAX_PER_WINDOW) {
+      // نفس رسالة النجاح — لا نكشف وجود البريد ولا حالة الحد
+      return NextResponse.json({ ok: true, message: SUCCESS_MESSAGE });
+    }
 
     const user = await db.user.findUnique({
       where: { email },
@@ -23,15 +36,16 @@ export async function POST(req: NextRequest) {
     });
 
     if (user && user.status === "ACTIVE") {
-      const token = randomBytes(32).toString("hex");
+      const rawToken = randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
+      // يُخزَّن التجزيء فقط — تسريب الجدول لا يكشف الروابط
       await db.passwordResetToken.create({
-        data: { email, token, expiresAt },
+        data: { email, token: hashResetToken(rawToken), expiresAt },
       });
 
       const appUrl = process.env.APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
-      const resetLink = `${appUrl}/reset-password?token=${token}`;
+      const resetLink = `${appUrl}/reset-password?token=${rawToken}`;
 
       const emailSent = await sendMail(
         user.email,
@@ -43,13 +57,17 @@ export async function POST(req: NextRequest) {
       );
 
       if (!emailSent) {
-        console.log(
-          `[forgot-password] SMTP غير مضبوط — رابط الاستعادة لـ ${email}:\n${resetLink}`,
-        );
+        if (process.env.NODE_ENV !== "production") {
+          console.log(
+            `[forgot-password] SMTP غير مضبوط — رابط الاستعادة لـ ${email}:\n${resetLink}`,
+          );
+        } else {
+          console.warn(`[forgot-password] فشل إرسال بريد الاستعادة لـ ${email} — راجع إعدادات SMTP`);
+        }
         return NextResponse.json({
           ok: true,
           message:
-            "تم إنشاء رابط الاستعادة. البريد غير مفعّل حالياً — تواصل مع مشرف النظام. (رابط تجريبي في سجل الخادم)",
+            "تم إنشاء رابط الاستعادة. البريد غير مفعّل حالياً — تواصل مع مشرف النظام.",
         });
       }
     }

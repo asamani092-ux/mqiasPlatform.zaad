@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
       where,
       select: userSelect,
       orderBy: [{ role: "asc" }, { name: "asc" }],
+      take: 1000,
     });
 
     return NextResponse.json({ users });

@@ -39,6 +39,23 @@ export const authOptions: NextAuthOptions = {
 
         if (!email || !password) return null;
 
+        // قفل مؤقت: 5 محاولات فاشلة خلال 15 دقيقة
+        const LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
+        const LOCKOUT_MAX_FAILURES = 5;
+        const recentFailures = await db.loginAttempt.count({
+          where: {
+            email,
+            success: false,
+            createdAt: { gte: new Date(Date.now() - LOCKOUT_WINDOW_MS) },
+          },
+        });
+        if (recentFailures >= LOCKOUT_MAX_FAILURES) {
+          await db.loginAttempt.create({
+            data: { email, success: false, ip },
+          });
+          return null;
+        }
+
         const user = await db.user.findUnique({ where: { email } });
         let success = false;
 
@@ -131,17 +148,37 @@ function sessionToUser(session: Session | null): SessionUser | null {
   };
 }
 
+/**
+ * إعادة تحقق من قاعدة البيانات: الحساب ما زال نشطًا، والدور/النطاق محدّثان.
+ * تعطيل الحساب أو تغيير الدور يسري فورًا دون انتظار انتهاء JWT.
+ */
+async function revalidateFromDb(user: SessionUser): Promise<SessionUser | null> {
+  const dbUser = await db.user.findUnique({
+    where: { id: parseInt(user.id, 10) },
+    select: { status: true, role: true, departmentId: true, sectionId: true },
+  });
+  if (!dbUser || dbUser.status !== "ACTIVE") return null;
+  return {
+    ...user,
+    role: dbUser.role,
+    departmentId: dbUser.departmentId,
+    sectionId: dbUser.sectionId,
+  };
+}
+
 export async function requireUser(): Promise<SessionUser> {
   const session = await getServerSession(authOptions);
   const user = sessionToUser(session);
-  if (!user) {
+  const fresh = user ? await revalidateFromDb(user) : null;
+  if (!fresh) {
     const err = { status: 401 as const, message: "غير مصرح" };
     throw err;
   }
-  return user;
+  return fresh;
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
   const session = await getServerSession(authOptions);
-  return sessionToUser(session);
+  const user = sessionToUser(session);
+  return user ? revalidateFromDb(user) : null;
 }

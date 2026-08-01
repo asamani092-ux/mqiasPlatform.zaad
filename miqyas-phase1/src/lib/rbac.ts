@@ -26,6 +26,10 @@ export const can = {
   approveEntries: (u: SessionUser) => isAdmin(u),
   manageDeviation: (u: SessionUser) => isAdmin(u) || u.role === "EXECUTIVE",
   manageKnowledge: (u: SessionUser) => isAdmin(u),
+  /** قراءة مسار الحوكمة — بما يطابق حجب الصفحة عن أدوار الإدخال */
+  viewGovernance: (u: SessionUser) => isAdmin(u) || u.role === "EXECUTIVE",
+  /** قراءة مسار المعرفة — بما يطابق حجب الصفحة عن أدوار الإدخال */
+  viewKnowledge: (u: SessionUser) => isAdmin(u) || u.role === "EXECUTIVE",
   enterOwnKpis: (_u: SessionUser) => true,
   /** مراجعة الإدارة: اعتماد مبدئي + تعديل السرد */
   reviewDepartment: (u: SessionUser) => isAdmin(u) || u.role === "DEPT_MANAGER",

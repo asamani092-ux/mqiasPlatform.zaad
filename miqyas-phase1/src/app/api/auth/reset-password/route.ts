@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { jsonError } from "@/lib/api-helpers";
 import { resetPasswordSchema } from "@/lib/user-schemas";
+import { hashResetToken } from "@/lib/reset-token";
 
 const resetRequestSchema = resetPasswordSchema.extend({
   token: z.string().min(1).max(128),
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
     const body = resetRequestSchema.parse(await req.json());
 
     const resetToken = await db.passwordResetToken.findUnique({
-      where: { token: body.token },
+      where: { token: hashResetToken(body.token) },
     });
 
     if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {

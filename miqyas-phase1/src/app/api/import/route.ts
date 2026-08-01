@@ -9,10 +9,13 @@ import { confirmImportSchema, validateImportRows } from "@/lib/import-schemas";
 import { analyzeImportCodes } from "@/lib/import-analysis";
 import { achievementPct, deviationValue, kpiStatus } from "@/lib/kpi";
 import { getSetting } from "@/lib/settings";
+import { matchesFileSignature } from "@/lib/file-signature";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
 import type { ValidatedImportRow } from "@/lib/import-schemas";
 
 export const dynamic = "force-dynamic";
+
+const MAX_IMPORT_SIZE = 10 * 1024 * 1024;
 
 async function commitImport(rows: ValidatedImportRow[], adminUserId: number, year: number) {
   let created = 0;
@@ -158,8 +161,12 @@ export async function POST(req: NextRequest) {
     const form = await req.formData();
     const file = form.get("file");
     if (!file || !(file instanceof File)) return jsonError("لم يُرفَع ملف", 400);
+    if (file.size > MAX_IMPORT_SIZE) return jsonError("حجم الملف يتجاوز 10 ميغابايت", 400);
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    if (!matchesFileSignature(buffer, "xls")) {
+      return jsonError("الملف ليس ملف Excel صالحاً", 400);
+    }
     const departments = await db.department.findMany({ select: { id: true, name: true } });
     const existing = await db.kpi.findMany({ select: { id: true, code: true } });
     const existingCodes = new Map(existing.map((k) => [k.code, k.id]));

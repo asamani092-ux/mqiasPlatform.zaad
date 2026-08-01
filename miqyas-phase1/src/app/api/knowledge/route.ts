@@ -33,6 +33,7 @@ async function knowledgeStats(user: SessionUser, year: number, period: Period) {
 export async function GET(req: NextRequest) {
   try {
     const user = await requireUser();
+    if (!can.viewKnowledge(user)) return jsonError("غير مصرح", 403);
     const year = parseInt(req.nextUrl.searchParams.get("year") ?? "2026", 10);
     const period = (req.nextUrl.searchParams.get("period") ?? "Q1") as
       | "Q1"
@@ -53,11 +54,13 @@ export async function GET(req: NextRequest) {
           kpi: { select: { id: true, code: true, name: true } },
         },
         orderBy: { createdAt: "desc" },
+        take: 1000,
       }),
       db.kpi.findMany({
         where: { active: true },
         select: { id: true, code: true, name: true },
         orderBy: { code: "asc" },
+        take: 1000,
       }),
     ]);
 

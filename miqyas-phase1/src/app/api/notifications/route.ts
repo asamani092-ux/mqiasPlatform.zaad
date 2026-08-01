@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireUser, type AuthError } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-
-function handleAuthError(e: unknown) {
-  if (e && typeof e === "object" && "status" in e && (e as AuthError).status === 401) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
-  throw e;
-}
+import { handleApiError } from "@/lib/api-helpers";
 
 export async function GET() {
   try {
@@ -28,7 +22,7 @@ export async function GET() {
     });
     return NextResponse.json({ notifications });
   } catch (e) {
-    return handleAuthError(e);
+    return handleApiError(e);
   }
 }
 
@@ -41,6 +35,6 @@ export async function POST() {
     });
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return handleAuthError(e);
+    return handleApiError(e);
   }
 }

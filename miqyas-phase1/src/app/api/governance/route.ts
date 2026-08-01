@@ -11,7 +11,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    await requireUser();
+    const user = await requireUser();
+    if (!can.viewGovernance(user)) return jsonError("غير مصرح", 403);
     const year = parseInt(req.nextUrl.searchParams.get("year") ?? "2026", 10);
     const period = (req.nextUrl.searchParams.get("period") ?? "Q1") as
       | "Q1"
@@ -24,8 +25,8 @@ export async function GET(req: NextRequest) {
 
     const [stats, requirements, observations] = await Promise.all([
       governanceStats(year, period),
-      db.governanceRequirement.findMany({ where: { year }, orderBy: { id: "asc" } }),
-      db.governanceObservation.findMany({ orderBy: { createdAt: "desc" } }),
+      db.governanceRequirement.findMany({ where: { year }, orderBy: { id: "asc" }, take: 1000 }),
+      db.governanceObservation.findMany({ orderBy: { createdAt: "desc" }, take: 1000 }),
     ]);
 
     return NextResponse.json({ stats, requirements, observations });

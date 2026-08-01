@@ -69,16 +69,19 @@ export async function syncKpiEntriesFromMeasurement(
     return { synced: 0, removed: del.count };
   }
 
+  // استعلام واحد للمستهدفات بدل findUnique لكل مؤشر (N+1)
+  const targets = await client.kpiTarget.findMany({
+    where: { kpiId: { in: kpiIds }, year: mp.year, period: mp.period },
+    select: { kpiId: true, targetValue: true },
+  });
+  const targetByKpi = new Map(targets.map((t) => [t.kpiId, t.targetValue]));
+
   let synced = 0;
   for (const kpi of mp.requirement.kpis) {
-    const target = await client.kpiTarget.findUnique({
-      where: {
-        kpiId_year_period: { kpiId: kpi.id, year: mp.year, period: mp.period },
-      },
-    });
+    const targetValue = targetByKpi.get(kpi.id);
     const pct =
-      target != null ? achievementPct(mp.actualValue, target.targetValue, kpi.polarity) : null;
-    const dev = target != null ? deviationValue(mp.actualValue, target.targetValue) : null;
+      targetValue != null ? achievementPct(mp.actualValue, targetValue, kpi.polarity) : null;
+    const dev = targetValue != null ? deviationValue(mp.actualValue, targetValue) : null;
     const status = kpiStatus(pct);
 
     const entry = await client.kpiEntry.upsert({

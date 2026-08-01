@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { syncKpiEntriesFromMeasurement } from "@/lib/measurement-sync";
 import { canFillerEdit } from "@/lib/approval-status";
+import { matchesFileSignature } from "@/lib/file-signature";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
 
 const STORAGE_DIR = path.join(process.cwd(), "storage", "evidence");
@@ -63,9 +64,14 @@ export async function POST(
       return jsonError("نوع MIME غير مطابق للامتداد", 400);
     }
 
+    const buffer = Buffer.from(await file.arrayBuffer());
+    // بصمة ثنائية — لا اعتماد على MIME/الامتداد من العميل
+    if (!matchesFileSignature(buffer, ext)) {
+      return jsonError("محتوى الملف لا يطابق نوعه المعلن", 400);
+    }
+
     await mkdir(STORAGE_DIR, { recursive: true });
     const storedName = `${randomBytes(16).toString("hex")}.${ext}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(path.join(STORAGE_DIR, storedName), buffer);
 
     const evidence = await db.evidence.create({
