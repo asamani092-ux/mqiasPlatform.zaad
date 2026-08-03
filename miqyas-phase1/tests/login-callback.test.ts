@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { safeCallbackUrl } from "@/components/LoginClient";
+import { safeCallbackUrl } from "@/lib/safe-callback-url";
 
 describe("safeCallbackUrl", () => {
   it("يحافظ على المسارات النسبية مع ?mp=", () => {
