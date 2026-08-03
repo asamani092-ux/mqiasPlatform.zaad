@@ -49,3 +49,31 @@ export async function PUT(
     return handleApiError(e);
   }
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { id: string; actionId: string } },
+) {
+  try {
+    const user = await requireUser();
+    if (!can.manageDeviation(user)) return jsonError("غير مصرح", 403);
+
+    const cardId = parseInt(params.id, 10);
+    const actionId = parseInt(params.actionId, 10);
+
+    const action = await db.correctiveAction.findFirst({
+      where: {
+        id: actionId,
+        card: { id: cardId, kpi: scopedKpiWhere(user) },
+      },
+    });
+    if (!action) return jsonError("الإجراء غير موجود", 404);
+
+    await db.correctiveAction.delete({ where: { id: actionId } });
+    await audit(parseInt(user.id, 10), "DELETE_CORRECTIVE_ACTION", "CorrectiveAction", actionId);
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return handleApiError(e);
+  }
+}

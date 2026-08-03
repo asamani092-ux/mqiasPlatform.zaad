@@ -10,6 +10,7 @@ import { recordApprovalEvent, upsertMeasurementPeriod } from "@/lib/measurement-
 import { canFillerEdit, roleToFillerRole } from "@/lib/approval-status";
 import { resolvePeriods } from "@/lib/kpi";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
+import { getSetting } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,10 @@ export async function POST(req: Request) {
     const body = postSchema.parse(await req.json());
     const userId = parseInt(user.id, 10);
     const fillerRole = roleToFillerRole(user.role);
+
+    if (body.action === "submit" && (await getSetting("measurement_round_open")) === "0") {
+      return jsonError("جولة القياس مغلقة حالياً — يمكن حفظ القياس كمسودة فقط", 400);
+    }
 
     const requirement = await db.measurementRequirement.findUnique({
       where: { id: body.requirementId },
@@ -110,6 +115,22 @@ export async function POST(req: Request) {
           : "لا يمكن تعديل القياس في حالته الحالية",
         400
       );
+    }
+
+    // لا يُرفع مؤشر للتقديم بلا شاهد نشط
+    if (body.action === "submit") {
+      if (!existing) {
+        return jsonError(
+          "احفظ مسودة وارفع شاهدًا واحدًا على الأقل قبل التقديم — لا يُقبل قياس بلا شواهد",
+          400
+        );
+      }
+      const evidenceCount = await db.evidence.count({
+        where: { measurementPeriodId: existing.id, status: "ACTIVE" },
+      });
+      if (evidenceCount < 1) {
+        return jsonError("يجب رفع شاهد واحد على الأقل قبل التقديم", 400);
+      }
     }
 
     // تقديم المدير يتجاوز الاعتماد المبدئي (لا اعتماد ذاتي) → مباشرة بانتظار النهائي

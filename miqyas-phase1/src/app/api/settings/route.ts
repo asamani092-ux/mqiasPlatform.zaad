@@ -13,8 +13,13 @@ const ALLOWED_KEYS = [
   "action_escalation_days",
   "current_year",
   "current_period",
+  "measurement_round_year",
+  "measurement_round_period",
+  "measurement_round_open",
   "notify_from_email",
 ] as const;
+
+const PERIOD_VALUES = ["Q1", "Q2", "Q3", "Q4", "H1", "H2", "Y"] as const;
 
 const postSchema = z
   .object({
@@ -26,6 +31,18 @@ const postSchema = z
       // يُسمح بالإفراغ (عودة لقيمة .env) أو بريد صالح
       if (data.value.trim() && !z.string().email().safeParse(data.value.trim()).success) {
         ctx.addIssue({ code: "custom", message: "بريد المرسل غير صالح" });
+      }
+    } else if (data.key === "current_year" || data.key === "measurement_round_year") {
+      if (!/^\d{4}$/.test(data.value.trim())) {
+        ctx.addIssue({ code: "custom", message: "السنة غير صالحة" });
+      }
+    } else if (data.key === "current_period" || data.key === "measurement_round_period") {
+      if (!PERIOD_VALUES.includes(data.value as (typeof PERIOD_VALUES)[number])) {
+        ctx.addIssue({ code: "custom", message: "الفترة غير صالحة" });
+      }
+    } else if (data.key === "measurement_round_open") {
+      if (data.value !== "0" && data.value !== "1") {
+        ctx.addIssue({ code: "custom", message: "حالة الجولة غير صالحة" });
       }
     } else if (data.value.length === 0) {
       ctx.addIssue({ code: "custom", message: "القيمة مطلوبة" });
@@ -39,6 +56,9 @@ const LABELS: Record<string, string> = {
   action_escalation_days: "مهلة تصعيد الإجراءات المتأخرة (أيام)",
   current_year: "سنة القياس الحالية",
   current_period: "الفترة الحالية",
+  measurement_round_year: "سنة جولة القياس",
+  measurement_round_period: "فترة جولة القياس",
+  measurement_round_open: "فتح جولة القياس",
   notify_from_email: "بريد المرسل للتنبيهات",
 };
 

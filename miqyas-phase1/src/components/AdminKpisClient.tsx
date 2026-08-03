@@ -68,6 +68,8 @@ export default function AdminKpisClient({
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [ownerFilter, setOwnerFilter] = useState("all");
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState<number | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -100,16 +102,28 @@ export default function AdminKpisClient({
     return users.filter((u) => u.departmentId === deptId);
   }, [form.departmentId, users]);
 
+  const filterOwnerOptions = useMemo(() => {
+    if (departmentFilter === "all") return users;
+    const deptId = parseInt(departmentFilter, 10);
+    return users.filter((u) => u.departmentId === deptId);
+  }, [departmentFilter, users]);
+
+  const visibleKpis = useMemo(() => {
+    const ownerId = ownerFilter === "all" ? null : parseInt(ownerFilter, 10);
+    return kpis.filter((k) => k.active && (ownerId == null || k.ownerId === ownerId));
+  }, [kpis, ownerFilter]);
+
   const load = useCallback(async () => {
     const params = new URLSearchParams({ active: "all" });
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (typeFilter !== "all") params.set("type", typeFilter);
+    if (departmentFilter !== "all") params.set("departmentId", departmentFilter);
     const res = await fetch(`/api/kpis?${params.toString()}`);
     if (res.ok) {
       const data = await res.json();
       setKpis(data.kpis);
     }
-  }, [debouncedSearch, typeFilter]);
+  }, [debouncedSearch, departmentFilter, typeFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -242,6 +256,35 @@ export default function AdminKpisClient({
               <option value="all">كل الأنواع</option>
               <option value="STRATEGIC">استراتيجي</option>
               <option value="OPERATIONAL">تشغيلي</option>
+            </select>
+            <select
+              className="input-field"
+              style={{ width: "auto" }}
+              value={departmentFilter}
+              onChange={(e) => {
+                setDepartmentFilter(e.target.value);
+                setOwnerFilter("all");
+              }}
+            >
+              <option value="all">كل الإدارات</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            <select
+              className="input-field"
+              style={{ width: "auto" }}
+              value={ownerFilter}
+              onChange={(e) => setOwnerFilter(e.target.value)}
+            >
+              <option value="all">كل المسؤولين</option>
+              {filterOwnerOptions.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
             </select>
             <input
               className="input-field"
@@ -442,7 +485,7 @@ export default function AdminKpisClient({
                 </tr>
               </thead>
               <tbody>
-                {kpis.filter((k) => k.active).map((k) => (
+                {visibleKpis.map((k) => (
                   <tr key={k.id}>
                     <td><code>{k.code}</code></td>
                     <td>{k.name}</td>
@@ -465,6 +508,13 @@ export default function AdminKpisClient({
                     </td>
                   </tr>
                 ))}
+                {visibleKpis.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-muted">
+                      لا توجد مؤشرات مطابقة للفلاتر الحالية.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
             {kpis.some((k) => !k.active) && (

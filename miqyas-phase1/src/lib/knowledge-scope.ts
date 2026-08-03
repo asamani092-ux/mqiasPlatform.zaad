@@ -15,9 +15,24 @@ export function scopedKnowledgeWhere(user: SessionUser): Record<string, unknown>
   }
 }
 
+/** الفترة السابقة لنفس نوع الدورية — O(1) زمنًا ومكانًا */
 export function previousPeriod(year: number, period: Period): { year: number; period: Period } {
-  const order: Period[] = ["Q1", "Q2", "Q3", "Q4", "H1", "H2", "Y"];
-  const idx = order.indexOf(period);
-  if (idx <= 0) return { year: year - 1, period: period === "Q1" ? "Q4" : order[idx - 1] ?? "Y" };
-  return { year, period: order[idx - 1]! };
+  switch (period) {
+    case "Q1":
+      return { year: year - 1, period: "Q4" };
+    case "Q2":
+      return { year, period: "Q1" };
+    case "Q3":
+      return { year, period: "Q2" };
+    case "Q4":
+      return { year, period: "Q3" };
+    case "H1":
+      return { year: year - 1, period: "H2" };
+    case "H2":
+      return { year, period: "H1" };
+    case "Y":
+      return { year: year - 1, period: "Y" };
+    default:
+      return { year: year - 1, period: "Y" };
+  }
 }

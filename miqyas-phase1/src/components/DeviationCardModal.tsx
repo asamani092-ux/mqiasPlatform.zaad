@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, X } from "lucide-react";
+import { Download, Plus, Trash2, X } from "lucide-react";
 import {
   ACTION_STATUS_BADGE,
   ACTION_STATUS_LABEL,
@@ -56,14 +56,14 @@ export default function DeviationCardModal({
     setEditReasons(card.reasons);
   }, [card]);
 
-  async function updateCard(status?: string) {
+  async function updateCard(status?: string, forceClose = false) {
     setSaving(true);
     setMsg("");
     try {
       const res = await fetch(`/api/deviation/${card.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, reasons: editReasons }),
+        body: JSON.stringify({ status, reasons: editReasons, forceClose }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -99,6 +99,25 @@ export default function DeviationCardModal({
     }
   }
 
+  async function deleteAction(actionId: number) {
+    if (!window.confirm("حذف هذا الإجراء التصحيحي؟")) return;
+    setSaving(true);
+    setMsg("");
+    try {
+      const res = await fetch(`/api/deviation/${card.id}/actions/${actionId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        await onUpdated();
+      } else {
+        const data = await res.json();
+        setMsg(data.error || "فشل حذف الإجراء");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function updateAction(actionId: number, status: string) {
     setSaving(true);
     try {
@@ -118,6 +137,17 @@ export default function DeviationCardModal({
     document.title = `${card.kpi.name} — بطاقة انحراف`;
     window.print();
     document.title = prevTitle;
+  }
+
+  async function closeCard() {
+    const hasOpenActions = card.actions.some((a) => a.status !== "DONE");
+    if (
+      hasOpenActions &&
+      !window.confirm("توجد إجراءات تصحيحية غير مكتملة. هل تريد إقفال البطاقة رغم ذلك؟")
+    ) {
+      return;
+    }
+    await updateCard("CLOSED", hasOpenActions);
   }
 
   return (
@@ -185,7 +215,7 @@ export default function DeviationCardModal({
                 <th>الإجراء</th>
                 <th>المسؤول</th>
                 <th>الإطار الزمني</th>
-                <th>الحالة</th>
+                <th>{canManage ? "الحالة / إجراء" : "الحالة"}</th>
               </tr>
             </thead>
             <tbody>
@@ -196,19 +226,31 @@ export default function DeviationCardModal({
                   <td>{new Date(a.dueDate).toLocaleDateString("ar-SA")}</td>
                   <td>
                     {canManage ? (
-                      <select
-                        className="input-field"
-                        style={{ width: "auto", fontSize: ".75rem" }}
-                        value={a.status}
-                        disabled={saving}
-                        onChange={(e) => updateAction(a.id, e.target.value)}
-                      >
-                        {Object.entries(ACTION_STATUS_LABEL).map(([k, v]) => (
-                          <option key={k} value={k}>
-                            {v}
-                          </option>
-                        ))}
-                      </select>
+                      <div style={{ display: "flex", gap: ".35rem", flexWrap: "wrap", alignItems: "center" }}>
+                        <select
+                          className="input-field"
+                          style={{ width: "auto", fontSize: ".75rem" }}
+                          value={a.status}
+                          disabled={saving}
+                          onChange={(e) => updateAction(a.id, e.target.value)}
+                        >
+                          {Object.entries(ACTION_STATUS_LABEL).map(([k, v]) => (
+                            <option key={k} value={k}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          disabled={saving}
+                          onClick={() => deleteAction(a.id)}
+                          aria-label="حذف الإجراء"
+                          title="حذف الإجراء"
+                        >
+                          <Trash2 {...ICON_PROPS} />
+                        </button>
+                      </div>
                     ) : (
                       <span className={ACTION_STATUS_BADGE[a.status] || "badge-secondary"}>
                         {ACTION_STATUS_LABEL[a.status] || a.status}
@@ -217,93 +259,91 @@ export default function DeviationCardModal({
                   </td>
                 </tr>
               ))}
+              {canManage && (
+                <tr className="no-print">
+                  <td>
+                    <input
+                      className="input-field"
+                      placeholder="وصف الإجراء"
+                      value={newAction.description}
+                      disabled={saving}
+                      onChange={(e) => setNewAction({ ...newAction, description: e.target.value })}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="input-field"
+                      placeholder="المسؤول"
+                      value={newAction.responsibleName}
+                      disabled={saving}
+                      onChange={(e) => setNewAction({ ...newAction, responsibleName: e.target.value })}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="input-field"
+                      type="date"
+                      value={newAction.dueDate}
+                      disabled={saving}
+                      onChange={(e) => setNewAction({ ...newAction, dueDate: e.target.value })}
+                    />
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn-secondary btn-sm"
+                      disabled={saving || !newAction.description.trim() || !newAction.dueDate}
+                      onClick={addAction}
+                    >
+                      <Plus {...ICON_PROPS} />
+                      إضافة
+                    </button>
+                  </td>
+                </tr>
+              )}
+              {!canManage && card.actions.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="text-muted">
+                    لا توجد إجراءات تصحيحية.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
-
-          {canManage && (
-            <div className="field-grid no-print" style={{ marginBottom: "1rem" }}>
-              <div className="field-cell field-cell-control">
-                <label className="field-cell-label">إجراء جديد</label>
-                <input
-                  className="input-field"
-                  placeholder="وصف الإجراء"
-                  value={newAction.description}
-                  disabled={saving}
-                  onChange={(e) => setNewAction({ ...newAction, description: e.target.value })}
-                />
-              </div>
-              <div className="field-cell field-cell-control">
-                <label className="field-cell-label">المسؤول</label>
-                <input
-                  className="input-field"
-                  placeholder="المسؤول"
-                  value={newAction.responsibleName}
-                  disabled={saving}
-                  onChange={(e) => setNewAction({ ...newAction, responsibleName: e.target.value })}
-                />
-              </div>
-              <div className="field-cell field-cell-control">
-                <label className="field-cell-label">تاريخ الاستحقاق</label>
-                <input
-                  className="input-field"
-                  type="date"
-                  value={newAction.dueDate}
-                  disabled={saving}
-                  onChange={(e) => setNewAction({ ...newAction, dueDate: e.target.value })}
-                />
-              </div>
-            </div>
-          )}
         </div>
 
-        <div className="modal-footer no-print" style={{ display: "flex", flexWrap: "wrap", gap: ".5rem", justifyContent: "flex-end" }}>
-          {canManage && (
-            <>
+        <div className="modal-footer no-print" style={{ display: "flex", flexWrap: "wrap", gap: ".75rem", alignItems: "center" }}>
+          <div style={{ flex: "1 1 160px", display: "flex", justifyContent: "flex-start" }}>
+            {canManage && (
               <button
                 type="button"
                 className="btn-primary btn-sm"
                 disabled={saving}
                 onClick={() => updateCard()}
               >
-                حفظ الأسباب
+                حفظ كمسودة
               </button>
-              {card.status !== "IN_PROGRESS" && card.status !== "CLOSED" && (
-                <button
-                  type="button"
-                  className="btn-secondary btn-sm"
-                  disabled={saving}
-                  onClick={() => updateCard("IN_PROGRESS")}
-                >
-                  بدء المعالجة
-                </button>
-              )}
-              {card.status !== "CLOSED" && (
+            )}
+          </div>
+          <div style={{ flex: "1 1 180px", display: "flex", justifyContent: "center" }}>
+            {canManage && card.status !== "CLOSED" && (
                 <button
                   type="button"
                   className="btn-danger btn-sm"
+                  style={{ fontSize: ".9rem", padding: ".55rem 1rem" }}
                   disabled={saving}
-                  onClick={() => updateCard("CLOSED")}
+                  onClick={closeCard}
                 >
-                  إغلاق البطاقة
+                  إقفال البطاقة
                 </button>
-              )}
-              <button
-                type="button"
-                className="btn-secondary btn-sm"
-                disabled={saving}
-                onClick={addAction}
-              >
-                إضافة إجراء
-              </button>
-            </>
-          )}
-          <button type="button" className="btn-primary btn-sm" disabled={saving} onClick={exportPdf}>
-            <Download {...ICON_PROPS} />
-            تصدير PDF
-          </button>
-          <button type="button" className="btn-secondary btn-sm" disabled={saving} onClick={onClose}>
-            إغلاق
-          </button>
+            )}
+          </div>
+          <div style={{ flex: "1 1 160px", display: "flex", justifyContent: "flex-end" }}>
+            <button type="button" className="btn-primary btn-sm" disabled={saving} onClick={exportPdf}>
+              <Download {...ICON_PROPS} />
+              تصدير PDF
+            </button>
+          </div>
         </div>
       </div>
     </div>

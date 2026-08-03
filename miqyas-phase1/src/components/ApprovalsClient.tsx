@@ -9,10 +9,20 @@ import { notifyToast } from "@/lib/ui-toast";
 import ReviewSmartSearch from "@/components/ui/ReviewSmartSearch";
 import ReviewQueueCards from "@/components/ui/ReviewQueueCards";
 import ReviewWorkbenchModal, {
+  type ReturnTarget,
   type ReviewWorkbenchItem,
 } from "@/components/ui/ReviewWorkbenchModal";
 import type { Decision, FieldDecisions } from "@/lib/review-feedback";
 import { notesCardSnippet } from "@/lib/review-feedback";
+
+type PreviousPeriodInfo = {
+  year: number;
+  period: string;
+  actualValue: number | null;
+  measurementPeriodId: number | null;
+  approvalStatus: string | null;
+  analysisHref: string;
+};
 
 type Entry = {
   id: number;
@@ -25,13 +35,16 @@ type Entry = {
   approvalStatus?: string;
   rejectReason?: string | null;
   reviewFeedback?: unknown;
+  targetValue?: number | null;
+  gap?: number | null;
+  previousPeriod?: PreviousPeriodInfo | null;
   requirement: {
     code: string;
     name: string;
     unit: string;
     requiredData: string | null;
     owner: { id: number; name: string; email: string } | null;
-    department: { name: string } | null;
+    department: { id?: number; name: string } | null;
     kpis: { id: number; code: string; name: string; type: string }[];
   };
   employee: { id: number; name: string; email: string; role?: string };
@@ -45,7 +58,7 @@ type Entry = {
   }[];
 };
 
-type QueueMode = "pending" | "final";
+type QueueMode = "pending" | "final" | "closure";
 
 type CardItem = Entry & {
   code: string;
@@ -59,6 +72,15 @@ type CardItem = Entry & {
   awaiting: boolean;
 };
 
+type ClosureRow = {
+  departmentId: number;
+  departmentName: string;
+  total: number;
+  finalApproved: number;
+  remaining: number;
+  partial: number;
+};
+
 function evidencePayload(map: Record<number, Decision>) {
   return Object.entries(map)
     .filter(([, d]) => d === "accept" || d === "reject")
@@ -68,26 +90,40 @@ function evidencePayload(map: Record<number, Decision>) {
     }));
 }
 
-/** نص تأكيد إلغاء الاعتماد — متوافق مع API (مدير→مسودة، غيره→مراجعة إدارة) */
-function revokeFinalConfirmMessage(enteredByRole?: string): string {
-  if (enteredByRole === "DEPT_MANAGER") {
-    return "سيُلغى الاعتماد النهائي وتُعاد القيمة مسودةً لمدخل المدير، وتختفي من لوحات التحليل حتى يُعتمد نهائيًا من جديد. السبب مطلوب. متابعة؟";
+function revokeFinalConfirmMessage(returnTarget: ReturnTarget): string {
+  if (returnTarget === "dept_review") {
+    return "سيُلغى الاعتماد النهائي ويُعاد القياس بانتظار مراجعة الإدارة، وتختفي القيمة من لوحات التحليل. السبب مطلوب. متابعة؟";
   }
-  return "سيُلغى الاعتماد النهائي ويُعاد القياس بانتظار مراجعة الإدارة، وتختفي القيمة من لوحات التحليل حتى يُعتمد نهائيًا من جديد. السبب مطلوب. متابعة؟";
+  return "سيُلغى الاعتماد النهائي وتُعاد القيمة مسودةً للموظف، مع إشعار المالك والمدير. تختفي من لوحات التحليل حتى الاعتماد النهائي من جديد. متابعة؟";
 }
 
 export default function ApprovalsClient() {
   const searchParams = useSearchParams();
   const [queue, setQueue] = useState<QueueMode>("pending");
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [closureRows, setClosureRows] = useState<ClosureRow[]>([]);
+  const [closureMeta, setClosureMeta] = useState<{ year: number; period: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [remindingDeptId, setRemindingDeptId] = useState<number | null>(null);
   const [openId, setOpenId] = useState<number | null>(null);
   const deepLinkConsumed = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setOpenId(null);
+    if (queue === "closure") {
+      const res = await fetch("/api/approvals/closure-progress");
+      if (res.ok) {
+        const data = await res.json();
+        setClosureRows(data.rows ?? []);
+        setClosureMeta({ year: data.year, period: data.period });
+      } else if (res.status === 403) {
+        notifyToast.error("متابعة الإغلاق لمشرف النظام فقط");
+      }
+      setLoading(false);
+      return;
+    }
     const res = await fetch(`/api/approvals?queue=${queue}`);
     if (res.ok) {
       const data = await res.json();
@@ -104,12 +140,12 @@ export default function ApprovalsClient() {
 
   // فتح القياس القادم من رابط الإشعار/البريد (?mp=) بعد تحميل القائمة — مرة واحدة
   useEffect(() => {
-    if (deepLinkConsumed.current || loading) return;
+    if (deepLinkConsumed.current || loading || queue === "closure") return;
     const mp = parseInt(searchParams.get("mp") ?? "", 10);
     if (Number.isNaN(mp)) return;
     deepLinkConsumed.current = true;
     if (entries.some((e) => e.id === mp)) setOpenId(mp);
-  }, [loading, entries, searchParams]);
+  }, [loading, entries, searchParams, queue]);
 
   const cards: CardItem[] = useMemo(
     () =>
@@ -154,6 +190,14 @@ export default function ApprovalsClient() {
         howHappened: openEntry.howHappened,
         priorNotes: openEntry.rejectReason,
         evidences: openEntry.evidences,
+        gapContext:
+          queue === "pending"
+            ? {
+                targetValue: openEntry.targetValue ?? null,
+                gap: openEntry.gap ?? null,
+                previousPeriod: openEntry.previousPeriod ?? null,
+              }
+            : null,
       }
     : null;
 
@@ -166,6 +210,7 @@ export default function ApprovalsClient() {
       fieldDecisions: FieldDecisions;
       evidenceDecisions: Record<number, Decision>;
       notes?: string;
+      returnTarget?: ReturnTarget;
     }
   ) {
     if (!openEntry) return;
@@ -180,7 +225,7 @@ export default function ApprovalsClient() {
     }
     if (
       action === "revoke_final" &&
-      !window.confirm(revokeFinalConfirmMessage(openEntry.employee.role))
+      !window.confirm(revokeFinalConfirmMessage(payload.returnTarget ?? "owner_draft"))
     ) {
       return;
     }
@@ -199,6 +244,7 @@ export default function ApprovalsClient() {
         evidenceDecisions:
           action === "revoke_final" ? undefined : evidencePayload(payload.evidenceDecisions),
         notes: payload.notes,
+        returnTarget: action === "revoke_final" ? payload.returnTarget : undefined,
       }),
     });
     setActing(false);
@@ -219,12 +265,32 @@ export default function ApprovalsClient() {
     }
   }
 
+  async function remindDepartment(departmentId: number) {
+    setRemindingDeptId(departmentId);
+    const res = await fetch("/api/approvals/closure-progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ departmentId }),
+    });
+    setRemindingDeptId(null);
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      notifyToast.success(
+        data.notified != null ? `أُرسل تذكير لـ ${data.notified} مسؤولًا` : "أُرسل التذكير",
+        { duration: "normal" }
+      );
+    } else {
+      const err = await res.json().catch(() => ({}));
+      notifyToast.error(err.error || "فشل إرسال التذكير");
+    }
+  }
+
   return (
     <>
       <div className="topbar">
         <div>
           <h1>الاعتماد النهائي</h1>
-          <div className="text-muted">مراجعة · اعتماد · إلغاء اعتماد نهائي — مشرف النظام</div>
+          <div className="text-muted">مراجعة · اعتماد · إلغاء اعتماد نهائي · متابعة الإغلاق</div>
         </div>
       </div>
 
@@ -243,16 +309,73 @@ export default function ApprovalsClient() {
         >
           معتمد نهائياً
         </button>
+        <button
+          type="button"
+          className={queue === "closure" ? "active" : ""}
+          onClick={() => setQueue("closure")}
+        >
+          متابعة الإغلاق
+        </button>
       </div>
 
       <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
         {queue === "pending"
-          ? "افتح البطاقة، قرّر قبول/رفض كل حقل وشاهد، ثم اعتمد نهائياً أو أعد للتعديل."
-          : "افتح قياساً معتمداً نهائياً لإلغائه بسبب واضح — تختفي القيمة من اللوحات، ويعود القياس لمراجعة الإدارة (أو مسودة إن كان المدخل مديراً)."}
+          ? "افتح البطاقة، راجع المستهدف/المتحقق/الفجوة، قرّر قبول/رفض كل حقل وشاهد، ثم اعتمد نهائياً أو أعد للتعديل."
+          : queue === "final"
+            ? "افتح قياساً معتمداً نهائياً لإلغائه — اختر مسودة للموظف أو إعادة لمراجعة المدير."
+            : `متابعة إغلاق الجولة${
+                closureMeta
+                  ? ` — ${PERIOD_LABEL[closureMeta.period as Period] || closureMeta.period} ${closureMeta.year}`
+                  : ""
+              }.`}
       </div>
 
       {loading ? (
         <p className="text-muted">جاري التحميل...</p>
+      ) : queue === "closure" ? (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>الإدارة</th>
+                <th>عدد المؤشرات</th>
+                <th>متحقق (نهائي)</th>
+                <th>متبقي</th>
+                <th>متحقق جزئي</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {closureRows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-muted">
+                    لا بيانات لمتابعة الإغلاق في جولة القياس الحالية.
+                  </td>
+                </tr>
+              ) : (
+                closureRows.map((row) => (
+                  <tr key={row.departmentId}>
+                    <td>{row.departmentName}</td>
+                    <td>{row.total}</td>
+                    <td>{row.finalApproved}</td>
+                    <td>{row.remaining}</td>
+                    <td>{row.partial}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-sm"
+                        disabled={row.remaining === 0 || remindingDeptId === row.departmentId}
+                        onClick={() => void remindDepartment(row.departmentId)}
+                      >
+                        {remindingDeptId === row.departmentId ? "جاري الإرسال..." : "تذكير"}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <ReviewSmartSearch items={cards}>
           {(filtered) => (

@@ -25,15 +25,30 @@ export type DepartmentWithSections = {
   sections: { id: number; sectionNo: number; name: string; code: string }[];
 };
 
+export type DashboardDeviationKpi = {
+  kpiId: number;
+  code: string;
+  name: string;
+  ownerLabel: string | null;
+  departmentName: string | null;
+  target: number | null;
+  actual: number;
+  achievementPct: number | null;
+  deviationPct: number | null;
+  status: KpiStatus;
+};
+
 export default function DashboardClient({
   overview,
   byStatus,
+  deviationKpis,
   userName,
   departments,
   canManageStructure,
 }: {
   overview: DashboardOverview;
   byStatus: Record<string, number>;
+  deviationKpis: DashboardDeviationKpi[];
   userName: string;
   departments: DepartmentWithSections[];
   canManageStructure: boolean;
@@ -127,6 +142,70 @@ export default function DashboardClient({
             <div className="stat-lbl" style={{ fontSize: ".72rem", marginTop: ".15rem" }}>{s.lbl}</div>
           </div>
         ))}
+      </div>
+
+      <div className="card" style={{ marginBottom: "1rem", overflowX: "auto" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: ".75rem",
+            flexWrap: "wrap",
+            alignItems: "center",
+            marginBottom: ".75rem",
+          }}
+        >
+          <div>
+            <h3 style={{ marginBottom: ".25rem" }}>مؤشرات الانحراف</h3>
+            <div className="text-muted" style={{ fontSize: ".82rem" }}>
+              المؤشرات المعتمدة نهائياً بحالة معرّض للخطر أو حرج.
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
+            <span className="badge-warning">
+              {STATUS_LABEL.AT_RISK} · {deviationKpis.filter((k) => k.status === "AT_RISK").length}
+            </span>
+            <span className="badge-danger">
+              {STATUS_LABEL.CRITICAL} · {deviationKpis.filter((k) => k.status === "CRITICAL").length}
+            </span>
+          </div>
+        </div>
+        {deviationKpis.length === 0 ? (
+          <p className="text-muted">لا توجد مؤشرات انحراف معتمدة لهذه الفترة.</p>
+        ) : (
+          <table className="tmkeen-table">
+            <thead>
+              <tr>
+                <th>الرمز</th>
+                <th>المؤشر</th>
+                <th>الإدارة</th>
+                <th>المسؤول</th>
+                <th>المستهدف</th>
+                <th>المتحقق</th>
+                <th>الإنجاز</th>
+                <th>الانحراف</th>
+                <th>الحالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deviationKpis.map((k) => (
+                <tr key={k.kpiId}>
+                  <td><code>{k.code}</code></td>
+                  <td>{k.name}</td>
+                  <td>{k.departmentName || "—"}</td>
+                  <td>{k.ownerLabel || "—"}</td>
+                  <td>{k.target ?? "—"}</td>
+                  <td>{k.actual}</td>
+                  <td>{pct(k.achievementPct)}</td>
+                  <td>{pct(k.deviationPct)}</td>
+                  <td>
+                    <span className={STATUS_BADGE[k.status]}>{STATUS_LABEL[k.status]}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: "1rem" }}>

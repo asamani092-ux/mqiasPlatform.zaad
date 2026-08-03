@@ -113,6 +113,15 @@ export default function MyKpisClient({
       notifyToast.error("أدخل القيمة الفعلية");
       return;
     }
+    if (action === "submit") {
+      const item = items.find((it) => it.requirement.id === requirementId);
+      const activeCount =
+        item?.measurement?.evidences.filter((e) => e.status !== "REJECTED").length ?? 0;
+      if (!item?.measurement || activeCount < 1) {
+        notifyToast.error("احفظ مسودة وارفع شاهدًا واحدًا على الأقل قبل التقديم");
+        return;
+      }
+    }
     setSaving(requirementId);
     const res = await fetch("/api/my/measurements", {
       method: "POST",
@@ -346,7 +355,20 @@ export default function MyKpisClient({
                             }
                             variant="primary"
                             showLabel
-                            disabled={saving === item.requirement.id || locked}
+                            disabled={
+                              saving === item.requirement.id ||
+                              locked ||
+                              !item.measurement ||
+                              item.measurement.evidences.filter((e) => e.status !== "REJECTED")
+                                .length < 1
+                            }
+                            title={
+                              !item.measurement ||
+                              item.measurement.evidences.filter((e) => e.status !== "REJECTED")
+                                .length < 1
+                                ? "ارفع شاهدًا نشطًا واحدًا على الأقل قبل التقديم"
+                                : undefined
+                            }
                             onClick={() => void save(item.requirement.id, "submit")}
                           />
                           <IconActionButton
@@ -488,7 +510,17 @@ export default function MyKpisClient({
                               <button
                                 type="button"
                                 className="btn-primary btn-sm"
-                                disabled={saving === item.requirement.id}
+                                disabled={
+                                  saving === item.requirement.id ||
+                                  item.measurement!.evidences.filter((e) => e.status !== "REJECTED")
+                                    .length < 1
+                                }
+                                title={
+                                  item.measurement!.evidences.filter((e) => e.status !== "REJECTED")
+                                    .length < 1
+                                    ? "ارفع شاهدًا نشطًا واحدًا على الأقل قبل التقديم"
+                                    : undefined
+                                }
                                 onClick={() => void save(item.requirement.id, "submit")}
                               >
                                 إعادة التقديم بعد التصحيح

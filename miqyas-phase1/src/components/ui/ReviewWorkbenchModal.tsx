@@ -21,6 +21,20 @@ export type ReviewEvidence = {
   rejectReason?: string | null;
 };
 
+export type ReturnTarget = "owner_draft" | "dept_review";
+
+export type ReviewGapContext = {
+  targetValue: number | null;
+  gap: number | null;
+  previousPeriod: {
+    year: number;
+    period: string;
+    actualValue: number | null;
+    measurementPeriodId: number | null;
+    analysisHref: string;
+  } | null;
+};
+
 export type ReviewWorkbenchItem = {
   measurementPeriodId: number;
   code: string;
@@ -41,6 +55,18 @@ export type ReviewWorkbenchItem = {
   /** ملاحظات سابقة من إرجاع/إلغاء */
   priorNotes?: string | null;
   evidences: ReviewEvidence[];
+  /** سياق الفجوة للاعتماد النهائي */
+  gapContext?: ReviewGapContext | null;
+};
+
+type ReturnPayload = {
+  actualValue: number;
+  whatHappened: string;
+  howHappened: string;
+  fieldDecisions: FieldDecisions;
+  evidenceDecisions: Record<number, Decision>;
+  notes: string;
+  returnTarget?: ReturnTarget;
 };
 
 type Props = {
@@ -60,14 +86,7 @@ type Props = {
     fieldDecisions: FieldDecisions;
     evidenceDecisions: Record<number, Decision>;
   }) => void;
-  onReturn: (payload: {
-    actualValue: number;
-    whatHappened: string;
-    howHappened: string;
-    fieldDecisions: FieldDecisions;
-    evidenceDecisions: Record<number, Decision>;
-    notes: string;
-  }) => void;
+  onReturn: (payload: ReturnPayload) => void;
 };
 
 function DecisionButtons({
@@ -126,6 +145,7 @@ export default function ReviewWorkbenchModal({
   const [evidenceDecisions, setEvidenceDecisions] = useState<Record<number, Decision>>({});
   const [notes, setNotes] = useState("");
   const [previewId, setPreviewId] = useState<number | null>(null);
+  const [returnTarget, setReturnTarget] = useState<ReturnTarget>("owner_draft");
 
   const activeEvidences = useMemo(
     () => (item?.evidences ?? []).filter((e) => e.status !== "REJECTED"),
@@ -144,6 +164,7 @@ export default function ReviewWorkbenchModal({
     }
     setEvidenceDecisions(ed);
     setNotes("");
+    setReturnTarget("owner_draft");
     setPreviewId(item.evidences.find((e) => e.status !== "REJECTED")?.id ?? null);
   }, [item]);
 
@@ -158,6 +179,12 @@ export default function ReviewWorkbenchModal({
     : hasReject && notes.trim().length >= 3;
   const showNotes = revokeMode || hasReject;
   const editValues = allowEditValues && !revokeMode;
+  const gapCtx = !revokeMode ? item.gapContext : null;
+  const hasGap = gapCtx != null && gapCtx.gap != null && gapCtx.gap !== 0;
+  const prevSuggest =
+    hasGap && gapCtx?.previousPeriod?.actualValue != null
+      ? gapCtx.previousPeriod.actualValue
+      : null;
 
   function setField(key: FieldKey, d: Exclude<Decision, null>) {
     setFields((prev) => ({ ...prev, [key]: d }));
@@ -211,9 +238,70 @@ export default function ReviewWorkbenchModal({
 
         {revokeMode ? (
           <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
-            {item.enteredByRole === "DEPT_MANAGER"
-              ? "إلغاء الاعتماد النهائي يعيد القيمة مسودةً لمدخل المدير، ويزيلها من لوحات التحليل حتى الاعتماد النهائي من جديد. السبب مطلوب."
-              : "إلغاء الاعتماد النهائي يعيد القياس بانتظار مراجعة الإدارة، ويزيل القيمة من لوحات التحليل حتى الاعتماد النهائي من جديد. السبب مطلوب."}
+            اختر وجهة الإلغاء ثم أدخل السبب. تختفي القيمة من لوحات التحليل حتى الاعتماد النهائي من جديد.
+          </div>
+        ) : null}
+
+        {gapCtx ? (
+          <div
+            className="review-field-block"
+            style={{
+              marginBottom: ".75rem",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+              gap: ".75rem",
+            }}
+          >
+            <div>
+              <div className="label-field">المستهدف</div>
+              <div className="review-value-box">
+                {gapCtx.targetValue != null ? `${gapCtx.targetValue} ${item.unit}` : "—"}
+              </div>
+            </div>
+            <div>
+              <div className="label-field">المتحقق</div>
+              <div className="review-value-box">
+                {actual || (item.actualValue != null ? String(item.actualValue) : "—")}
+              </div>
+            </div>
+            <div>
+              <div className="label-field">الفجوة</div>
+              <div className="review-value-box">
+                {gapCtx.gap != null ? `${gapCtx.gap} ${item.unit}` : "—"}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {hasGap ? (
+          <div className="alert alert-info" style={{ marginBottom: ".75rem" }}>
+            <div style={{ marginBottom: ".5rem" }}>
+              فجوة غير صفرية
+              {prevSuggest != null
+                ? ` — اقتراح من الفترة السابقة: ${prevSuggest} ${item.unit}`
+                : " — لا توجد قيمة معتمدة للفترة السابقة."}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+              {prevSuggest != null ? (
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={() => setActual(String(prevSuggest))}
+                >
+                  تطبيق اقتراح الفترة السابقة
+                </button>
+              ) : null}
+              {gapCtx?.previousPeriod?.analysisHref ? (
+                <a
+                  className="btn-secondary btn-sm"
+                  href={gapCtx.previousPeriod.analysisHref}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  فتح مؤشر الفترة السابقة
+                </a>
+              ) : null}
+            </div>
           </div>
         ) : null}
 
@@ -341,6 +429,32 @@ export default function ReviewWorkbenchModal({
           )}
         </div>
 
+        {revokeMode ? (
+          <fieldset className="review-field-block" style={{ border: "none", padding: 0, margin: "0 0 .75rem" }}>
+            <legend className="label-field" style={{ marginBottom: ".35rem" }}>
+              وجهة الإلغاء
+            </legend>
+            <label style={{ display: "flex", gap: ".5rem", alignItems: "flex-start", marginBottom: ".4rem" }}>
+              <input
+                type="radio"
+                name="returnTarget"
+                checked={returnTarget === "owner_draft"}
+                onChange={() => setReturnTarget("owner_draft")}
+              />
+              <span>مسودة للموظف قابلة للتعديل (مع إشعار المالك والمدير)</span>
+            </label>
+            <label style={{ display: "flex", gap: ".5rem", alignItems: "flex-start" }}>
+              <input
+                type="radio"
+                name="returnTarget"
+                checked={returnTarget === "dept_review"}
+                onChange={() => setReturnTarget("dept_review")}
+              />
+              <span>إعادة لمراجعة المدير (SUBMITTED — الموظف مقفل حتى إرجاع الإدارة)</span>
+            </label>
+          </fieldset>
+        ) : null}
+
         {showNotes && (
           <div className="review-notes-block">
             <label className="label-field">
@@ -403,6 +517,7 @@ export default function ReviewWorkbenchModal({
                 fieldDecisions: fields,
                 evidenceDecisions,
                 notes: notes.trim(),
+                ...(revokeMode ? { returnTarget } : {}),
               })
             }
           >

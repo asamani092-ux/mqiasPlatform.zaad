@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 const updateSchema = z.object({
   status: z.enum(["OPEN", "IN_PROGRESS", "CLOSED"]).optional(),
   reasons: z.string().min(3).max(5000).optional(),
+  forceClose: z.boolean().optional(),
 });
 
 export async function GET(
@@ -55,8 +56,8 @@ export async function PUT(
     let closedAt = existing.closedAt;
     if (body.status === "CLOSED") {
       const allDone = existing.actions.every((a) => a.status === "DONE");
-      if (!allDone && existing.actions.length > 0) {
-        return jsonError("يجب إغلاق جميع الإجراءات التصحيحية أولاً", 400);
+      if (!allDone && existing.actions.length > 0 && !body.forceClose) {
+        return jsonError("توجد إجراءات تصحيحية غير مكتملة — يلزم تأكيد الإقفال", 400);
       }
       closedAt = new Date();
     }

@@ -15,17 +15,22 @@ export async function notifyMeasurementReturn(params: {
   title: string;
   body: string;
   includeDeptManagers: boolean;
+  /** افتراضي true — يُعطَّل عند إعادة القياس لمراجعة المدير فقط */
+  notifyOwner?: boolean;
 }): Promise<void> {
   const bodyText = `${params.requirementCode} — ${params.requirementName}\n${params.body}`;
   const myLink = `/my?mp=${params.measurementPeriodId}`;
   const deptLink = `/dept-follow?mp=${params.measurementPeriodId}`;
   const linkLabel = `فتح القياس ${params.requirementCode}`;
+  const notifyOwner = params.notifyOwner !== false;
 
   const ownerIds = new Set<number>();
-  if (params.ownerId) ownerIds.add(params.ownerId);
-  // المدخل فقط إن بقي مالكاً (يمرّ بفلتر /my)
-  if (params.enteredById && params.enteredById === params.ownerId) {
-    ownerIds.add(params.enteredById);
+  if (notifyOwner) {
+    if (params.ownerId) ownerIds.add(params.ownerId);
+    // المدخل فقط إن بقي مالكاً (يمرّ بفلتر /my)
+    if (params.enteredById && params.enteredById === params.ownerId) {
+      ownerIds.add(params.enteredById);
+    }
   }
 
   if (ownerIds.size > 0) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
+import { Prisma, type Period } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { can } from "@/lib/rbac";
@@ -17,6 +17,8 @@ import {
 } from "@/lib/review-feedback";
 import { notifyMeasurementReturn } from "@/lib/review-notify";
 import { rebindOwnerIfMissing } from "@/lib/requirement-owner";
+import { previousPeriod } from "@/lib/knowledge-scope";
+import { deviationValue } from "@/lib/kpi";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,8 @@ const postSchema = z
     action: z.enum(["final_approve", "return_for_edit", "revoke_final", "edit"]),
     notes: z.string().max(5000).optional(),
     comment: z.string().max(2000).optional(),
+    /** وجهة الإلغاء: مسودة للموظف أو مراجعة المدير */
+    returnTarget: z.enum(["owner_draft", "dept_review"]).optional(),
     actualValue: z.number().optional(),
     whatHappened: z.string().max(5000).optional().nullable(),
     howHappened: z.string().max(5000).optional().nullable(),
@@ -68,6 +72,7 @@ export async function GET(req: NextRequest) {
       include: {
         requirement: {
           select: {
+            id: true,
             code: true,
             name: true,
             unit: true,
@@ -96,26 +101,96 @@ export async function GET(req: NextRequest) {
       take: 500,
     });
 
+    // أهداف + فترة سابقة دفعة واحدة — O(n) استعلامات مجمّعة لا O(n) متسلسلة
+    const targetOr: { kpiId: number; year: number; period: Period }[] = [];
+    const prevOr: { requirementId: number; year: number; period: Period }[] = [];
+    for (const mp of periods) {
+      const prev = previousPeriod(mp.year, mp.period);
+      prevOr.push({ requirementId: mp.requirement.id, year: prev.year, period: prev.period });
+      for (const k of mp.requirement.kpis) {
+        targetOr.push({ kpiId: k.id, year: mp.year, period: mp.period });
+      }
+    }
+
+    const [targets, prevRows] = await Promise.all([
+      targetOr.length
+        ? db.kpiTarget.findMany({
+            where: { OR: targetOr },
+            select: { kpiId: true, year: true, period: true, targetValue: true },
+          })
+        : Promise.resolve([]),
+      prevOr.length
+        ? db.measurementPeriod.findMany({
+            where: { OR: prevOr },
+            select: {
+              id: true,
+              requirementId: true,
+              year: true,
+              period: true,
+              actualValue: true,
+              approvalStatus: true,
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const targetByKey = new Map(
+      targets.map((t) => [`${t.kpiId}:${t.year}:${t.period}`, t.targetValue] as const)
+    );
+    const prevByReq = new Map(
+      prevRows.map((p) => [`${p.requirementId}:${p.year}:${p.period}`, p] as const)
+    );
+
     return NextResponse.json({
       queue,
-      entries: periods.map((mp) => ({
-        id: mp.id,
-        measurementPeriodId: mp.id,
-        year: mp.year,
-        period: mp.period,
-        actualValue: mp.actualValue,
-        whatHappened: mp.whatHappened,
-        howHappened: mp.howHappened,
-        note: mp.note,
-        approvalStatus: mp.approvalStatus,
-        suggestedWording: mp.suggestedWording,
-        reviewFeedback: mp.reviewFeedback,
-        rejectReason: mp.rejectReason,
-        requirement: mp.requirement,
-        employee: mp.enteredBy,
-        initialApprovedBy: mp.initialApprovedBy,
-        evidences: mp.evidences,
-      })),
+      entries: periods.map((mp) => {
+        const primaryKpi = mp.requirement.kpis[0] ?? null;
+        const targetValue =
+          primaryKpi != null
+            ? targetByKey.get(`${primaryKpi.id}:${mp.year}:${mp.period}`) ?? null
+            : null;
+        const prevKey = previousPeriod(mp.year, mp.period);
+        const prev = prevByReq.get(`${mp.requirement.id}:${prevKey.year}:${prevKey.period}`) ?? null;
+        const gap =
+          targetValue != null ? deviationValue(mp.actualValue, targetValue) : null;
+        return {
+          id: mp.id,
+          measurementPeriodId: mp.id,
+          year: mp.year,
+          period: mp.period,
+          actualValue: mp.actualValue,
+          whatHappened: mp.whatHappened,
+          howHappened: mp.howHappened,
+          note: mp.note,
+          approvalStatus: mp.approvalStatus,
+          suggestedWording: mp.suggestedWording,
+          reviewFeedback: mp.reviewFeedback,
+          rejectReason: mp.rejectReason,
+          targetValue,
+          gap,
+          previousPeriod: prev
+            ? {
+                year: prev.year,
+                period: prev.period,
+                actualValue: prev.actualValue,
+                measurementPeriodId: prev.id,
+                approvalStatus: prev.approvalStatus,
+                analysisHref: `/executive?year=${prev.year}&period=${prev.period}`,
+              }
+            : {
+                year: prevKey.year,
+                period: prevKey.period,
+                actualValue: null as number | null,
+                measurementPeriodId: null as number | null,
+                approvalStatus: null as string | null,
+                analysisHref: `/executive?year=${prevKey.year}&period=${prevKey.period}`,
+              },
+          requirement: mp.requirement,
+          employee: mp.enteredBy,
+          initialApprovedBy: mp.initialApprovedBy,
+          evidences: mp.evidences,
+        };
+      }),
     });
   } catch (e) {
     return handleApiError(e);
@@ -190,7 +265,12 @@ export async function POST(req: NextRequest) {
         revokedFinal: true,
       };
       const rejectReason = `أُلغي الاعتماد النهائي: ${notes}`;
-      const nextStatus = mp.enteredBy.role === "DEPT_MANAGER" ? "DRAFT" : "SUBMITTED";
+      // خيار المشرف: مسودة للموظف، أو إعادة لمراجعة المدير. تقديم المدير → DRAFT دائمًا إن اختير owner_draft.
+      const returnTarget = body.returnTarget ?? "owner_draft";
+      const nextStatus =
+        returnTarget === "dept_review" && mp.enteredBy.role !== "DEPT_MANAGER"
+          ? "SUBMITTED"
+          : "DRAFT";
 
       const updated = await db.$transaction(async (tx) => {
         const current = await tx.measurementPeriod.findUnique({ where: { id: mp.id } });
@@ -246,10 +326,15 @@ export async function POST(req: NextRequest) {
             ? "أُلغي الاعتماد النهائي — بانتظار مراجعة الإدارة"
             : "أُلغي الاعتماد النهائي وأُعيد للتعديل",
         body: rejectReason,
+        // المدير يُشعَر دائمًا عند الإلغاء مع رابط القياس
         includeDeptManagers: true,
+        notifyOwner: nextStatus === "DRAFT",
       });
-      await audit(userId, "REVOKE_FINAL", "MeasurementPeriod", mp.id, { nextStatus });
-      return NextResponse.json({ measurement: updated, nextStatus });
+      await audit(userId, "REVOKE_FINAL", "MeasurementPeriod", mp.id, {
+        nextStatus,
+        returnTarget,
+      });
+      return NextResponse.json({ measurement: updated, nextStatus, returnTarget });
     }
 
     const activeEvidenceIds = mp.evidences.filter((e) => e.status !== "REJECTED").map((e) => e.id);

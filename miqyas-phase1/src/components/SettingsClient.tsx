@@ -8,6 +8,7 @@ import { notifyToast } from "@/lib/ui-toast";
 type Setting = { key: string; label: string; value: string };
 
 const QUARTER_PERIODS: Period[] = ["Q1", "Q2", "Q3", "Q4"];
+const MEASUREMENT_ROUND_PERIODS: Period[] = ["Q1", "Q2", "Q3", "Q4", "H1", "H2", "Y"];
 
 export default function SettingsClient() {
   const [settings, setSettings] = useState<Setting[]>([]);
@@ -82,6 +83,13 @@ export default function SettingsClient() {
     save("current_year", next);
   }
 
+  function onMeasurementRoundYearBlur(e: FocusEvent<HTMLInputElement>) {
+    const next = e.target.value.trim();
+    const current = getValue("measurement_round_year", String(defaults.year));
+    if (!next || next === current) return;
+    save("measurement_round_year", next);
+  }
+
   return (
     <>
       <div className="topbar">
@@ -96,6 +104,59 @@ export default function SettingsClient() {
           <strong>طبقات الاعتماد:</strong> الإدخال عبر شواهد المؤشرات · الاعتماد المبدئي لمدير الإدارة دائماً ·
           الاعتماد النهائي ورفض الصياغة/الشواهد لمشرف النظام فقط. لا يوجد تفويض للاعتماد النهائي لأدوار أخرى.
         </div>
+
+        <section style={{ marginBottom: "1.5rem" }}>
+          <h3 style={{ marginBottom: ".5rem" }}>جولة القياس</h3>
+          <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
+            عند إغلاق الجولة يُسمح بحفظ المسودات فقط، بينما يتوقف تقديم القياسات للاعتماد.
+            {" "}
+            <a href="/admin/report" style={{ fontWeight: 700 }}>تقرير العرض التقديمي</a>
+          </div>
+          <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+            <div>
+              <label className="label-field">سنة جولة القياس</label>
+              <input
+                type="number"
+                className="input-field"
+                style={{ width: 160 }}
+                defaultValue={getValue("measurement_round_year", String(defaults.year))}
+                key={`round-year-${getValue("measurement_round_year", String(defaults.year))}`}
+                onBlur={onMeasurementRoundYearBlur}
+              />
+            </div>
+            <div>
+              <label className="label-field">فترة جولة القياس</label>
+              <select
+                className="input-field"
+                style={{ width: 180 }}
+                value={getValue("measurement_round_period", defaults.period)}
+                onChange={(e) => save("measurement_round_period", e.target.value)}
+              >
+                {MEASUREMENT_ROUND_PERIODS.map((p) => (
+                  <option key={p} value={p}>{PERIOD_LABEL[p]}</option>
+                ))}
+              </select>
+            </div>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: ".45rem",
+                minHeight: "2.45rem",
+                fontWeight: 700,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={getValue("measurement_round_open", "1") !== "0"}
+                onChange={(e) => save("measurement_round_open", e.target.checked ? "1" : "0")}
+              />
+              الجولة مفتوحة للتقديم
+            </label>
+          </div>
+        </section>
+
+        <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px solid var(--border, #e5e7eb)" }} />
 
         <div style={{ marginBottom: "1.25rem" }}>
           <label className="label-field">سنة القياس الحالية</label>
@@ -131,6 +192,9 @@ export default function SettingsClient() {
               ![
                 "current_year",
                 "current_period",
+                "measurement_round_year",
+                "measurement_round_period",
+                "measurement_round_open",
                 "section_head_can_approve",
                 "dept_manager_can_approve",
                 "notify_from_email",
