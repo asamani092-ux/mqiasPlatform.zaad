@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
         : "إرسال رابط الاستعادة";
 
   return (
-    <div className="page-shell">
+    <div className="page-shell login-shell">
       <div className="page-container-narrow">
         <div className="card">
           <div className="login-brand-block">
@@ -57,14 +57,24 @@ export default function ForgotPasswordPage() {
           </div>
 
           <h2 className="login-heading">استعادة كلمة المرور</h2>
-          <p className="text-muted">أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين</p>
+          <p className="login-lead">أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين</p>
 
-          {error && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{error}</div>}
-          {message && <div className="alert alert-success" style={{ marginBottom: "1rem" }}>{message}</div>}
+          {error ? (
+            <div className="alert alert-error" style={{ marginBottom: "var(--space-4)" }} role="alert">
+              {error}
+            </div>
+          ) : null}
+          {message ? (
+            <div className="alert alert-success" style={{ marginBottom: "var(--space-4)" }} role="status">
+              {message}
+            </div>
+          ) : null}
 
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: "1.25rem" }}>
-              <label className="label-field" htmlFor="email">البريد الإلكتروني</label>
+            <div className="login-field">
+              <label className="label-field" htmlFor="email">
+                البريد الإلكتروني
+              </label>
               <input
                 id="email"
                 name="email"
@@ -81,13 +91,13 @@ export default function ForgotPasswordPage() {
             </div>
             <button
               type="submit"
-              className="btn-primary"
-              style={{ width: "100%", marginBottom: "1rem" }}
+              className="btn-primary login-submit"
+              style={{ marginBottom: "var(--space-4)" }}
               disabled={submitState !== "idle"}
             >
               {buttonLabel}
             </button>
-            <Link href="/login" className="text-muted" style={{ fontSize: "0.9rem" }}>
+            <Link href="/login" className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
               العودة لتسجيل الدخول
             </Link>
           </form>
