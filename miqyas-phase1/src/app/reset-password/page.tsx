@@ -66,10 +66,10 @@ function ResetPasswordForm() {
   if (!token) {
     return (
       <>
-        <div className="alert alert-error" style={{ marginBottom: "1rem" }}>
+        <div className="alert alert-error" style={{ marginBottom: "1rem" }} role="alert">
           رابط الاستعادة غير صالح أو منتهي الصلاحية
         </div>
-        <Link href="/forgot-password" className="text-muted" style={{ fontSize: "0.9rem" }}>
+        <Link href="/forgot-password" className="text-muted" style={{ fontSize: "0.875rem" }}>
           طلب رابط جديد
         </Link>
       </>
@@ -79,23 +79,27 @@ function ResetPasswordForm() {
   return (
     <>
       {error ? (
-        <div className="alert alert-error" style={{ marginBottom: "var(--space-4)" }} role="alert">
+        <div className="alert alert-error" style={{ marginBottom: "1rem" }} role="alert">
           {error}
         </div>
       ) : null}
       {message ? (
-        <div className="alert alert-success" style={{ marginBottom: "var(--space-4)" }} role="status">
+        <div className="alert alert-success" style={{ marginBottom: "1rem" }} role="status">
           {message}
         </div>
       ) : null}
 
       {submitState === "success" ? (
-        <Link href="/login" className="btn-primary login-submit" style={{ display: "inline-block", textAlign: "center" }}>
+        <Link
+          href="/login"
+          className="btn-primary"
+          style={{ display: "inline-flex", width: "100%", textAlign: "center" }}
+        >
           الانتقال لتسجيل الدخول
         </Link>
       ) : (
-        <form onSubmit={handleSubmit}>
-          <div className="login-field">
+        <form onSubmit={handleSubmit} style={{ display: "grid", gap: "1rem" }}>
+          <div>
             <label className="label-field" htmlFor="password">
               كلمة المرور الجديدة
             </label>
@@ -113,7 +117,7 @@ function ResetPasswordForm() {
               dir="ltr"
             />
           </div>
-          <div className="login-field">
+          <div>
             <label className="label-field" htmlFor="confirmPassword">
               تأكيد كلمة المرور
             </label>
@@ -133,13 +137,13 @@ function ResetPasswordForm() {
           </div>
           <button
             type="submit"
-            className="btn-primary login-submit"
-            style={{ marginBottom: "var(--space-4)" }}
+            className="btn-primary"
+            style={{ width: "100%" }}
             disabled={submitState !== "idle"}
           >
             {buttonLabel}
           </button>
-          <Link href="/login" className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
+          <Link href="/login" className="text-muted" style={{ fontSize: "0.875rem" }}>
             العودة لتسجيل الدخول
           </Link>
         </form>
@@ -150,8 +154,8 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="page-shell login-shell">
-      <div className="page-container-narrow">
+    <div className="page-shell">
+      <main className="page-container-narrow">
         <div className="card">
           <div className="login-brand-block">
             <BrandMark variant="login" />
@@ -159,13 +163,15 @@ export default function ResetPasswordPage() {
           </div>
 
           <h2 className="login-heading">تعيين كلمة مرور جديدة</h2>
-          <p className="login-lead">أدخل كلمة المرور الجديدة لحسابك</p>
+          <p className="text-muted" style={{ marginBottom: "1rem" }}>
+            أدخل كلمة المرور الجديدة لحسابك
+          </p>
 
           <Suspense fallback={<p className="text-muted">جاري التحميل...</p>}>
             <ResetPasswordForm />
           </Suspense>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

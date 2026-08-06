@@ -61,26 +61,30 @@ export default function LoginClient() {
         : "دخول";
 
   return (
-    <div className="page-shell login-shell">
-      <div className="page-container-narrow">
+    <div className="page-shell">
+      <main className="page-container-narrow">
         <div className="card">
           <div className="login-brand-block">
             <BrandMark variant="login" />
             <h1 className="login-title">مِقياس</h1>
-            <p className="login-tagline">قياس الأداء المؤسسي</p>
+            <p className="text-muted" style={{ marginBottom: 0 }}>
+              قياس الأداء المؤسسي
+            </p>
           </div>
 
           <h2 className="login-heading">تسجيل الدخول</h2>
-          <p className="login-lead">أدخل بيانات حسابك للوصول إلى المنصة</p>
+          <p className="text-muted" style={{ marginBottom: "1rem" }}>
+            أدخل بيانات حسابك للوصول إلى المنصة
+          </p>
 
           {error ? (
-            <div className="alert alert-error" style={{ marginBottom: "var(--space-4)" }} role="alert">
+            <div className="alert alert-error" style={{ marginBottom: "1rem" }} role="alert">
               {error}
             </div>
           ) : null}
 
-          <form onSubmit={handleSubmit} autoComplete="on">
-            <div className="login-field">
+          <form onSubmit={handleSubmit} autoComplete="on" style={{ display: "grid", gap: "1rem" }}>
+            <div>
               <label className="label-field" htmlFor="email">
                 البريد الإلكتروني
               </label>
@@ -98,7 +102,7 @@ export default function LoginClient() {
                 dir="ltr"
               />
             </div>
-            <div className="login-field">
+            <div>
               <label className="label-field" htmlFor="password">
                 كلمة المرور
               </label>
@@ -121,8 +125,25 @@ export default function LoginClient() {
                 dir="ltr"
               />
             </div>
-            <div className="login-meta-row">
-              <label className="login-remember">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "0.75rem",
+                flexWrap: "wrap",
+              }}
+            >
+              <label
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  cursor: "pointer",
+                  fontSize: "0.875rem",
+                  color: "var(--tmkeen-brand-gray)",
+                }}
+              >
                 <input
                   type="checkbox"
                   name="rememberMe"
@@ -131,20 +152,21 @@ export default function LoginClient() {
                 />
                 تذكرني
               </label>
-              <Link href="/forgot-password" className="text-muted">
+              <Link href="/forgot-password" className="text-muted" style={{ fontSize: "0.875rem" }}>
                 نسيت كلمة المرور؟
               </Link>
             </div>
             <button
               type="submit"
-              className="btn-primary login-submit"
+              className="btn-primary"
+              style={{ width: "100%" }}
               disabled={submitState !== "idle"}
             >
               {buttonLabel}
             </button>
           </form>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

@@ -397,10 +397,7 @@
   margin-block-start: var(--space-2);
 }
 
-/* ── Touch / focus helpers ── */
-.btn-primary,
-.btn-secondary,
-.btn-danger,
+/* ── Focus helpers (لا نفرض min-height على .input-field — العقود من components.css) ── */
 .icon-btn,
 .tab-bar button {
   min-height: var(--touch-min);
@@ -408,10 +405,13 @@
 .icon-btn:focus-visible,
 .btn-primary:focus-visible,
 .btn-secondary:focus-visible,
-.btn-danger:focus-visible,
+.btn-danger:focus-visible {
+  outline: 2px solid var(--tmkeen-primary);
+  outline-offset: 2px;
+}
 .input-field:focus-visible {
-  outline: none;
-  box-shadow: var(--shadow-focus);
+  border-color: var(--tmkeen-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tmkeen-primary) 20%, transparent);
 }
 
 /* DataTable alias */
