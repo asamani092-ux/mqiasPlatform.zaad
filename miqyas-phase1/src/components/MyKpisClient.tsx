@@ -15,6 +15,10 @@ import { canFillerEdit, displayApprovalLabel } from "@/lib/approval-status";
 import { notifyToast } from "@/lib/ui-toast";
 import { ICON_PROPS } from "@/lib/icon-props";
 import { FIELD_LABELS, type FieldKey, type ReviewFeedback } from "@/lib/review-feedback";
+import PageBreadcrumb from "@/components/ui/PageBreadcrumb";
+import EvidenceDropzone from "@/components/ui/EvidenceDropzone";
+import EmptyState from "@/components/ui/EmptyState";
+import Chip from "@/components/ui/Chip";
 
 type MeasurementItem = {
   requirement: {
@@ -192,6 +196,7 @@ export default function MyKpisClient({
     <>
       <div className="topbar">
         <div>
+          <PageBreadcrumb items={[{ label: "شواهد المؤشرات" }]} />
           <h1>شواهد المؤشرات</h1>
           <div className="text-muted">
             مهامك المسندة فقط — المسؤول: أنت · أدخل المتحقق وارفع الشواهد ثم قدّم
@@ -213,11 +218,10 @@ export default function MyKpisClient({
       ) : null}
 
       {items.length === 0 ? (
-        <div className="card">
-          <p className="text-muted">
-            لا مهام مسندة — راجع مدير الإدارة / إسناد المسؤولين.
-          </p>
-        </div>
+        <EmptyState
+          title="لا مهام مسندة"
+          body="راجع مدير الإدارة أو إسناد المسؤولين لتعيين مؤشرات لك."
+        />
       ) : (
         <div className="card" style={{ overflowX: "auto" }}>
           <table className="tmkeen-table">
@@ -471,37 +475,25 @@ export default function MyKpisClient({
                               </div>
                             </div>
                           </div>
-                          {item.measurement?.evidences.map((ev) => (
-                            <span
-                              key={ev.id}
-                              style={{
-                                marginInlineStart: ".4rem",
-                                display: "inline-flex",
-                                gap: ".25rem",
-                                alignItems: "center",
-                                marginTop: ".4rem",
-                              }}
-                            >
-                              <a
-                                href={`/api/evidence/${ev.id}`}
-                                className="badge-primary"
-                                title={ev.rejectReason || undefined}
-                              >
-                                {ev.fileName}
-                              </a>
-                              {!locked ? (
-                                <button
-                                  type="button"
-                                  className="btn-secondary btn-sm"
-                                  onClick={() =>
-                                    void softDeleteEvidence(item.measurement!.id, ev.id)
-                                  }
-                                >
-                                  حذف
-                                </button>
-                              ) : null}
-                            </span>
-                          ))}
+                          <div className="filter-bar-chips" style={{ marginBlock: "var(--space-3)" }}>
+                            {item.measurement?.evidences.map((ev) => (
+                              <Chip
+                                key={ev.id}
+                                label={ev.fileName}
+                                tone="brand"
+                                onRemove={
+                                  !locked
+                                    ? () => void softDeleteEvidence(item.measurement!.id, ev.id)
+                                    : undefined
+                                }
+                              />
+                            ))}
+                          </div>
+                          {!locked && item.measurement ? (
+                            <EvidenceDropzone
+                              onFile={(f) => void uploadEvidence(item.measurement!.id, f)}
+                            />
+                          ) : null}
                           {(status === "REJECTED_EVIDENCE" ||
                             status === "REJECTED_WORDING" ||
                             status === "REJECTED") &&

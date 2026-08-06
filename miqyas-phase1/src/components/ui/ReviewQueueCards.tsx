@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import EmptyState from "@/components/ui/EmptyState";
 
 export type ReviewCardModel = {
   id: number;
@@ -29,11 +30,7 @@ export default function ReviewQueueCards({
   trailing?: (id: number) => ReactNode;
 }) {
   if (items.length === 0) {
-    return (
-      <div className="card">
-        <p className="text-muted">{emptyText}</p>
-      </div>
-    );
+    return <EmptyState title="لا عناصر" body={emptyText} />;
   }
 
   return (

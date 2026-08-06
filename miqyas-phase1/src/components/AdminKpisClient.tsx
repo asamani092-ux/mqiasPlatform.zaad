@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
+import PageBreadcrumb from "@/components/ui/PageBreadcrumb";
+import FilterBar, { FilterField } from "@/components/ui/FilterBar";
+import EmptyState from "@/components/ui/EmptyState";
 import { FREQUENCY_LABEL, TYPE_LABEL, POLARITY_LABEL_API } from "@/lib/kpi-schemas";
 import { resolvePeriods } from "@/lib/kpi";
 import ImportClient from "@/components/ImportClient";
@@ -242,14 +245,63 @@ export default function AdminKpisClient({
     <>
       <div className="topbar">
         <div>
+          <PageBreadcrumb
+            items={[
+              { label: "إدارة النظام", href: "/admin/settings" },
+              { label: "إدارة المؤشرات" },
+            ]}
+          />
           <h1>إدارة المؤشرات</h1>
           <div className="text-muted">تعريف المؤشرات والمستهدفات — مشرف النظام</div>
         </div>
         {tab === "kpis" && (
-          <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", alignItems: "center" }}>
+          <button type="button" className="btn-primary btn-sm" onClick={openCreate}>
+            مؤشر جديد
+          </button>
+        )}
+      </div>
+
+      {tab === "kpis" ? (
+        <FilterBar
+          applied={[
+            ...(typeFilter !== "all"
+              ? [{ id: "type", label: typeFilter === "STRATEGIC" ? "استراتيجي" : "تشغيلي", onRemove: () => setTypeFilter("all") }]
+              : []),
+            ...(departmentFilter !== "all"
+              ? [
+                  {
+                    id: "dept",
+                    label: departments.find((d) => String(d.id) === departmentFilter)?.name || "إدارة",
+                    onRemove: () => {
+                      setDepartmentFilter("all");
+                      setOwnerFilter("all");
+                    },
+                  },
+                ]
+              : []),
+            ...(ownerFilter !== "all"
+              ? [
+                  {
+                    id: "owner",
+                    label: filterOwnerOptions.find((u) => String(u.id) === ownerFilter)?.name || "مسؤول",
+                    onRemove: () => setOwnerFilter("all"),
+                  },
+                ]
+              : []),
+            ...(search.trim()
+              ? [{ id: "q", label: `بحث: ${search.trim()}`, onRemove: () => setSearch("") }]
+              : []),
+          ]}
+          onClear={() => {
+            setTypeFilter("all");
+            setDepartmentFilter("all");
+            setOwnerFilter("all");
+            setSearch("");
+          }}
+        >
+          <FilterField label="النوع">
             <select
               className="input-field"
-              style={{ width: "auto" }}
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
             >
@@ -257,9 +309,10 @@ export default function AdminKpisClient({
               <option value="STRATEGIC">استراتيجي</option>
               <option value="OPERATIONAL">تشغيلي</option>
             </select>
+          </FilterField>
+          <FilterField label="الإدارة">
             <select
               className="input-field"
-              style={{ width: "auto" }}
               value={departmentFilter}
               onChange={(e) => {
                 setDepartmentFilter(e.target.value);
@@ -273,9 +326,10 @@ export default function AdminKpisClient({
                 </option>
               ))}
             </select>
+          </FilterField>
+          <FilterField label="المسؤول">
             <select
               className="input-field"
-              style={{ width: "auto" }}
               value={ownerFilter}
               onChange={(e) => setOwnerFilter(e.target.value)}
             >
@@ -286,19 +340,17 @@ export default function AdminKpisClient({
                 </option>
               ))}
             </select>
+          </FilterField>
+          <FilterField label="بحث">
             <input
               className="input-field"
-              style={{ width: 220 }}
-              placeholder="بحث بالرمز أو الاسم..."
+              placeholder="رمز أو اسم..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <button type="button" className="btn-primary btn-sm" onClick={openCreate}>
-              مؤشر جديد
-            </button>
-          </div>
-        )}
-      </div>
+          </FilterField>
+        </FilterBar>
+      ) : null}
 
       <div className="tab-bar" style={{ marginBottom: "1rem" }}>
         <button type="button" className={tab === "kpis" ? "active" : ""} onClick={() => setTab("kpis")}>
@@ -511,7 +563,7 @@ export default function AdminKpisClient({
                 {visibleKpis.length === 0 && (
                   <tr>
                     <td colSpan={6} className="text-muted">
-                      لا توجد مؤشرات مطابقة للفلاتر الحالية.
+                      <EmptyState title="لا نتائج" body="لا توجد مؤشرات مطابقة للفلاتر الحالية." />
                     </td>
                   </tr>
                 )}
