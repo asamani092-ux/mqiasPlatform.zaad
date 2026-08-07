@@ -18,11 +18,11 @@ export default function FilterBar({
   className?: string;
 }) {
   return (
-    <div className={`filter-bar card ${className}`.trim()}>
+    <div className={`zad-filter-bar filter-bar ${className}`.trim()}>
       <div className="filter-bar-fields">{children}</div>
       {actions ? <div className="filter-bar-actions">{actions}</div> : null}
       {applied && applied.length > 0 ? (
-        <div className="filter-bar-chips" aria-live="polite">
+        <div className="zad-filter-bar__chips filter-bar-chips" aria-live="polite">
           {applied.map((chip) => (
             <Chip key={chip.id} label={chip.label} tone="brand" onRemove={chip.onRemove} />
           ))}

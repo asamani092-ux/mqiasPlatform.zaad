@@ -17,8 +17,8 @@ export default function EmptyState({
   return (
     <div className="zad-empty" role="status">
       {icon ? <div aria-hidden="true">{icon}</div> : null}
-      <h3 className="zad-empty-title">{title}</h3>
-      {body ? <p className="zad-empty-body">{body}</p> : null}
+      <h3 className="zad-empty__title">{title}</h3>
+      {body ? <p className="zad-empty__body">{body}</p> : null}
       {action ? <div>{action}</div> : null}
     </div>
   );

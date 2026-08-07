@@ -35,9 +35,11 @@ export default function ConfirmDialog({
         aria-labelledby="zad-confirm-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="zad-detail-card-head">
-          <h2 id="zad-confirm-title">{title}</h2>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="إغلاق">
+        <div className="zad-drawer-header" style={{ marginBlockEnd: "var(--space-3)" }}>
+          <h2 id="zad-confirm-title" className="zad-drawer-title">
+            {title}
+          </h2>
+          <button type="button" className="icon-btn zad-drawer-close" onClick={onClose} aria-label="إغلاق">
             <X {...ICON_PROPS} />
           </button>
         </div>

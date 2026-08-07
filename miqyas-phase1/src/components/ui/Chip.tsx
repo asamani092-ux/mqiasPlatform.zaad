@@ -7,15 +7,25 @@ export default function Chip({
   onRemove,
 }: {
   label: string;
-  tone?: "neutral" | "brand";
+  tone?: "neutral" | "brand" | "success" | "warning" | "danger";
   onRemove?: () => void;
 }) {
+  const toneClass =
+    tone === "brand"
+      ? ""
+      : tone === "success"
+        ? "zad-chip--success"
+        : tone === "warning"
+          ? "zad-chip--warning"
+          : tone === "danger"
+            ? "zad-chip--danger"
+            : "zad-chip--neutral";
   return (
-    <span className={`zad-chip ${tone === "brand" ? "zad-chip--brand" : ""} ${onRemove ? "zad-chip--removable" : ""}`.trim()}>
+    <span className={`zad-chip ${toneClass}`.trim()}>
       {onRemove ? (
         <button
           type="button"
-          className="zad-chip-remove"
+          className="zad-chip__remove"
           aria-label={`إزالة ${label}`}
           onClick={onRemove}
         >

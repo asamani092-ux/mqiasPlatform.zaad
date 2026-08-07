@@ -11,30 +11,26 @@ export default function ProgressBar({
   tone?: "brand" | "success" | "warning" | "danger";
 }) {
   const pct = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
-  const toneClass =
+  const barColor =
     tone === "success"
-      ? "zad-progress-bar--success"
+      ? "var(--success-solid)"
       : tone === "warning"
-        ? "zad-progress-bar--warning"
+        ? "var(--warning-solid)"
         : tone === "danger"
-          ? "zad-progress-bar--danger"
-          : "";
+          ? "var(--danger-solid)"
+          : "var(--action-primary-surface)";
   return (
-    <div>
-      {label ? (
-        <div className="text-muted" style={{ fontSize: "var(--text-xs)", marginBlockEnd: "var(--space-1)" }}>
-          {label}
-        </div>
-      ) : null}
+    <div className="zad-progress">
+      {label ? <div className="zad-progress__label">{label}</div> : null}
       <div
-        className="zad-progress"
+        className="zad-progress__track"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={pct}
         aria-label={label || `التقدّم ${pct}%`}
       >
-        <div className={`zad-progress-bar ${toneClass}`.trim()} style={{ width: `${pct}%` }} />
+        <span className="zad-progress__bar" style={{ width: `${pct}%`, background: barColor }} />
       </div>
     </div>
   );

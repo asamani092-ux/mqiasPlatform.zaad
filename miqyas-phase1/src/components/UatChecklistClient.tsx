@@ -192,7 +192,7 @@ export default function UatChecklistClient() {
                 <a href="/dashboard">الرئيسية</a>
               </li>
               <li>
-                <span className="zad-breadcrumb-sep" aria-hidden="true">‹</span>
+                <span className="zad-breadcrumb__sep" aria-hidden="true">‹</span>
                 <span aria-current="page">بيئة التجربة</span>
               </li>
             </ol>
@@ -520,9 +520,10 @@ export default function UatChecklistClient() {
             const open = openSections[section.id] ?? true;
             return (
               <div key={section.id} className="zad-accordion" style={{ marginBottom: "1rem" }}>
+                <div className="zad-accordion__item">
                 <button
                   type="button"
-                  className="zad-accordion-trigger"
+                  className="zad-accordion__trigger"
                   aria-expanded={open}
                   onClick={() =>
                     setOpenSections((s) => ({ ...s, [section.id]: !open }))
@@ -532,7 +533,7 @@ export default function UatChecklistClient() {
                   <span aria-hidden="true">{open ? "▾" : "◂"}</span>
                 </button>
                 {open ? (
-                <div className="zad-accordion-panel">
+                <div className="zad-accordion__panel">
                 <div className="text-muted" style={{ marginBottom: ".35rem", fontSize: ".85rem" }}>
                   الدور: <code>{section.roleLabel}</code> · {section.demoHint}
                 </div>
@@ -609,6 +610,7 @@ export default function UatChecklistClient() {
                 </div>
                 </div>
                 ) : null}
+                </div>
               </div>
             );
           })}

@@ -73,7 +73,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/users", label: "إدارة المستخدمين", Icon: Users },
   { href: "/admin/kpis", label: "إدارة المؤشرات", Icon: Ruler },
   ASSIGN_NAV,
-  { href: "/admin/report", label: "تقرير العرض", Icon: Presentation },
+  { href: "/admin/report", label: "منشئ العرض التقديمي", Icon: Presentation },
   { href: "/admin/settings", label: "إعدادات النظام", Icon: Settings2 },
 ];
 

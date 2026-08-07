@@ -26,7 +26,7 @@ export default function EvidenceDropzone({
 
   return (
     <div
-      className={`zad-dropzone ${active ? "zad-dropzone--active" : ""} ${error ? "zad-dropzone--error" : ""}`.trim()}
+      className={`zad-dropzone ${active ? "is-dragover" : ""}`.trim()}
       role="button"
       tabIndex={disabled ? -1 : 0}
       aria-label={label}
@@ -52,7 +52,7 @@ export default function EvidenceDropzone({
         take(e.dataTransfer.files?.[0]);
       }}
     >
-      <strong>{label}</strong>
+      <strong className="zad-dropzone__title">{label}</strong>
       <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
         PDF · صور · Office — زر الاستعراض متاح للوحة المفاتيح
       </span>

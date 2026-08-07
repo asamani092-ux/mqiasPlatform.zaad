@@ -336,14 +336,18 @@ export default function ApprovalsClient() {
       </div>
 
       <ol className="zad-stepper" aria-label="مراحل الاعتماد">
-        <li className="zad-stepper-item" data-state={queue === "pending" ? "current" : "done"}>
-          <span className="zad-stepper-dot" aria-hidden="true" /> بانتظار الاعتماد
+        <li className={`zad-stepper__item ${queue === "pending" ? "is-current" : "is-done"}`}>
+          <span className="zad-stepper__dot" aria-hidden="true" /> بانتظار الاعتماد
         </li>
-        <li className="zad-stepper-item" data-state={queue === "final" ? "current" : queue === "closure" ? "done" : "todo"}>
-          <span className="zad-stepper-dot" aria-hidden="true" /> معتمد نهائيًا
+        <li
+          className={`zad-stepper__item ${
+            queue === "final" ? "is-current" : queue === "closure" ? "is-done" : ""
+          }`}
+        >
+          <span className="zad-stepper__dot" aria-hidden="true" /> معتمد نهائيًا
         </li>
-        <li className="zad-stepper-item" data-state={queue === "closure" ? "current" : "todo"}>
-          <span className="zad-stepper-dot" aria-hidden="true" /> متابعة الإغلاق
+        <li className={`zad-stepper__item ${queue === "closure" ? "is-current" : ""}`}>
+          <span className="zad-stepper__dot" aria-hidden="true" /> متابعة الإغلاق
         </li>
       </ol>
 
