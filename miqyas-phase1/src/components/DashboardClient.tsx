@@ -8,6 +8,8 @@ import PeriodSelector from "@/components/PeriodSelector";
 import { CHART_COLORS } from "@/lib/chart-colors";
 import { trackBarData, type DashboardOverview } from "@/lib/dashboard-overview-client";
 import { PERIOD_LABEL, STATUS_BADGE, STATUS_LABEL, type KpiStatus } from "@/lib/types";
+import PageBreadcrumb from "@/components/ui/PageBreadcrumb";
+import EmptyState from "@/components/ui/EmptyState";
 import { ICON_PROPS } from "@/lib/icon-props";
 
 const DONUT_COLORS = [
@@ -126,6 +128,7 @@ export default function DashboardClient({
     <>
       <div className="topbar">
         <div>
+          <PageBreadcrumb items={[{ label: "الرئيسية", href: "/dashboard" }, { label: "اللوحة" }]} />
           <h1>اللوحة الرئيسية</h1>
           <div className="text-muted">
             أهلًا {userName} · {PERIOD_LABEL[period]} {year}
@@ -171,7 +174,10 @@ export default function DashboardClient({
           </div>
         </div>
         {deviationKpis.length === 0 ? (
-          <p className="text-muted">لا توجد مؤشرات انحراف معتمدة لهذه الفترة.</p>
+          <EmptyState
+            title="لا مؤشرات انحراف"
+            body="لا توجد مؤشرات انحراف معتمدة لهذه الفترة."
+          />
         ) : (
           <table className="tmkeen-table">
             <thead>
