@@ -6,6 +6,7 @@ import { audit } from "@/lib/audit";
 import { requireManageKpis } from "@/lib/admin-auth";
 import { kpiUpdateSchema } from "@/lib/kpi-schemas";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
+import { syncRequirementOwnerFromKpi } from "@/lib/kpi-owner-sync";
 
 export async function GET(
   _req: NextRequest,
@@ -47,6 +48,9 @@ export async function PUT(
     const body = kpiUpdateSchema.parse(await req.json());
 
     const kpi = await db.kpi.update({ where: { id }, data: body });
+    if (body.ownerId !== undefined) {
+      await syncRequirementOwnerFromKpi(kpi);
+    }
     await audit(parseInt(user.id, 10), "UPDATE_KPI", "Kpi", kpi.id, { code: kpi.code });
 
     return NextResponse.json({ kpi });

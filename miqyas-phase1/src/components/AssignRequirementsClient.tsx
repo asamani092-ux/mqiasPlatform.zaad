@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FilterBar, { FilterField } from "@/components/ui/FilterBar";
-import { ROLE_LABEL } from "@/lib/types";
+import { FILLER_ROLE_LABEL, ROLE_LABEL } from "@/lib/types";
 import { notifyToast } from "@/lib/ui-toast";
 import { filterAssignCandidates } from "@/lib/requirement-owner-scope";
 import { roleToFillerRole } from "@/lib/approval-status";
@@ -222,9 +222,9 @@ export default function AssignRequirementsClient() {
             onChange={(e) => setFillerRole(e.target.value)}
           >
             <option value="">الكل</option>
-            <option value="EMPLOYEE">موظف</option>
-            <option value="SECTION_HEAD">رئيس قسم</option>
-            <option value="DEPT_MANAGER">مدير إدارة</option>
+            <option value="EMPLOYEE">{FILLER_ROLE_LABEL.EMPLOYEE}</option>
+            <option value="SECTION_HEAD">{FILLER_ROLE_LABEL.SECTION_HEAD}</option>
+            <option value="DEPT_MANAGER">{FILLER_ROLE_LABEL.DEPT_MANAGER}</option>
           </select>
         </FilterField>
         <FilterField label="بحث">

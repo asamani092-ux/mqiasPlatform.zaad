@@ -58,7 +58,7 @@ const LABELS: Record<string, string> = {
   current_period: "الفترة الحالية",
   measurement_round_year: "سنة جولة القياس",
   measurement_round_period: "فترة جولة القياس",
-  measurement_round_open: "فتح جولة القياس",
+  measurement_round_open: "حالة جولة القياس (1 مفتوحة / 0 مغلقة)",
   notify_from_email: "بريد المرسل للتنبيهات",
 };
 

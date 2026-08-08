@@ -179,13 +179,19 @@ export default function MyKpisClient({
   }
 
   async function softDeleteEvidence(measurementPeriodId: number, evidenceId: number) {
-    if (!window.confirm("حذف هذا الشاهد من القائمة؟ (يُحفظ السجل ولا يُتلف الملف)")) return;
+    if (
+      !window.confirm(
+        "حذف نهائي لهذا الشاهد (السجل والملف)؟ يمكنك رفع شاهد بديل بعده.",
+      )
+    ) {
+      return;
+    }
     const res = await fetch(
       `/api/my/measurements/${measurementPeriodId}/evidence?evidenceId=${evidenceId}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
     if (res.ok) {
-      notifyToast.success("أُزيل الشاهد", { duration: "short" });
+      notifyToast.success("حُذف الشاهد نهائيًا", { duration: "short" });
       await reload();
     } else {
       const err = await res.json().catch(() => ({}));

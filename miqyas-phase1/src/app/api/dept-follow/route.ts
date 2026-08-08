@@ -18,6 +18,10 @@ import {
 } from "@/lib/review-feedback";
 import { notifyMeasurementReturn } from "@/lib/review-notify";
 import { rebindOwnerIfMissing } from "@/lib/requirement-owner";
+import {
+  isMeasurementRoundOpen,
+  ROUND_CLOSED_INITIAL_MSG,
+} from "@/lib/measurement-round";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +99,13 @@ export async function PATCH(req: NextRequest) {
 
     if (isFinalApproved(mp.approvalStatus)) {
       return jsonError("لا يمكن تعديل قياس معتمد نهائياً", 400);
+    }
+
+    if (
+      (body.action === "initial_approve" || body.action === "return_edit") &&
+      !(await isMeasurementRoundOpen())
+    ) {
+      return jsonError(ROUND_CLOSED_INITIAL_MSG, 400);
     }
 
     if (body.action === "update") {

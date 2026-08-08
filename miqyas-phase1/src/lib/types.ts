@@ -53,8 +53,8 @@ export const APPROVAL_BADGE: Record<string, string> = {
 
 export const FILLER_ROLE_LABEL: Record<string, string> = {
   EMPLOYEE: "موظف",
-  SECTION_HEAD: "رئيس قسم",
-  DEPT_MANAGER: "مدير إدارة",
+  SECTION_HEAD: "رئيس القسم",
+  DEPT_MANAGER: "مدير الإدارة",
 };
 
 export const POLARITY_LABEL: Record<string, string> = {
@@ -64,9 +64,9 @@ export const POLARITY_LABEL: Record<string, string> = {
 
 export const ROLE_LABEL: Record<string, string> = {
   SYSTEM_ADMIN: "مشرف النظام",
-  EXECUTIVE: "الإدارة العليا",
-  DEPT_MANAGER: "مدير إدارة",
-  SECTION_HEAD: "رئيس قسم",
+  EXECUTIVE: "الإدارة التنفيذية",
+  DEPT_MANAGER: "مدير الإدارة",
+  SECTION_HEAD: "رئيس القسم",
   EMPLOYEE: "موظف",
 };
 

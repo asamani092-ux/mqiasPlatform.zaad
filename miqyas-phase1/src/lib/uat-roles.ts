@@ -1,4 +1,5 @@
 /** نموذج تقييم الأدوار والصلاحيات — مكمّل لقائمة الأدوات (uat-tools) */
+import { ROLE_LABEL } from "@/lib/types";
 
 export type UatRoleVerdict = "غير مجرّب" | "مطابق" | "يحتاج تحسين" | "خلل";
 
@@ -36,7 +37,7 @@ export const UAT_ROLE_SECTIONS: UatRoleSection[] = [
   {
     id: "employee",
     title: "1) الموظف",
-    roleLabel: "EMPLOYEE",
+    roleLabel: ROLE_LABEL.EMPLOYEE,
     demoHint: "employee@zad.org.sa · Demo@123456 (بعد seed:excel) — مع متطلبات مسندة لإدارته",
     goldenRule: "رؤية: شواهد فقط · وصول: ممنوع /dept-follow و/approvals و/admin · نطاق: ما يملكه فقط",
     cases: [
@@ -140,20 +141,20 @@ export const UAT_ROLE_SECTIONS: UatRoleSection[] = [
       {
         id: "emp-12",
         n: 12,
-        title: "جولة مغلقة تمنع التقديم وتسمح بالمسودة",
+        title: "جولة مغلقة تمنع التقديم والرفع وتسمح بالمسودة",
         dimensions: ["نطاق"],
         steps: [
-          "كمشرف أغلق الجولة من /admin/settings",
-          "كموظف احفظ مسودة ثم حاول التقديم",
+          "كمشرف أغلق الجولة من /admin/settings (تأكيد ثنائي)",
+          "كموظف احفظ مسودة ثم حاول التقديم ورفع شاهد",
         ],
-        expected: "المسودة تنجح · التقديم يُرفض برسالة «جولة القياس مغلقة»",
+        expected: "المسودة تنجح · التقديم والرفع يُرفضان · الاعتماد النهائي يبقى للمشرف",
       },
     ],
   },
   {
     id: "section-head",
     title: "2) رئيس القسم",
-    roleLabel: "SECTION_HEAD",
+    roleLabel: ROLE_LABEL.SECTION_HEAD,
     demoHint: "head@zad.org.sa — قسم مربوط · تحقق إعدادات التفويض في /admin/settings",
     goldenRule: "رؤية: شواهد فقط (كالموظف) · وصول: لا اعتماد نهائي · نطاق: قسمه عند الإسناد",
     cases: [
@@ -202,7 +203,7 @@ export const UAT_ROLE_SECTIONS: UatRoleSection[] = [
   {
     id: "dept-manager",
     title: "3) مدير الإدارة",
-    roleLabel: "DEPT_MANAGER",
+    roleLabel: ROLE_LABEL.DEPT_MANAGER,
     demoHint: "manager@zad.org.sa — إدارة مربوطة · موظفون في نفس الإدارة للاختبار",
     goldenRule: "رؤية: شواهد + مراجعة + إسناد · وصول: لا اعتماد نهائي · نطاق: إدارته فقط",
     cases: [
@@ -274,15 +275,15 @@ export const UAT_ROLE_SECTIONS: UatRoleSection[] = [
   },
   {
     id: "executive",
-    title: "4) الإدارة العليا",
-    roleLabel: "EXECUTIVE",
+    title: "4) الإدارة التنفيذية",
+    roleLabel: ROLE_LABEL.EXECUTIVE,
     demoHint: "executive@zad.org.sa",
     goldenRule: "رؤية: لوحة تنفيذية + مسارات · وصول: ممنوع الإدخال/الاعتماد/الإدارة · نطاق: كل الجمعية · بيانات نهائية فقط",
     cases: [
       {
         id: "ex-01",
         n: 1,
-        title: "الشريط: لوحة عليا + مسارات بدون إدخال",
+        title: "الشريط: لوحة تنفيذية + مسارات بدون إدخال",
         dimensions: ["رؤية"],
         steps: ["دخول كتنفيذي", "افحص التنقّل"],
         expected: "executive + dashboard + مسارات القياس — لا /my تعبئة ولا /dept-follow ولا /approvals ولا /admin",
@@ -316,7 +317,7 @@ export const UAT_ROLE_SECTIONS: UatRoleSection[] = [
   {
     id: "system-admin",
     title: "5) مشرف النظام",
-    roleLabel: "SYSTEM_ADMIN",
+    roleLabel: ROLE_LABEL.SYSTEM_ADMIN,
     demoHint: "admin@zad.org.sa · ADMIN_PASSWORD من .env",
     goldenRule: "رؤية: الكل + اعتماد نهائي + إسناد · وصول: النهائي فقط للطبقات · نطاق: كل الإدارات",
     cases: [

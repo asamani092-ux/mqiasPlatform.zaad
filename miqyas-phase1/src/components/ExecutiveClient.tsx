@@ -65,7 +65,7 @@ export default function ExecutiveClient({
   return (
     <>
       <TrackTitleRow
-        title="لوحة الإدارة العليا"
+        title="لوحة الإدارة التنفيذية"
         subtitle={`انحرافات وإجراءات متأخرة — قيم معتمدة نهائيًا فقط — ${PERIOD_LABEL[period]} ${year}`}
         help={EXECUTIVE_HELP}
         extra={<PeriodSelector year={year} period={period} />}

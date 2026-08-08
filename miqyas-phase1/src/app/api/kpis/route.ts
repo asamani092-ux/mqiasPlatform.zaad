@@ -10,6 +10,7 @@ import { handleApiError, jsonError } from "@/lib/api-helpers";
 import { getSetting } from "@/lib/settings";
 import { frequenciesForPeriod } from "@/lib/kpi";
 import { PERIOD_LABEL, type Period as UiPeriod } from "@/lib/types";
+import { syncRequirementOwnerFromKpi } from "@/lib/kpi-owner-sync";
 
 const PERIOD_VALUES = ["Q1", "Q2", "Q3", "Q4", "H1", "H2", "Y"] as const;
 
@@ -87,6 +88,7 @@ export async function POST(req: NextRequest) {
 
     const body = kpiBodySchema.parse(await req.json());
     const kpi = await db.kpi.create({ data: body });
+    await syncRequirementOwnerFromKpi(kpi);
 
     await audit(parseInt(user.id, 10), "CREATE_KPI", "Kpi", kpi.id, { code: kpi.code });
     return NextResponse.json({ kpi }, { status: 201 });
