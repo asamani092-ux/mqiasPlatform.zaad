@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import "./tokens.css";
-import "./components.css";
+import "@zaad/design-system/tokens.css";
+import "@zaad/design-system/components.css";
+import "@zaad/design-system/zaad-addons.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,7 +12,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ar" dir="rtl">
-      <body className="miqyas-root tmkeen-root">{children}</body>
+      <body className="zad-root tmkeen-root miqyas-root" data-theme="light">
+        {children}
+      </body>
     </html>
   );
 }

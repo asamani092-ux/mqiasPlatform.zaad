@@ -180,11 +180,23 @@ export default function UatChecklistClient() {
   }
 
   const q = search.trim().toLowerCase();
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
   return (
     <>
       <div className="topbar">
         <div>
+          <nav aria-label="breadcrumb">
+            <ol className="zad-breadcrumb">
+              <li>
+                <a href="/dashboard">الرئيسية</a>
+              </li>
+              <li>
+                <span className="zad-breadcrumb__sep" aria-hidden="true">‹</span>
+                <span aria-current="page">بيئة التجربة</span>
+              </li>
+            </ol>
+          </nav>
           <h1>
             <ClipboardCheck
               {...ICON_PROPS}
@@ -505,9 +517,23 @@ export default function UatChecklistClient() {
             });
             if (cases.length === 0) return null;
 
+            const open = openSections[section.id] ?? true;
             return (
-              <div key={section.id} className="card" style={{ marginBottom: "1rem" }}>
-                <h3 style={{ marginBottom: ".35rem" }}>{section.title}</h3>
+              <div key={section.id} className="zad-accordion" style={{ marginBottom: "1rem" }}>
+                <div className="zad-accordion__item">
+                <button
+                  type="button"
+                  className="zad-accordion__trigger"
+                  aria-expanded={open}
+                  onClick={() =>
+                    setOpenSections((s) => ({ ...s, [section.id]: !open }))
+                  }
+                >
+                  <span>{section.title}</span>
+                  <span aria-hidden="true">{open ? "▾" : "◂"}</span>
+                </button>
+                {open ? (
+                <div className="zad-accordion__panel">
                 <div className="text-muted" style={{ marginBottom: ".35rem", fontSize: ".85rem" }}>
                   الدور: <code>{section.roleLabel}</code> · {section.demoHint}
                 </div>
@@ -581,6 +607,9 @@ export default function UatChecklistClient() {
                       })}
                     </tbody>
                   </table>
+                </div>
+                </div>
+                ) : null}
                 </div>
               </div>
             );

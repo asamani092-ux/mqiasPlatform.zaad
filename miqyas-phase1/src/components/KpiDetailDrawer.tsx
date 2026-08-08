@@ -34,9 +34,15 @@ export default function KpiDetailDrawer({
   if (!kpiId) return null;
 
   return (
-    <div className="drawer-overlay">
-      <div className="card drawer-panel">
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+    <div className="drawer-overlay" role="presentation" onClick={onClose}>
+      <div
+        className="zad-detail-card drawer-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="تفاصيل المؤشر"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="zad-detail-card-head">
           <h3>{data ? String((data.kpi as { name?: string }).name) : "..."}</h3>
           <button type="button" className="icon-btn btn-sm" onClick={onClose} aria-label="إغلاق">
             <X {...ICON_PROPS} />

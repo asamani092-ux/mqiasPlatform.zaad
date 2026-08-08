@@ -110,7 +110,7 @@ export default function SettingsClient() {
           <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
             عند إغلاق الجولة يُسمح بحفظ المسودات فقط، بينما يتوقف تقديم القياسات للاعتماد.
             {" "}
-            <a href="/admin/report" style={{ fontWeight: 700 }}>تقرير العرض التقديمي</a>
+            <a href="/admin/report" style={{ fontWeight: 700 }}>منشئ العرض التقديمي</a>
           </div>
           <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap", alignItems: "flex-end" }}>
             <div>

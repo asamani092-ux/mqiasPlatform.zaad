@@ -62,7 +62,7 @@ export default function LoginClient() {
 
   return (
     <div className="page-shell">
-      <div className="page-container-narrow">
+      <main className="page-container-narrow">
         <div className="card">
           <div className="login-brand-block">
             <BrandMark variant="login" />
@@ -73,13 +73,21 @@ export default function LoginClient() {
           </div>
 
           <h2 className="login-heading">تسجيل الدخول</h2>
-          <p className="text-muted">أدخل بيانات حسابك للوصول إلى المنصة</p>
+          <p className="text-muted" style={{ marginBottom: "1rem" }}>
+            أدخل بيانات حسابك للوصول إلى المنصة
+          </p>
 
-          {error && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{error}</div>}
+          {error ? (
+            <div className="alert alert-error" style={{ marginBottom: "1rem" }} role="alert">
+              {error}
+            </div>
+          ) : null}
 
-          <form onSubmit={handleSubmit} autoComplete="on">
-            <div style={{ marginBottom: "1rem" }}>
-              <label className="label-field" htmlFor="email">البريد الإلكتروني</label>
+          <form onSubmit={handleSubmit} autoComplete="on" style={{ display: "grid", gap: "1rem" }}>
+            <div>
+              <label className="label-field" htmlFor="email">
+                البريد الإلكتروني
+              </label>
               <input
                 ref={emailRef}
                 id="email"
@@ -94,8 +102,10 @@ export default function LoginClient() {
                 dir="ltr"
               />
             </div>
-            <div style={{ marginBottom: "1rem" }}>
-              <label className="label-field" htmlFor="password">كلمة المرور</label>
+            <div>
+              <label className="label-field" htmlFor="password">
+                كلمة المرور
+              </label>
               <input
                 ref={passwordRef}
                 id="password"
@@ -120,18 +130,18 @@ export default function LoginClient() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: "1.25rem",
                 gap: "0.75rem",
                 flexWrap: "wrap",
               }}
             >
               <label
                 style={{
-                  display: "flex",
+                  display: "inline-flex",
                   alignItems: "center",
                   gap: "0.5rem",
                   cursor: "pointer",
-                  fontSize: "0.9rem",
+                  fontSize: "0.875rem",
+                  color: "var(--tmkeen-brand-gray)",
                 }}
               >
                 <input
@@ -142,7 +152,7 @@ export default function LoginClient() {
                 />
                 تذكرني
               </label>
-              <Link href="/forgot-password" className="text-muted" style={{ fontSize: "0.9rem" }}>
+              <Link href="/forgot-password" className="text-muted" style={{ fontSize: "0.875rem" }}>
                 نسيت كلمة المرور؟
               </Link>
             </div>
@@ -156,7 +166,7 @@ export default function LoginClient() {
             </button>
           </form>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

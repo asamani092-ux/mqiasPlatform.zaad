@@ -14,6 +14,11 @@ import ReviewWorkbenchModal, {
 } from "@/components/ui/ReviewWorkbenchModal";
 import type { Decision, FieldDecisions } from "@/lib/review-feedback";
 import { notesCardSnippet } from "@/lib/review-feedback";
+import PageBreadcrumb from "@/components/ui/PageBreadcrumb";
+import Skeleton from "@/components/ui/Skeleton";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import ProgressBar from "@/components/ui/ProgressBar";
+import EmptyState from "@/components/ui/EmptyState";
 
 type PreviousPeriodInfo = {
   year: number;
@@ -107,6 +112,12 @@ export default function ApprovalsClient() {
   const [acting, setActing] = useState(false);
   const [remindingDeptId, setRemindingDeptId] = useState<number | null>(null);
   const [openId, setOpenId] = useState<number | null>(null);
+  const [confirm, setConfirm] = useState<{
+    title: string;
+    body: string;
+    destructive?: boolean;
+    run: () => void;
+  } | null>(null);
   const deepLinkConsumed = useRef(false);
 
   const load = useCallback(async () => {
@@ -218,18 +229,42 @@ export default function ApprovalsClient() {
       action === "final_approve" &&
       (payload.actualValue !== openEntry.actualValue ||
         payload.whatHappened !== (openEntry.whatHappened ?? "") ||
-        payload.howHappened !== (openEntry.howHappened ?? "")) &&
-      !window.confirm("سيتم حفظ تعديلاتك مع الاعتماد النهائي. متابعة؟")
+        payload.howHappened !== (openEntry.howHappened ?? ""))
     ) {
+      setConfirm({
+        title: "تأكيد الاعتماد النهائي",
+        body: "سيتم حفظ تعديلاتك مع الاعتماد النهائي. متابعة؟",
+        run: () => void executeSubmit(action, payload),
+      });
       return;
     }
-    if (
-      action === "revoke_final" &&
-      !window.confirm(revokeFinalConfirmMessage(payload.returnTarget ?? "owner_draft"))
-    ) {
+    if (action === "revoke_final") {
+      setConfirm({
+        title: "إلغاء الاعتماد النهائي",
+        body: revokeFinalConfirmMessage(payload.returnTarget ?? "owner_draft"),
+        destructive: true,
+        run: () => void executeSubmit(action, payload),
+      });
       return;
     }
 
+    await executeSubmit(action, payload);
+  }
+
+  async function executeSubmit(
+    action: "final_approve" | "return_for_edit" | "revoke_final",
+    payload: {
+      actualValue: number;
+      whatHappened: string;
+      howHappened: string;
+      fieldDecisions: FieldDecisions;
+      evidenceDecisions: Record<number, Decision>;
+      notes?: string;
+      returnTarget?: ReturnTarget;
+    }
+  ) {
+    if (!openEntry) return;
+    setConfirm(null);
     setActing(true);
     const res = await fetch("/api/approvals", {
       method: "POST",
@@ -289,10 +324,32 @@ export default function ApprovalsClient() {
     <>
       <div className="topbar">
         <div>
+          <PageBreadcrumb
+            items={[
+              { label: "الرئيسية", href: "/dashboard" },
+              { label: "الاعتماد النهائي" },
+            ]}
+          />
           <h1>الاعتماد النهائي</h1>
           <div className="text-muted">مراجعة · اعتماد · إلغاء اعتماد نهائي · متابعة الإغلاق</div>
         </div>
       </div>
+
+      <ol className="zad-stepper" aria-label="مراحل الاعتماد">
+        <li className={`zad-stepper__item ${queue === "pending" ? "is-current" : "is-done"}`}>
+          <span className="zad-stepper__dot" aria-hidden="true" /> بانتظار الاعتماد
+        </li>
+        <li
+          className={`zad-stepper__item ${
+            queue === "final" ? "is-current" : queue === "closure" ? "is-done" : ""
+          }`}
+        >
+          <span className="zad-stepper__dot" aria-hidden="true" /> معتمد نهائيًا
+        </li>
+        <li className={`zad-stepper__item ${queue === "closure" ? "is-current" : ""}`}>
+          <span className="zad-stepper__dot" aria-hidden="true" /> متابعة الإغلاق
+        </li>
+      </ol>
 
       <div className="tab-bar" style={{ marginBottom: "1rem" }}>
         <button
@@ -331,8 +388,14 @@ export default function ApprovalsClient() {
       </div>
 
       {loading ? (
-        <p className="text-muted">جاري التحميل...</p>
+        <Skeleton lines={5} />
       ) : queue === "closure" ? (
+        closureRows.length === 0 ? (
+          <EmptyState
+            title="لا بيانات إغلاق"
+            body="لا بيانات لمتابعة الإغلاق في جولة القياس الحالية."
+          />
+        ) : (
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -342,25 +405,26 @@ export default function ApprovalsClient() {
                 <th>متحقق (نهائي)</th>
                 <th>متبقي</th>
                 <th>متحقق جزئي</th>
+                <th>التقدّم</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {closureRows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-muted">
-                    لا بيانات لمتابعة الإغلاق في جولة القياس الحالية.
-                  </td>
-                </tr>
-              ) : (
-                closureRows.map((row) => (
+              {closureRows.map((row) => (
                   <tr key={row.departmentId}>
-                    <td>{row.departmentName}</td>
-                    <td>{row.total}</td>
-                    <td>{row.finalApproved}</td>
-                    <td>{row.remaining}</td>
-                    <td>{row.partial}</td>
-                    <td>
+                    <td data-label="الإدارة">{row.departmentName}</td>
+                    <td data-label="عدد المؤشرات">{row.total}</td>
+                    <td data-label="متحقق (نهائي)">{row.finalApproved}</td>
+                    <td data-label="متبقي">{row.remaining}</td>
+                    <td data-label="متحقق جزئي">{row.partial}</td>
+                    <td data-label="التقدّم">
+                      <ProgressBar
+                        value={row.total ? (row.finalApproved / row.total) * 100 : 0}
+                        label={`${row.finalApproved}/${row.total}`}
+                        tone={row.remaining === 0 ? "success" : "brand"}
+                      />
+                    </td>
+                    <td data-label="">
                       <button
                         type="button"
                         className="btn-secondary btn-sm"
@@ -371,11 +435,11 @@ export default function ApprovalsClient() {
                       </button>
                     </td>
                   </tr>
-                ))
-              )}
+                ))}
             </tbody>
           </table>
         </div>
+        )
       ) : (
         <ReviewSmartSearch items={cards}>
           {(filtered) => (
@@ -416,6 +480,16 @@ export default function ApprovalsClient() {
         onReturn={(p) =>
           void submit(queue === "final" ? "revoke_final" : "return_for_edit", p)
         }
+      />
+
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.title ?? ""}
+        body={confirm?.body ?? ""}
+        destructive={confirm?.destructive}
+        busy={acting}
+        onClose={() => setConfirm(null)}
+        onConfirm={() => confirm?.run()}
       />
     </>
   );
