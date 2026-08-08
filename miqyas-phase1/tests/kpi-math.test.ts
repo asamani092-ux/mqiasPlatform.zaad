@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { achievementPct, deviationPct, deviationValue, kpiStatus, resolvePeriods } from "@/lib/kpi";
+import {
+  achievementPct,
+  deviationPct,
+  deviationValue,
+  frequenciesForPeriod,
+  kpiStatus,
+  resolvePeriods,
+} from "@/lib/kpi";
 
 describe("kpi math", () => {
   it("نسبة الإنجاز — الأعلى أفضل", () => {
@@ -36,5 +43,11 @@ describe("kpi math", () => {
     expect(resolvePeriods("QUARTERLY")).toEqual(["Q1", "Q2", "Q3", "Q4"]);
     expect(resolvePeriods("SEMI_ANNUAL")).toEqual(["H1", "H2"]);
     expect(resolvePeriods("ANNUAL")).toEqual(["Y"]);
+  });
+
+  it("تواترات فترة جولة القياس", () => {
+    expect(frequenciesForPeriod("Q3")).toEqual(["QUARTERLY"]);
+    expect(frequenciesForPeriod("H1")).toEqual(["SEMI_ANNUAL"]);
+    expect(frequenciesForPeriod("Y")).toEqual(["ANNUAL"]);
   });
 });

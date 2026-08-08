@@ -137,30 +137,30 @@ export default function DashboardClient({
         <PeriodSelector year={year} period={period} />
       </div>
 
-      <h3 style={{ marginBottom: ".5rem" }}>نظرة إجمالية على أداء المنصة</h3>
-      <div className="grid grid-3" style={{ marginBottom: "1rem", gap: ".75rem" }}>
+      <h3 style={{ marginBottom: "var(--space-2)" }}>نظرة إجمالية على أداء المنصة</h3>
+      <div className="grid grid-3" style={{ marginBottom: "var(--space-4)", gap: "var(--space-3)" }}>
         {trackTiles.map((s) => (
-          <div key={s.lbl} className={`card stat-card ${s.accent}`.trim()} style={{ padding: ".85rem 1rem" }}>
-            <div className="stat-num" style={{ fontSize: "1.55rem" }}>{s.num}</div>
-            <div className="stat-lbl" style={{ fontSize: ".72rem", marginTop: ".15rem" }}>{s.lbl}</div>
+          <div key={s.lbl} className={`zad-kpi ${s.accent}`.trim()}>
+            <div className="zad-kpi__value">{s.num}</div>
+            <div className="zad-kpi__label">{s.lbl}</div>
           </div>
         ))}
       </div>
 
-      <div className="card" style={{ marginBottom: "1rem", overflowX: "auto" }}>
+      <div className="card zad-table-wrap" style={{ marginBottom: "var(--space-4)" }}>
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
-            gap: ".75rem",
+            gap: "var(--space-3)",
             flexWrap: "wrap",
             alignItems: "center",
-            marginBottom: ".75rem",
+            marginBottom: "var(--space-3)",
           }}
         >
           <div>
-            <h3 style={{ marginBottom: ".25rem" }}>مؤشرات الانحراف</h3>
-            <div className="text-muted" style={{ fontSize: ".82rem" }}>
+            <h3 style={{ marginBottom: "var(--space-1)" }}>مؤشرات الانحراف</h3>
+            <div className="text-muted" style={{ fontSize: "var(--text-sm)" }}>
               المؤشرات المعتمدة نهائياً بحالة معرّض للخطر أو حرج.
             </div>
           </div>

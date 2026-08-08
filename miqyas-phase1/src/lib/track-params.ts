@@ -22,8 +22,9 @@ export async function parseTrackParams(
     year = parseInt(yearParam, 10);
     if (Number.isNaN(year)) year = cy;
   } else {
-    const settingYear = await getSetting("current_year");
-    const parsed = parseInt(settingYear, 10);
+    const roundYear = await getSetting("measurement_round_year");
+    const fallbackYear = await getSetting("current_year");
+    const parsed = parseInt(roundYear || fallbackYear, 10);
     year = Number.isNaN(parsed) ? cy : parsed;
   }
 
@@ -31,8 +32,9 @@ export async function parseTrackParams(
   if (periodParam != null) {
     period = periodParam as Period;
   } else {
-    const settingPeriod = await getSetting("current_period");
-    period = (settingPeriod as Period) || cp;
+    const roundPeriod = await getSetting("measurement_round_period");
+    const fallbackPeriod = await getSetting("current_period");
+    period = ((roundPeriod || fallbackPeriod) as Period) || cp;
   }
 
   return { year, period };

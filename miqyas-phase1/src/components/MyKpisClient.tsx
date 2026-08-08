@@ -7,6 +7,7 @@ import PeriodSelector from "@/components/PeriodSelector";
 import ActionToolbar, { IconActionButton } from "@/components/ui/ActionToolbar";
 import {
   APPROVAL_BADGE,
+  PERIOD_LABEL,
   POLARITY_LABEL,
   type Period,
 } from "@/lib/types";
@@ -205,13 +206,17 @@ export default function MyKpisClient({
         <PeriodSelector year={year} period={period} />
       </div>
 
+      <div className="alert alert-info" style={{ marginBottom: "var(--space-4)" }}>
+        تُعرض المهام ذات التواتر المناسب للفترة المختارة فقط ({PERIOD_LABEL[period]} {year}).
+      </div>
+
       {items.some(
         (it) =>
           it.measurement?.approvalStatus === "REJECTED_EVIDENCE" ||
           it.measurement?.approvalStatus === "REJECTED_WORDING" ||
           it.measurement?.approvalStatus === "REJECTED"
       ) ? (
-        <div className="alert alert-warn" style={{ marginBottom: "1rem" }}>
+        <div className="alert alert-warn" style={{ marginBottom: "var(--space-4)" }}>
           لديك قياسات مرفوضة — صحّح الحقول/الشواهد حسب ملاحظات القسم ثم اضغط{" "}
           <strong>إعادة التقديم</strong> لإعادتها إلى مسار الاعتماد. رفع شاهد بديل وحده لا يكفي.
         </div>
@@ -219,11 +224,11 @@ export default function MyKpisClient({
 
       {items.length === 0 ? (
         <EmptyState
-          title="لا مهام مسندة"
-          body="راجع مدير الإدارة أو إسناد المسؤولين لتعيين مؤشرات لك."
+          title="لا مهام مسندة لهذه الفترة"
+          body="لا متطلبات بتواتر يطابق الفترة المختارة، أو لم يُسند إليك شيء. غيّر الفترة أو راجع الإسناد."
         />
       ) : (
-        <div className="card" style={{ overflowX: "auto" }}>
+        <div className="card zad-table-wrap">
           <table className="tmkeen-table">
             <thead>
               <tr>
