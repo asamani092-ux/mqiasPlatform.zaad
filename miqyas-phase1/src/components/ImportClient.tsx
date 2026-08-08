@@ -80,7 +80,7 @@ export default function ImportClient({ embedded = false }: { embedded?: boolean 
           اختيار ملف .xlsx
           <input type="file" hidden accept=".xlsx,.xls" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} />
         </label>
-        {loading && <span className="text-muted" style={{ marginRight: ".75rem" }}>جاري المعالجة...</span>}
+        {loading && <span className="text-muted" style={{ marginInlineStart: ".75rem" }}>جاري المعالجة...</span>}
       </div>
 
       {msg && (

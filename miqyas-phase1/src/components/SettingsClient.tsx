@@ -156,7 +156,7 @@ export default function SettingsClient() {
           </div>
         </section>
 
-        <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px solid var(--border, #e5e7eb)" }} />
+        <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px solid var(--tmkeen-border)" }} />
 
         <div style={{ marginBottom: "1.25rem" }}>
           <label className="label-field">سنة القياس الحالية</label>
@@ -224,7 +224,7 @@ export default function SettingsClient() {
             </div>
           ))}
 
-        <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px solid var(--border, #e5e7eb)" }} />
+        <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px solid var(--tmkeen-border)" }} />
 
         <h3 style={{ marginBottom: ".5rem" }}>البريد والتنبيهات</h3>
         <div className="alert alert-info" style={{ marginBottom: "1rem" }}>

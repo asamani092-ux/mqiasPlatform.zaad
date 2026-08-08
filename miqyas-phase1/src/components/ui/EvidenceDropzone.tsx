@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 export default function EvidenceDropzone({
   disabled,
   onFile,
-  accept = ".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx",
+  accept = ".pdf,.png,.jpg,.jpeg,.xlsx,.docx",
   label = "اسحب الشاهد هنا أو استعرض ملفًا",
 }: {
   disabled?: boolean;
@@ -54,7 +54,7 @@ export default function EvidenceDropzone({
     >
       <strong className="zad-dropzone__title">{label}</strong>
       <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
-        PDF · صور · Office — زر الاستعراض متاح للوحة المفاتيح
+        PDF · PNG/JPG · XLSX/DOCX — حد 10 ميغابايت
       </span>
       {error ? <span role="alert">{error}</span> : null}
       <input

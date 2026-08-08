@@ -223,7 +223,7 @@ export default function GovernanceClient({
         </div>
       )}
 
-      <div className="card" style={{ marginBottom: "1rem", borderTop: "3px solid var(--color-primary, #8b1a2a)" }}>
+      <div className="card" style={{ marginBottom: "1rem", borderTop: "3px solid var(--tmkeen-primary)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ".85rem" }}>
           <h2 style={{ margin: 0, fontSize: "1rem" }}>درجة جاهزية الحوكمة الكلية</h2>
           <span style={{ fontSize: "1.8rem", fontWeight: 800 }}>{readinessPct}%</span>
@@ -232,7 +232,7 @@ export default function GovernanceClient({
           style={{
             height: 8,
             borderRadius: 99,
-            background: "var(--color-border, #e5e5e5)",
+            background: "var(--tmkeen-border)",
             overflow: "hidden",
           }}
         >
@@ -240,7 +240,7 @@ export default function GovernanceClient({
             style={{
               height: "100%",
               width: `${readinessPct}%`,
-              background: "var(--color-primary, #8b1a2a)",
+              background: "var(--tmkeen-primary)",
               transition: "width 1.2s ease",
             }}
           />
