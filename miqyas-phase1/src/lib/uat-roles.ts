@@ -31,6 +31,7 @@ export const UAT_ROLE_VERDICTS: UatRoleVerdict[] = [
   "خلل",
 ];
 
+/** @deprecated لا تخزين محلي — الحالة في الذاكرة أثناء الجلسة فقط */
 export const UAT_ROLES_STORAGE_KEY = "miqyas.uat.roles.v1";
 
 export const UAT_ROLE_SECTIONS: UatRoleSection[] = [
@@ -448,7 +449,7 @@ export const UAT_ROLE_SECTIONS: UatRoleSection[] = [
   {
     id: "e2e-chain",
     title: "6) سلسلة الاعتماد عبر الأدوار (الأهم)",
-    roleLabel: "E2E",
+    roleLabel: "سلسلة الاعتماد",
     demoHint: "جهّز موظف + مدير + مشرف على نفس متطلب/إدارة · سجّل قيمًا واضحة للتتبّع",
     goldenRule: "لا قيمة تحليلية قبل النهائي · تظهر بعد final_approve · تختفي بعد revoke_final",
     cases: [
@@ -521,7 +522,7 @@ export const UAT_ROLE_SECTIONS: UatRoleSection[] = [
   {
     id: "notifications",
     title: "7) الإشعارات عبر الأدوار",
-    roleLabel: "NOTIFY",
+    roleLabel: "الإشعارات",
     demoHint: "فعّل SMTP إن أمكن · راقب جرس الإشعارات لكل حساب",
     goldenRule: "المالك → /my?mp= · المدير → /dept-follow عند الحاجة · لا إشعار /my لغير المالك",
     cases: [
@@ -602,9 +603,9 @@ export function defaultUatRolesState(): UatRolesState {
   return { verdicts, notes: {} };
 }
 
-/** تقرير Markdown — زمن O(n) · مساحة O(n) */
+/** تقرير Markdown كامل — كل الصفوف · زمن O(n) · مساحة O(n) */
 export function buildUatRolesReport(state: UatRolesState): string {
-  const counts = {
+  const overall = {
     total: 0,
     "غير مجرّب": 0,
     مطابق: 0,
@@ -613,8 +614,8 @@ export function buildUatRolesReport(state: UatRolesState): string {
   };
   for (const c of UAT_ALL_ROLE_CASES) {
     const v = state.verdicts[c.id] ?? "غير مجرّب";
-    counts[v] += 1;
-    counts.total += 1;
+    overall[v] += 1;
+    overall.total += 1;
   }
 
   const now = new Date().toLocaleString("ar-SA", {
@@ -623,45 +624,52 @@ export function buildUatRolesReport(state: UatRolesState): string {
   });
 
   const lines: string[] = [
-    "# تقرير تقييم الأدوار والصلاحيات — مِقياس | جمعية الزاد",
+    "# تقرير تقييم الأدوار — منصة مِقياس",
     "",
     `تاريخ التقرير: ${now}`,
     "",
-    "> مكمّل لقائمة الأدوات (`uat-tools-checklist`). القاعدة الذهبية: رؤية + وصول + نطاق.",
+    "> جرّب بكل دور على حدة، وسجّل الرؤية / الوصول / النطاق.",
     "",
-    "## الملخص",
+    "## الملخص الإجمالي",
     "",
     `| الإجمالي | مطابق | يحتاج تحسين | خلل | غير مجرّب |`,
-    `|----------|--------|-------------|-----|-----------|`,
-    `| ${counts.total} | ${counts["مطابق"]} | ${counts["يحتاج تحسين"]} | ${counts["خلل"]} | ${counts["غير مجرّب"]} |`,
+    `|---:|---:|---:|---:|---:|`,
+    `| ${overall.total} | ${overall["مطابق"]} | ${overall["يحتاج تحسين"]} | ${overall["خلل"]} | ${overall["غير مجرّب"]} |`,
     "",
   ];
 
   for (const section of UAT_ROLE_SECTIONS) {
-    lines.push(`## ${section.title}`, "");
-    lines.push(`- الدور: \`${section.roleLabel}\``);
-    lines.push(`- حساب مقترح: ${section.demoHint}`);
-    lines.push(`- القاعدة الذهبية: ${section.goldenRule}`);
-    lines.push("");
+    const sc = {
+      total: 0,
+      "غير مجرّب": 0,
+      مطابق: 0,
+      "يحتاج تحسين": 0,
+      خلل: 0,
+    };
     for (const c of section.cases) {
       const v = state.verdicts[c.id] ?? "غير مجرّب";
-      const note = state.notes[c.id]?.trim() || "—";
-      lines.push(`### ${c.n}. ${c.title}`);
-      lines.push(`- الأبعاد: ${c.dimensions.join(" · ")}`);
-      lines.push(`- التقييم: **${v}**`);
-      lines.push(`- ملاحظة: ${note}`);
-      lines.push(`- الخطوات:`);
-      for (const s of c.steps) lines.push(`  1. ${s}`);
-      lines.push(`- المتوقع: ${c.expected}`);
-      lines.push("");
+      sc[v] += 1;
+      sc.total += 1;
     }
-  }
 
-  lines.push("## طريقة الإرجاع للمطور", "");
-  lines.push(
-    "كل حالة تقييمها **خلل** أو **يحتاج تحسين** تُنسخ هنا كملاحظة مستقلة لإحالتها كأمر إصلاح."
-  );
-  lines.push("");
+    lines.push(`## ${section.title}`, "");
+    lines.push(`**الدور:** ${section.roleLabel}`);
+    lines.push("");
+    lines.push(
+      `ملخص القسم: إجمالي ${sc.total} · مطابق ${sc["مطابق"]} · يحتاج تحسين ${sc["يحتاج تحسين"]} · خلل ${sc["خلل"]} · غير مجرّب ${sc["غير مجرّب"]}`,
+    );
+    lines.push("");
+    lines.push("| الحالة | المتوقّع | التقييم | ملاحظة |");
+    lines.push("|:---|:---|:---|:---|");
+    for (const c of section.cases) {
+      const v = state.verdicts[c.id] ?? "غير مجرّب";
+      const note = (state.notes[c.id]?.trim() || "—").replace(/\|/g, "\\|").replace(/\n/g, " ");
+      const title = c.title.replace(/\|/g, "\\|");
+      const expected = c.expected.replace(/\|/g, "\\|").replace(/\n/g, " ");
+      lines.push(`| ${title} | ${expected} | ${v} | ${note} |`);
+    }
+    lines.push("");
+  }
 
   return lines.join("\n");
 }

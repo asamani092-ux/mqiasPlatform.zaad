@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, ClipboardCheck, Copy, ExternalLink, RotateCcw } from "lucide-react";
 import { ICON_PROPS } from "@/lib/icon-props";
+import { notifyToast } from "@/lib/ui-toast";
 import {
   UAT_ALL_TOOLS,
   UAT_NOTE_CATEGORIES,
   UAT_OUT_OF_SCOPE,
-  UAT_STORAGE_KEY,
   UAT_TOOL_GROUPS,
   UAT_VERDICTS,
   buildUatReport,
@@ -21,7 +21,6 @@ import {
   UAT_ALL_ROLE_CASES,
   UAT_ROLE_SECTIONS,
   UAT_ROLE_VERDICTS,
-  UAT_ROLES_STORAGE_KEY,
   buildUatRolesReport,
   defaultUatRolesState,
   type UatRoleVerdict,
@@ -50,45 +49,8 @@ export default function UatChecklistClient() {
   const [filter, setFilter] = useState<"all" | UatVerdict>("all");
   const [roleFilter, setRoleFilter] = useState<"all" | UatRoleVerdict>("all");
   const [search, setSearch] = useState("");
-  const [hydrated, setHydrated] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(UAT_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as UatChecklistState;
-        const base = defaultUatState();
-        setState({
-          verdicts: { ...base.verdicts, ...parsed.verdicts },
-          notes: { ...base.notes, ...parsed.notes },
-        });
-      }
-      const rawRoles = localStorage.getItem(UAT_ROLES_STORAGE_KEY);
-      if (rawRoles) {
-        const parsed = JSON.parse(rawRoles) as UatRolesState;
-        const base = defaultUatRolesState();
-        setRolesState({
-          verdicts: { ...base.verdicts, ...parsed.verdicts },
-          notes: { ...base.notes, ...parsed.notes },
-        });
-      }
-    } catch {
-      /* ignore corrupt storage */
-    }
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    localStorage.setItem(UAT_STORAGE_KEY, JSON.stringify(state));
-  }, [state, hydrated]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    localStorage.setItem(UAT_ROLES_STORAGE_KEY, JSON.stringify(rolesState));
-  }, [rolesState, hydrated]);
 
   const toolsCounts = useMemo(() => {
     const c = { total: 0, "غير مجرّب": 0, يعتمد: 0, "يحتاج تحسين": 0 };
@@ -118,7 +80,7 @@ export default function UatChecklistClient() {
 
   const report = useMemo(
     () => (mode === "tools" ? buildUatReport(state) : buildUatRolesReport(rolesState)),
-    [mode, state, rolesState]
+    [mode, state, rolesState],
   );
 
   function setVerdict(id: string, value: UatVerdict) {
@@ -172,15 +134,15 @@ export default function UatChecklistClient() {
     try {
       await navigator.clipboard.writeText(report);
       setCopied(true);
+      notifyToast.success("تم نسخ التقرير", { duration: "short" });
       setTimeout(() => setCopied(false), 2500);
     } catch {
       setShowPreview(true);
-      window.alert("تعذّر النسخ تلقائياً — حدّد النص من معاينة التقرير وانسخه يدوياً.");
+      notifyToast.error("تعذّر النسخ — استخدم معاينة التقرير للنسخ اليدوي");
     }
   }
 
   const q = search.trim().toLowerCase();
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
   return (
     <>
@@ -192,7 +154,9 @@ export default function UatChecklistClient() {
                 <a href="/dashboard">الرئيسية</a>
               </li>
               <li>
-                <span className="zad-breadcrumb__sep" aria-hidden="true">‹</span>
+                <span className="zad-breadcrumb__sep" aria-hidden="true">
+                  ‹
+                </span>
                 <span aria-current="page">بيئة التجربة</span>
               </li>
             </ol>
@@ -205,9 +169,7 @@ export default function UatChecklistClient() {
             {mode === "roles" ? "تقييم الأدوار والصلاحيات" : "قائمة تقييم الأدوات"}
           </h1>
           <div className="text-muted">
-            {mode === "roles"
-              ? "مكمّل لنموذج الأدوات — اختبر الرؤية + الوصول + النطاق لكل دور · سلسلة الاعتماد end-to-end"
-              : "بيئة التجربة — حسب الشاشات/الأدوات · يعتمد · يحتاج تحسين · غير مجرّب"}
+            بيئة تجربة فقط (`ENABLE_UAT`) — الحالة في الذاكرة أثناء الجلسة · بلا حفظ في الخادم
           </div>
         </div>
         <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
@@ -229,29 +191,33 @@ export default function UatChecklistClient() {
         </div>
       </div>
 
-      <div className="tab-bar" style={{ marginBottom: "1rem" }}>
+      <div className="tab-bar tab-bar--square" style={{ marginBottom: "1rem" }} role="tablist">
         <button
           type="button"
-          className={mode === "roles" ? "active" : ""}
-          onClick={() => setMode("roles")}
-        >
-          حسب الأدوار
-        </button>
-        <button
-          type="button"
+          role="tab"
+          aria-selected={mode === "tools"}
+          data-active={mode === "tools" ? "true" : "false"}
           className={mode === "tools" ? "active" : ""}
           onClick={() => setMode("tools")}
         >
-          حسب الأدوات
+          الأدوات
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "roles"}
+          data-active={mode === "roles" ? "true" : "false"}
+          className={mode === "roles" ? "active" : ""}
+          onClick={() => setMode("roles")}
+        >
+          الأدوار والصلاحيات
         </button>
       </div>
 
       {mode === "roles" ? (
         <div className="alert alert-info" style={{ marginBottom: "1rem" }}>
-          <strong>القاعدة الذهبية:</strong> لكل دور تحقّق من ثلاثة أبعاد معًا —{" "}
-          <strong>رؤية</strong> (الشريط) + <strong>وصول</strong> (منع المسارات) +{" "}
-          <strong>نطاق</strong> (بياناته فقط). القسم 6 (سلسلة الاعتماد) يربط الطبقات الثلاث بنقطة
-          الانعكاس عند الاعتماد النهائي. التقييم: مطابق · يحتاج تحسين · خلل.
+          جرّب بكل دور على حدة، وسجّل الرؤية/الوصول/النطاق. التقييم: مطابق · يحتاج تحسين · خلل · غير
+          مجرّب. أنشئ حسابًا لكل دور من <code>/admin/users</code> قبل البدء.
         </div>
       ) : null}
 
@@ -418,9 +384,8 @@ export default function UatChecklistClient() {
                               </select>
                             </td>
                             <td>
-                              <textarea
+                              <input
                                 className="input-field"
-                                rows={2}
                                 placeholder="ملاحظات التجربة…"
                                 value={note.text}
                                 onChange={(e) => setNoteText(tool.id, e.target.value)}
@@ -501,10 +466,6 @@ export default function UatChecklistClient() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <p className="text-muted" style={{ marginTop: ".75rem", marginBottom: 0 }}>
-              الاستخدام: جهّز حسابًا لكل دور من /admin/users → سجّل الدخول → املأ عمود التقييم. كل
-              «خلل» يُنسَخ في التقرير ويُحوَّل لأمر إصلاح.
-            </p>
           </div>
 
           {UAT_ROLE_SECTIONS.map((section) => {
@@ -512,46 +473,34 @@ export default function UatChecklistClient() {
               const v = rolesState.verdicts[c.id] ?? "غير مجرّب";
               if (roleFilter !== "all" && v !== roleFilter) return false;
               if (!q) return true;
-              const hay = `${section.title} ${c.title} ${c.expected} ${c.steps.join(" ")}`.toLowerCase();
+              const hay =
+                `${section.title} ${section.roleLabel} ${c.title} ${c.expected}`.toLowerCase();
               return hay.includes(q);
             });
             if (cases.length === 0) return null;
 
-            const open = openSections[section.id] ?? true;
             return (
-              <div key={section.id} className="zad-accordion" style={{ marginBottom: "1rem" }}>
-                <div className="zad-accordion__item">
-                <button
-                  type="button"
-                  className="zad-accordion__trigger"
-                  aria-expanded={open}
-                  onClick={() =>
-                    setOpenSections((s) => ({ ...s, [section.id]: !open }))
-                  }
-                >
-                  <span>{section.title}</span>
-                  <span aria-hidden="true">{open ? "▾" : "◂"}</span>
-                </button>
-                {open ? (
-                <div className="zad-accordion__panel">
-                <div className="text-muted" style={{ marginBottom: ".35rem", fontSize: ".85rem" }}>
-                  الدور: <code>{section.roleLabel}</code> · {section.demoHint}
-                </div>
-                <div
-                  className="alert alert-info"
-                  style={{ marginBottom: ".75rem", padding: ".5rem .75rem" }}
-                >
-                  {section.goldenRule}
+              <div key={section.id} className="card" style={{ marginBottom: "1rem" }}>
+                <div className="card-section" style={{ marginBottom: ".75rem" }}>
+                  <h3 style={{ marginBottom: ".25rem" }}>{section.title}</h3>
+                  <div className="text-muted" style={{ fontSize: ".85rem" }}>
+                    الدور: <strong>{section.roleLabel}</strong>
+                    {section.demoHint ? ` · ${section.demoHint}` : ""}
+                  </div>
+                  <p
+                    className="text-muted"
+                    style={{ marginTop: ".35rem", marginBottom: 0, fontSize: ".82rem" }}
+                  >
+                    {section.goldenRule}
+                  </p>
                 </div>
                 <div style={{ overflowX: "auto" }}>
                   <table className="tmkeen-table">
                     <thead>
                       <tr>
                         <th>#</th>
-                        <th>الحالة</th>
-                        <th>الأبعاد</th>
-                        <th>الخطوات</th>
-                        <th>المتوقع</th>
+                        <th>ما يُتحقق منه</th>
+                        <th>المتوقّع</th>
                         <th>التقييم</th>
                         <th>ملاحظة</th>
                       </tr>
@@ -567,16 +516,14 @@ export default function UatChecklistClient() {
                               <div>
                                 <span className={`badge ${rolesVerdictBadge(v)}`}>{v}</span>
                               </div>
+                              <div
+                                className="text-muted"
+                                style={{ fontSize: ".75rem", marginTop: ".25rem" }}
+                              >
+                                {c.dimensions.join(" · ")}
+                              </div>
                             </td>
-                            <td style={{ fontSize: ".8rem" }}>{c.dimensions.join(" · ")}</td>
-                            <td>
-                              <ol style={{ margin: 0, paddingInlineStart: "1.1rem", fontSize: ".85rem" }}>
-                                {c.steps.map((s) => (
-                                  <li key={s}>{s}</li>
-                                ))}
-                              </ol>
-                            </td>
-                            <td style={{ fontSize: ".85rem", maxWidth: 280 }}>{c.expected}</td>
+                            <td style={{ fontSize: ".85rem", maxWidth: 320 }}>{c.expected}</td>
                             <td>
                               <select
                                 className="input-field"
@@ -593,10 +540,9 @@ export default function UatChecklistClient() {
                               </select>
                             </td>
                             <td>
-                              <textarea
+                              <input
                                 className="input-field"
-                                rows={2}
-                                placeholder="سجّل الخلل هنا…"
+                                placeholder="ملاحظة…"
                                 value={rolesState.notes[c.id] ?? ""}
                                 onChange={(e) => setRoleNote(c.id, e.target.value)}
                                 style={{ minWidth: 160 }}
@@ -607,9 +553,6 @@ export default function UatChecklistClient() {
                       })}
                     </tbody>
                   </table>
-                </div>
-                </div>
-                ) : null}
                 </div>
               </div>
             );
