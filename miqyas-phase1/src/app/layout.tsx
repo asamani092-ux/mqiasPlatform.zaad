@@ -7,6 +7,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "منصة مِقياس | جمعية الزاد",
   description: "منصة قياس الأداء المؤسسي — جمعية الزاد",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 };
 
 export const viewport: Viewport = {
