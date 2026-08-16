@@ -30,7 +30,7 @@ export async function GET(
           include: {
             evidences: {
               where: { status: "ACTIVE" },
-              select: { id: true, fileName: true },
+              select: { id: true, fileName: true, mimeType: true },
             },
           },
         },

@@ -4,9 +4,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
+import {
+  isInlineEvidenceMime,
+  resolveEvidenceMime,
+} from "@/lib/evidence-preview";
 
 const STORAGE_DIR = path.join(process.cwd(), "storage", "evidence");
-const INLINE_MIME = new Set(["application/pdf", "image/png", "image/jpeg", "image/jpg", "image/webp"]);
 
 async function canDownload(
   userId: number,
@@ -25,21 +28,34 @@ async function canDownload(
       },
       measurementPeriod: {
         include: {
-          requirement: { select: { ownerId: true, sectionId: true, departmentId: true } },
+          requirement: {
+            select: {
+              ownerId: true,
+              sectionId: true,
+              departmentId: true,
+              owner: { select: { sectionId: true } },
+            },
+          },
         },
       },
+      uploadedBy: { select: { id: true, sectionId: true, departmentId: true } },
     },
   });
 
   if (!evidence) return { ok: false };
 
+  const mimeType = resolveEvidenceMime(evidence.mimeType, evidence.fileName);
   const meta = {
     storedName: evidence.storedName,
     fileName: evidence.fileName,
-    mimeType: evidence.mimeType,
+    mimeType,
   };
 
   if (role === "SYSTEM_ADMIN" || role === "EXECUTIVE") {
+    return { ok: true, evidence: meta };
+  }
+
+  if (evidence.uploadedById === userId) {
     return { ok: true, evidence: meta };
   }
 
@@ -57,8 +73,10 @@ async function canDownload(
   const req = evidence.measurementPeriod?.requirement;
   if (req) {
     if (req.ownerId === userId) return { ok: true, evidence: meta };
-    if (role === "SECTION_HEAD" && userSectionId != null && req.sectionId === userSectionId) {
-      return { ok: true, evidence: meta };
+    if (role === "SECTION_HEAD" && userSectionId != null) {
+      const sectionMatch =
+        req.sectionId === userSectionId || req.owner?.sectionId === userSectionId;
+      if (sectionMatch) return { ok: true, evidence: meta };
     }
     if (role === "DEPT_MANAGER" && userDepartmentId != null && req.departmentId === userDepartmentId) {
       return { ok: true, evidence: meta };
@@ -94,8 +112,12 @@ export async function GET(
     }
     const buffer = await readFile(filePath);
 
-    const wantInline = req.nextUrl.searchParams.get("inline") === "1";
-    const canInline = wantInline && INLINE_MIME.has(check.evidence.mimeType.toLowerCase());
+    const forceDownload = req.nextUrl.searchParams.get("download") === "1";
+    const wantInline =
+      !forceDownload &&
+      (req.nextUrl.searchParams.get("inline") === "1" ||
+        req.nextUrl.searchParams.get("inline") == null);
+    const canInline = wantInline && isInlineEvidenceMime(check.evidence.mimeType);
     const disposition = canInline
       ? `inline; filename*=UTF-8''${encodeURIComponent(check.evidence.fileName)}`
       : `attachment; filename*=UTF-8''${encodeURIComponent(check.evidence.fileName)}`;
@@ -105,6 +127,7 @@ export async function GET(
         "Content-Type": check.evidence.mimeType,
         "Content-Disposition": disposition,
         "Cache-Control": "private, max-age=60",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (e) {

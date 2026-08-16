@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { Download, ExternalLink, X } from "lucide-react";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
+import {
+  evidenceDownloadUrl,
+  evidencePreviewUrl,
+  isPreviewableEvidence,
+} from "@/lib/evidence-preview";
 
 type Detail = {
   kpi: Record<string, unknown>;
@@ -100,16 +105,41 @@ export default function KpiDetailDrawer({
                     <strong>{PERIOD_LABEL[t.period as Period]} — ماذا/كيف حصل:</strong>
                     <p>{(t.entry as { whatHappened?: string })?.whatHappened || "—"}</p>
                     <p>{(t.entry as { howHappened?: string })?.howHappened || "—"}</p>
-                    {(t.entry as { evidences?: { id: number; fileName: string }[] })?.evidences?.map(
+                    {(t.entry as { evidences?: { id: number; fileName: string; mimeType?: string | null }[] })?.evidences?.map(
                       (ev) => (
-                        <a
+                        <span
                           key={ev.id}
-                          href={`/api/evidence/${ev.id}`}
-                          className="badge-primary"
-                          style={{ marginInlineEnd: "var(--space-1)" }}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.25rem",
+                            marginInlineEnd: "var(--space-2)",
+                            marginBlockEnd: "var(--space-1)",
+                            flexWrap: "wrap",
+                          }}
                         >
-                          {ev.fileName}
-                        </a>
+                          {isPreviewableEvidence(ev.mimeType, ev.fileName) ? (
+                            <a
+                              href={evidencePreviewUrl(ev.id)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="badge-primary"
+                              title="معاينة"
+                            >
+                              <ExternalLink {...ICON_PROPS} size={12} /> {ev.fileName}
+                            </a>
+                          ) : (
+                            <span className="badge-neutral">{ev.fileName}</span>
+                          )}
+                          <a
+                            href={evidenceDownloadUrl(ev.id)}
+                            className="btn-secondary btn-sm"
+                            download={ev.fileName}
+                            title="تنزيل"
+                          >
+                            <Download {...ICON_PROPS} size={12} /> تنزيل
+                          </a>
+                        </span>
                       )
                     )}
                   </div>
