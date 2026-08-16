@@ -274,7 +274,7 @@ export default function UatChecklistClient() {
               </select>
               <input
                 className="input-field"
-                style={{ minWidth: 220, flex: 1 }}
+                style={{ minWidth: 0, flex: 1, width: "100%" }}
                 placeholder="بحث بالأداة أو المسار…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -462,7 +462,7 @@ export default function UatChecklistClient() {
               </select>
               <input
                 className="input-field"
-                style={{ minWidth: 220, flex: 1 }}
+                style={{ minWidth: 0, flex: 1, width: "100%" }}
                 placeholder="بحث بالقسم أو الحالة…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

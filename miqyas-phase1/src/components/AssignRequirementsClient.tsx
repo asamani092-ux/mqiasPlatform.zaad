@@ -282,7 +282,7 @@ export default function AssignRequirementsClient() {
                       <td>
                         <select
                           className="input-field"
-                          style={{ minWidth: 220 }}
+                          style={{ width: "100%", minWidth: 0 }}
                           disabled={savingId === r.id}
                           value={r.ownerId ?? ""}
                           onChange={(e) => {

@@ -607,7 +607,7 @@ export default function AdminKpisClient({
                     <td>{TYPE_LABEL[k.type as keyof typeof TYPE_LABEL]}</td>
                     <td>{k.department?.name || "—"}</td>
                     <td>{k.owner?.name || k.ownerLabel || "—"}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>
+                    <td style={{ whiteSpace: "normal" }}>
                       <button type="button" className="btn-secondary btn-sm" title="تعديل المؤشر" onClick={() => startEdit(k)}>
                         تعديل
                       </button>
