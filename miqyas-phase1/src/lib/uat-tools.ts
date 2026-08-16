@@ -121,11 +121,11 @@ export const UAT_TOOL_GROUPS: UatToolGroup[] = [
   },
   {
     id: "executive",
-    title: "لوحة الإدارة العليا",
+    title: "لوحة الإدارة التنفيذية",
     tools: [
       {
         id: "executive",
-        tool: "لوحة الإدارة العليا",
+        tool: "لوحة الإدارة التنفيذية",
         path: "/executive",
         href: "/executive",
         checks: [

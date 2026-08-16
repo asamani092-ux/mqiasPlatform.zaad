@@ -7,6 +7,7 @@ import PeriodSelector from "@/components/PeriodSelector";
 import ActionToolbar, { IconActionButton } from "@/components/ui/ActionToolbar";
 import {
   APPROVAL_BADGE,
+  PERIOD_LABEL,
   POLARITY_LABEL,
   type Period,
 } from "@/lib/types";
@@ -111,11 +112,11 @@ export default function MyKpisClient({
     router.refresh();
   }
 
-  async function save(requirementId: number, action: "draft" | "submit") {
+  async function save(requirementId: number, action: "draft" | "submit"): Promise<number | null> {
     const draft = drafts[requirementId];
     if (!draft?.actual) {
       notifyToast.error("أدخل القيمة الفعلية");
-      return;
+      return null;
     }
     if (action === "submit") {
       const item = items.find((it) => it.requirement.id === requirementId);
@@ -123,7 +124,7 @@ export default function MyKpisClient({
         item?.measurement?.evidences.filter((e) => e.status !== "REJECTED").length ?? 0;
       if (!item?.measurement || activeCount < 1) {
         notifyToast.error("احفظ مسودة وارفع شاهدًا واحدًا على الأقل قبل التقديم");
-        return;
+        return null;
       }
     }
     setSaving(requirementId);
@@ -145,18 +146,26 @@ export default function MyKpisClient({
       const data = await res.json().catch(() => ({}));
       notifyToast.success(
         action === "draft"
-          ? "تم حفظ المسودة"
+          ? "تم حفظ المسودة — يمكنك الآن رفع الشواهد"
           : data.message ||
               (data.skipDeptInitial
                 ? "قُدِّم مباشرة للاعتماد النهائي"
                 : "تم تقديم القياس لمراجعة الإدارة"),
-        { duration: action === "submit" ? "normal" : "short" }
+        { duration: action === "submit" ? "normal" : "short" },
       );
       await reload();
-    } else {
-      const err = await res.json().catch(() => ({}));
-      notifyToast.error(err.error || "فشل الحفظ");
+      return typeof data.measurement?.id === "number" ? data.measurement.id : null;
     }
+    const err = await res.json().catch(() => ({}));
+    notifyToast.error(err.error || "فشل الحفظ");
+    return null;
+  }
+
+  /** يضمن وجود فترة قياس (مسودة) قبل الرفع — زمن O(1) */
+  async function ensureDraftMeasurement(requirementId: number): Promise<number | null> {
+    const item = items.find((it) => it.requirement.id === requirementId);
+    if (item?.measurement?.id) return item.measurement.id;
+    return save(requirementId, "draft");
   }
 
   async function uploadEvidence(measurementPeriodId: number, file: File) {
@@ -167,7 +176,7 @@ export default function MyKpisClient({
       body: fd,
     });
     if (res.ok) {
-      notifyToast.success("تم رفع الشاهد — إن كان مرفوضاً اضغط إعادة التقديم", {
+      notifyToast.success("تم رفع الشاهد — يمكنك التقديم للمراجعة", {
         duration: "normal",
       });
       await reload();
@@ -177,14 +186,26 @@ export default function MyKpisClient({
     }
   }
 
+  async function uploadEvidenceForRequirement(requirementId: number, file: File) {
+    const mpId = await ensureDraftMeasurement(requirementId);
+    if (mpId == null) return;
+    await uploadEvidence(mpId, file);
+  }
+
   async function softDeleteEvidence(measurementPeriodId: number, evidenceId: number) {
-    if (!window.confirm("حذف هذا الشاهد من القائمة؟ (يُحفظ السجل ولا يُتلف الملف)")) return;
+    if (
+      !window.confirm(
+        "حذف نهائي لهذا الشاهد (السجل والملف)؟ يمكنك رفع شاهد بديل بعده.",
+      )
+    ) {
+      return;
+    }
     const res = await fetch(
       `/api/my/measurements/${measurementPeriodId}/evidence?evidenceId=${evidenceId}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
     if (res.ok) {
-      notifyToast.success("أُزيل الشاهد", { duration: "short" });
+      notifyToast.success("حُذف الشاهد نهائيًا", { duration: "short" });
       await reload();
     } else {
       const err = await res.json().catch(() => ({}));
@@ -205,13 +226,19 @@ export default function MyKpisClient({
         <PeriodSelector year={year} period={period} />
       </div>
 
+      <div className="alert alert-info" style={{ marginBottom: "var(--space-4)" }}>
+        تُعرض المهام ذات التواتر المناسب للفترة المختارة فقط ({PERIOD_LABEL[period]} {year}).
+        {" "}
+        للتقديم: أدخل المتحقق ← احفظ مسودة ← ارفع شاهدًا ← قدّم للمراجعة.
+      </div>
+
       {items.some(
         (it) =>
           it.measurement?.approvalStatus === "REJECTED_EVIDENCE" ||
           it.measurement?.approvalStatus === "REJECTED_WORDING" ||
           it.measurement?.approvalStatus === "REJECTED"
       ) ? (
-        <div className="alert alert-warn" style={{ marginBottom: "1rem" }}>
+        <div className="alert alert-warn" style={{ marginBottom: "var(--space-4)" }}>
           لديك قياسات مرفوضة — صحّح الحقول/الشواهد حسب ملاحظات القسم ثم اضغط{" "}
           <strong>إعادة التقديم</strong> لإعادتها إلى مسار الاعتماد. رفع شاهد بديل وحده لا يكفي.
         </div>
@@ -219,12 +246,12 @@ export default function MyKpisClient({
 
       {items.length === 0 ? (
         <EmptyState
-          title="لا مهام مسندة"
-          body="راجع مدير الإدارة أو إسناد المسؤولين لتعيين مؤشرات لك."
+          title="لا مهام مسندة لهذه الفترة"
+          body="لا متطلبات بتواتر يطابق الفترة المختارة، أو لم يُسند إليك شيء. غيّر الفترة أو راجع الإسناد."
         />
       ) : (
-        <div className="card" style={{ overflowX: "auto" }}>
-          <table className="tmkeen-table">
+        <div className="card zad-table-wrap my-kpis-wrap">
+          <table className="tmkeen-table my-kpis-table">
             <thead>
               <tr>
                 <th>الرمز</th>
@@ -241,11 +268,14 @@ export default function MyKpisClient({
               {items.map((item) => {
                 const draft = drafts[item.requirement.id] ?? { actual: "", what: "", how: "" };
                 const isExpanded = expanded === item.requirement.id;
-                const status = item.measurement?.approvalStatus ?? "DRAFT";
+                const hasMeasurement = !!item.measurement;
+                const status = item.measurement?.approvalStatus ?? "NEW";
                 const locked = item.measurement
                   ? !canFillerEdit(status as never)
                   : false;
-                const label = displayApprovalLabel(status, item.measurement?.rejectReason);
+                const label = hasMeasurement
+                  ? displayApprovalLabel(status, item.measurement?.rejectReason)
+                  : "جديد — لم تُحفظ مسودة";
                 const showReturnAlert =
                   !!item.measurement?.rejectReason &&
                   (status === "DRAFT" ||
@@ -257,9 +287,9 @@ export default function MyKpisClient({
 
                 return (
                   <Fragment key={item.requirement.id}>
-                    <tr id={`req-row-${item.requirement.id}`}>
-                      <td>{item.requirement.code}</td>
-                      <td>
+                    <tr id={`req-row-${item.requirement.id}`} className="my-kpis-row">
+                      <td data-label="الرمز">{item.requirement.code}</td>
+                      <td data-label="المتطلب" className="my-kpis-span">
                         {item.requirement.name}
                         <div className="text-muted" style={{ fontSize: ".75rem" }}>
                           المسؤول: أنت
@@ -275,13 +305,13 @@ export default function MyKpisClient({
                           </button>
                         ) : null}
                       </td>
-                      <td style={{ fontSize: ".8rem" }}>
+                      <td data-label="الإدارة" style={{ fontSize: ".8rem" }}>
                         {item.requirement.departmentName || "—"}
                         {item.requirement.sectionName
                           ? ` · ${item.requirement.sectionName}`
                           : ""}
                       </td>
-                      <td style={{ fontSize: ".75rem" }}>
+                      <td data-label="المؤشرات" style={{ fontSize: ".75rem" }}>
                         {item.kpis.length === 0
                           ? "—"
                           : item.kpis
@@ -291,10 +321,9 @@ export default function MyKpisClient({
                               )
                               .join(" · ")}
                       </td>
-                      <td>
+                      <td data-label="المتحقق">
                         <input
-                          className="input-field"
-                          style={{ width: 88 }}
+                          className="input-field my-kpis-actual"
                           type="number"
                           step="any"
                           value={draft.actual}
@@ -310,10 +339,10 @@ export default function MyKpisClient({
                           {item.requirement.unit}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="الحالة">
                         <span className={APPROVAL_BADGE[status] || "badge-neutral"}>{label}</span>
                       </td>
-                      <td>
+                      <td data-label="الشواهد">
                         {item.measurement ? (
                           <>
                             {item.measurement.evidences.filter((e) => e.status !== "REJECTED").length}
@@ -330,17 +359,36 @@ export default function MyKpisClient({
                                   accept=".pdf,.png,.jpg,.jpeg,.xlsx,.docx"
                                   onChange={(e) => {
                                     const f = e.target.files?.[0];
-                                    if (f) void uploadEvidence(item.measurement!.id, f);
+                                    if (f) void uploadEvidenceForRequirement(item.requirement.id, f);
+                                    e.target.value = "";
                                   }}
                                 />
                               </label>
                             )}
                           </>
+                        ) : !locked ? (
+                          <label
+                            className="btn-secondary btn-sm"
+                            style={{ cursor: "pointer", fontSize: ".75rem" }}
+                            title="يُحفظ تلقائياً كمسودة إن لزم ثم يُرفع الشاهد"
+                          >
+                            رفع شاهد
+                            <input
+                              type="file"
+                              hidden
+                              accept=".pdf,.png,.jpg,.jpeg,.xlsx,.docx"
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) void uploadEvidenceForRequirement(item.requirement.id, f);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
                         ) : (
                           "—"
                         )}
                       </td>
-                      <td>
+                      <td data-label="إجراءات" className="my-kpis-actions">
                         <ActionToolbar>
                           <IconActionButton
                             icon={Save}
@@ -384,8 +432,8 @@ export default function MyKpisClient({
                       </td>
                     </tr>
                     {isExpanded && (
-                      <tr>
-                        <td colSpan={8} style={{ background: "var(--tmkeen-surface-muted)" }}>
+                      <tr className="my-kpis-expand">
+                        <td colSpan={8} data-label="" style={{ background: "var(--tmkeen-surface-muted)" }}>
                           {showReturnAlert && (
                             <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
                               <div>
@@ -489,9 +537,14 @@ export default function MyKpisClient({
                               />
                             ))}
                           </div>
-                          {!locked && item.measurement ? (
+                          {!locked ? (
                             <EvidenceDropzone
-                              onFile={(f) => void uploadEvidence(item.measurement!.id, f)}
+                              onFile={(f) => void uploadEvidenceForRequirement(item.requirement.id, f)}
+                              label={
+                                item.measurement
+                                  ? "اسحب الشاهد هنا أو استعرض ملفًا"
+                                  : "ارفع شاهدًا (يُحفظ كمسودة تلقائيًا إن أدخلت المتحقق)"
+                              }
                             />
                           ) : null}
                           {(status === "REJECTED_EVIDENCE" ||

@@ -137,30 +137,30 @@ export default function DashboardClient({
         <PeriodSelector year={year} period={period} />
       </div>
 
-      <h3 style={{ marginBottom: ".5rem" }}>نظرة إجمالية على أداء المنصة</h3>
-      <div className="grid grid-3" style={{ marginBottom: "1rem", gap: ".75rem" }}>
+      <h3 style={{ marginBottom: "var(--space-2)" }}>نظرة إجمالية على أداء المنصة</h3>
+      <div className="grid grid-3" style={{ marginBottom: "var(--space-4)", gap: "var(--space-3)" }}>
         {trackTiles.map((s) => (
-          <div key={s.lbl} className={`card stat-card ${s.accent}`.trim()} style={{ padding: ".85rem 1rem" }}>
-            <div className="stat-num" style={{ fontSize: "1.55rem" }}>{s.num}</div>
-            <div className="stat-lbl" style={{ fontSize: ".72rem", marginTop: ".15rem" }}>{s.lbl}</div>
+          <div key={s.lbl} className={`zad-kpi ${s.accent}`.trim()}>
+            <div className="zad-kpi__value">{s.num}</div>
+            <div className="zad-kpi__label">{s.lbl}</div>
           </div>
         ))}
       </div>
 
-      <div className="card" style={{ marginBottom: "1rem", overflowX: "auto" }}>
+      <div className="card" style={{ marginBottom: "var(--space-4)" }}>
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
-            gap: ".75rem",
+            gap: "var(--space-3)",
             flexWrap: "wrap",
             alignItems: "center",
-            marginBottom: ".75rem",
+            marginBottom: "var(--space-3)",
           }}
         >
           <div>
-            <h3 style={{ marginBottom: ".25rem" }}>مؤشرات الانحراف</h3>
-            <div className="text-muted" style={{ fontSize: ".82rem" }}>
+            <h3 style={{ marginBottom: "var(--space-1)" }}>مؤشرات الانحراف</h3>
+            <div className="text-muted" style={{ fontSize: "var(--text-sm)" }}>
               المؤشرات المعتمدة نهائياً بحالة معرّض للخطر أو حرج.
             </div>
           </div>
@@ -179,38 +179,40 @@ export default function DashboardClient({
             body="لا توجد مؤشرات انحراف معتمدة لهذه الفترة."
           />
         ) : (
-          <table className="tmkeen-table">
-            <thead>
-              <tr>
-                <th>الرمز</th>
-                <th>المؤشر</th>
-                <th>الإدارة</th>
-                <th>المسؤول</th>
-                <th>المستهدف</th>
-                <th>المتحقق</th>
-                <th>الإنجاز</th>
-                <th>الانحراف</th>
-                <th>الحالة</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deviationKpis.map((k) => (
-                <tr key={k.kpiId}>
-                  <td><code>{k.code}</code></td>
-                  <td>{k.name}</td>
-                  <td>{k.departmentName || "—"}</td>
-                  <td>{k.ownerLabel || "—"}</td>
-                  <td>{k.target ?? "—"}</td>
-                  <td>{k.actual}</td>
-                  <td>{pct(k.achievementPct)}</td>
-                  <td>{pct(k.deviationPct)}</td>
-                  <td>
-                    <span className={STATUS_BADGE[k.status]}>{STATUS_LABEL[k.status]}</span>
-                  </td>
+          <div className="table-wrap">
+            <table className="tmkeen-table table--stack">
+              <thead>
+                <tr>
+                  <th>الرمز</th>
+                  <th>المؤشر</th>
+                  <th>الإدارة</th>
+                  <th>المسؤول</th>
+                  <th>المستهدف</th>
+                  <th>المتحقق</th>
+                  <th>الإنجاز</th>
+                  <th>الانحراف</th>
+                  <th>الحالة</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {deviationKpis.map((k) => (
+                  <tr key={k.kpiId}>
+                    <td data-label="الرمز"><code>{k.code}</code></td>
+                    <td data-label="المؤشر">{k.name}</td>
+                    <td data-label="الإدارة">{k.departmentName || "—"}</td>
+                    <td data-label="المسؤول">{k.ownerLabel || "—"}</td>
+                    <td data-label="المستهدف">{k.target ?? "—"}</td>
+                    <td data-label="المتحقق">{k.actual}</td>
+                    <td data-label="الإنجاز">{pct(k.achievementPct)}</td>
+                    <td data-label="الانحراف">{pct(k.deviationPct)}</td>
+                    <td data-label="الحالة">
+                      <span className={STATUS_BADGE[k.status]}>{STATUS_LABEL[k.status]}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

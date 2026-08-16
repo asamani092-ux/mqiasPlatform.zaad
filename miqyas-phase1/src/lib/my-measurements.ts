@@ -80,47 +80,49 @@ export async function getMyRequirements(
     orderBy: { code: "asc" },
   });
 
-  return requirements.map((req) => {
-    const measurement = req.periods[0] ?? null;
-    return {
-      requirement: {
-        id: req.id,
-        code: req.code,
-        name: req.name,
-        unit: req.unit,
-        polarity: req.polarity,
-        frequency: req.frequency,
-        requiredData: req.requiredData,
-        ownerId: req.ownerId,
-        fillerRole: req.fillerRole,
-        departmentId: req.departmentId,
-        sectionId: req.sectionId,
-        departmentName: req.department?.name ?? null,
-        sectionName: req.section?.name ?? null,
-      },
-      measurement: measurement
-        ? {
-            id: measurement.id,
-            actualValue: measurement.actualValue,
-            whatHappened: measurement.whatHappened,
-            howHappened: measurement.howHappened,
-            note: measurement.note,
-            approvalStatus: measurement.approvalStatus,
-            rejectReason: measurement.rejectReason,
-            suggestedWording: measurement.suggestedWording,
-            reviewFeedback: measurement.reviewFeedback,
-            evidences: measurement.evidences,
-          }
-        : null,
-      kpis: req.kpis.map((k) => ({
-        id: k.id,
-        code: k.code,
-        type: k.type,
-        name: k.name,
-      })),
-      periods: resolvePeriods(req.frequency),
-    };
-  });
+  return requirements
+    .filter((req) => resolvePeriods(req.frequency).includes(period))
+    .map((req) => {
+      const measurement = req.periods[0] ?? null;
+      return {
+        requirement: {
+          id: req.id,
+          code: req.code,
+          name: req.name,
+          unit: req.unit,
+          polarity: req.polarity,
+          frequency: req.frequency,
+          requiredData: req.requiredData,
+          ownerId: req.ownerId,
+          fillerRole: req.fillerRole,
+          departmentId: req.departmentId,
+          sectionId: req.sectionId,
+          departmentName: req.department?.name ?? null,
+          sectionName: req.section?.name ?? null,
+        },
+        measurement: measurement
+          ? {
+              id: measurement.id,
+              actualValue: measurement.actualValue,
+              whatHappened: measurement.whatHappened,
+              howHappened: measurement.howHappened,
+              note: measurement.note,
+              approvalStatus: measurement.approvalStatus,
+              rejectReason: measurement.rejectReason,
+              suggestedWording: measurement.suggestedWording,
+              reviewFeedback: measurement.reviewFeedback,
+              evidences: measurement.evidences,
+            }
+          : null,
+        kpis: req.kpis.map((k) => ({
+          id: k.id,
+          code: k.code,
+          type: k.type,
+          name: k.name,
+        })),
+        periods: resolvePeriods(req.frequency),
+      };
+    });
 }
 
 /** يلغي إسناد المتطلبات التي لا تطابق إدارة/قسم المالك الحالي — تراكمياً لا يحذف التاريخ */

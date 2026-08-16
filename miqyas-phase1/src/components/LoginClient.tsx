@@ -158,9 +158,9 @@ export default function LoginClient() {
             </div>
             <button
               type="submit"
-              className="btn-primary"
-              style={{ width: "100%" }}
+              className="btn-primary btn-block"
               disabled={submitState !== "idle"}
+              aria-busy={submitState === "loading" || undefined}
             >
               {buttonLabel}
             </button>

@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { PERIOD_LABEL, type Period } from "@/lib/types";
 import PageBreadcrumb from "@/components/ui/PageBreadcrumb";
 import FilterBar, { FilterField } from "@/components/ui/FilterBar";
 import EmptyState from "@/components/ui/EmptyState";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Chip from "@/components/ui/Chip";
 import { FREQUENCY_LABEL, TYPE_LABEL, POLARITY_LABEL_API } from "@/lib/kpi-schemas";
 import { resolvePeriods } from "@/lib/kpi";
 import ImportClient from "@/components/ImportClient";
@@ -79,6 +82,16 @@ export default function AdminKpisClient({
   const [targetYear, setTargetYear] = useState(2026);
   const [targets, setTargets] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
+  const [showAll, setShowAll] = useState(false);
+  const [round, setRound] = useState<{
+    year: number;
+    period: string;
+    periodLabel: string;
+  } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<null | { type: "disable" | "reactivate"; id: number }>(
+    null
+  );
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   function closeForm() {
     setFormOpen(false);
@@ -117,7 +130,7 @@ export default function AdminKpisClient({
   }, [kpis, ownerFilter]);
 
   const load = useCallback(async () => {
-    const params = new URLSearchParams({ active: "all" });
+    const params = new URLSearchParams({ active: "all", showAll: showAll ? "true" : "false" });
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (typeFilter !== "all") params.set("type", typeFilter);
     if (departmentFilter !== "all") params.set("departmentId", departmentFilter);
@@ -125,10 +138,19 @@ export default function AdminKpisClient({
     if (res.ok) {
       const data = await res.json();
       setKpis(data.kpis);
+      if (data.round) {
+        setRound({
+          year: data.round.year,
+          period: data.round.period,
+          periodLabel: data.round.periodLabel,
+        });
+      }
     }
-  }, [debouncedSearch, departmentFilter, typeFilter]);
+  }, [debouncedSearch, departmentFilter, typeFilter, showAll]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   async function loadTargets(kpiId: number, freq: string) {
     const res = await fetch(`/api/kpis/${kpiId}/targets?year=${targetYear}`);
@@ -217,25 +239,25 @@ export default function AdminKpisClient({
     load();
   }
 
-  async function softDelete(id: number) {
-    if (!confirm("تعطيل هذا المؤشر؟")) return;
-    await fetch(`/api/kpis/${id}`, { method: "DELETE" });
-    setMsg("تم تعطيل المؤشر");
-    load();
-  }
-
-  async function reactivate(id: number) {
-    if (!confirm("إعادة تفعيل هذا المؤشر؟")) return;
-    const res = await fetch(`/api/kpis/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active: true }),
-    });
-    if (res.ok) {
-      setMsg("تم إعادة تفعيل المؤشر");
-      load();
-    } else {
-      setMsg("فشلت إعادة التفعيل");
+  async function runConfirmAction() {
+    if (!confirmAction) return;
+    setConfirmBusy(true);
+    try {
+      if (confirmAction.type === "disable") {
+        await fetch(`/api/kpis/${confirmAction.id}`, { method: "DELETE" });
+        setMsg("تم تعطيل المؤشر");
+      } else {
+        const res = await fetch(`/api/kpis/${confirmAction.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ active: true }),
+        });
+        setMsg(res.ok ? "تم إعادة تفعيل المؤشر" : "فشلت إعادة التفعيل");
+      }
+      setConfirmAction(null);
+      void load();
+    } finally {
+      setConfirmBusy(false);
     }
   }
 
@@ -253,6 +275,26 @@ export default function AdminKpisClient({
           />
           <h1>إدارة المؤشرات</h1>
           <div className="text-muted">تعريف المؤشرات والمستهدفات — مشرف النظام</div>
+          {round ? (
+            <div style={{ marginTop: "var(--space-2)", display: "flex", flexWrap: "wrap", gap: "var(--space-2)", alignItems: "center" }}>
+              <Chip
+                label={`جولة القياس: ${round.periodLabel} ${round.year}`}
+                tone="brand"
+              />
+              {!showAll ? (
+                <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
+                  تُعرض مؤشرات تواتر الجولة فقط
+                </span>
+              ) : (
+                <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
+                  عرض كل المؤشرات مفعّل
+                </span>
+              )}
+              <Link href="/admin/settings" className="text-muted" style={{ fontSize: "var(--text-xs)" }}>
+                تعديل الجولة
+              </Link>
+            </div>
+          ) : null}
         </div>
         {tab === "kpis" && (
           <button type="button" className="btn-primary btn-sm" onClick={openCreate}>
@@ -291,12 +333,14 @@ export default function AdminKpisClient({
             ...(search.trim()
               ? [{ id: "q", label: `بحث: ${search.trim()}`, onRemove: () => setSearch("") }]
               : []),
+            ...(showAll ? [{ id: "all", label: "كل المؤشرات", onRemove: () => setShowAll(false) }] : []),
           ]}
           onClear={() => {
             setTypeFilter("all");
             setDepartmentFilter("all");
             setOwnerFilter("all");
             setSearch("");
+            setShowAll(false);
           }}
         >
           <FilterField label="النوع">
@@ -348,6 +392,25 @@ export default function AdminKpisClient({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+          </FilterField>
+          <FilterField label="نطاق الجولة">
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "var(--space-2)",
+                minHeight: "var(--touch-min)",
+                cursor: "pointer",
+                fontSize: "var(--text-sm)",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showAll}
+                onChange={(e) => setShowAll(e.target.checked)}
+              />
+              عرض كل المؤشرات
+            </label>
           </FilterField>
         </FilterBar>
       ) : null}
@@ -524,8 +587,8 @@ export default function AdminKpisClient({
             </div>
           )}
 
-          <div className="card" style={{ overflowX: "auto" }}>
-            <table className="tmkeen-table">
+          <div className="card zad-table-wrap">
+            <table className="tmkeen-table table--stack">
               <thead>
                 <tr>
                   <th>الرمز</th>
@@ -539,21 +602,21 @@ export default function AdminKpisClient({
               <tbody>
                 {visibleKpis.map((k) => (
                   <tr key={k.id}>
-                    <td><code>{k.code}</code></td>
-                    <td>{k.name}</td>
-                    <td>{TYPE_LABEL[k.type as keyof typeof TYPE_LABEL]}</td>
-                    <td>{k.department?.name || "—"}</td>
-                    <td>{k.owner?.name || k.ownerLabel || "—"}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>
+                    <td data-label="الرمز"><code>{k.code}</code></td>
+                    <td data-label="المؤشر">{k.name}</td>
+                    <td data-label="النوع">{TYPE_LABEL[k.type as keyof typeof TYPE_LABEL]}</td>
+                    <td data-label="الإدارة المالكة">{k.department?.name || "—"}</td>
+                    <td data-label="المسؤول">{k.owner?.name || k.ownerLabel || "—"}</td>
+                    <td data-label="إجراءات" style={{ whiteSpace: "normal" }}>
                       <button type="button" className="btn-secondary btn-sm" title="تعديل المؤشر" onClick={() => startEdit(k)}>
                         تعديل
                       </button>
                       <button
                         type="button"
                         className="btn-secondary btn-sm"
-                        style={{ marginRight: ".3rem" }}
+                        style={{ marginInlineStart: "var(--space-2)" }}
                         title="تعطيل المؤشر"
-                        onClick={() => softDelete(k.id)}
+                        onClick={() => setConfirmAction({ type: "disable", id: k.id })}
                       >
                         تعطيل
                       </button>
@@ -562,15 +625,22 @@ export default function AdminKpisClient({
                 ))}
                 {visibleKpis.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-muted">
-                      <EmptyState title="لا نتائج" body="لا توجد مؤشرات مطابقة للفلاتر الحالية." />
+                    <td colSpan={6} data-label="" className="text-muted">
+                      <EmptyState
+                        title="لا نتائج"
+                        body={
+                          showAll
+                            ? "لا توجد مؤشرات مطابقة للفلاتر الحالية."
+                            : "لا مؤشرات ضمن تواتر جولة القياس الحالية. فعّل «عرض كل المؤشرات» إن لزم."
+                        }
+                      />
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
             {kpis.some((k) => !k.active) && (
-              <div style={{ marginTop: ".75rem", fontSize: ".82rem" }} className="text-muted">
+              <div style={{ marginTop: "var(--space-3)", fontSize: "var(--text-sm)" }} className="text-muted">
                 معطّلة:{" "}
                 {kpis
                   .filter((k) => !k.active)
@@ -579,8 +649,8 @@ export default function AdminKpisClient({
                       key={k.id}
                       type="button"
                       className="btn-secondary btn-sm"
-                      style={{ marginLeft: ".3rem", marginBottom: ".25rem" }}
-                      onClick={() => reactivate(k.id)}
+                      style={{ marginInlineStart: "var(--space-2)", marginBlockEnd: "var(--space-1)" }}
+                      onClick={() => setConfirmAction({ type: "reactivate", id: k.id })}
                     >
                       إعادة تفعيل {k.code}
                     </button>
@@ -590,6 +660,23 @@ export default function AdminKpisClient({
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmAction != null}
+        title={confirmAction?.type === "reactivate" ? "إعادة تفعيل المؤشر" : "تعطيل المؤشر"}
+        body={
+          confirmAction?.type === "reactivate"
+            ? "هل تريد إعادة تفعيل هذا المؤشر؟"
+            : "هل تريد تعطيل هذا المؤشر؟"
+        }
+        confirmLabel={confirmAction?.type === "reactivate" ? "إعادة التفعيل" : "تعطيل"}
+        destructive={confirmAction?.type === "disable"}
+        busy={confirmBusy}
+        onConfirm={() => void runConfirmAction()}
+        onClose={() => {
+          if (!confirmBusy) setConfirmAction(null);
+        }}
+      />
     </>
   );
 }

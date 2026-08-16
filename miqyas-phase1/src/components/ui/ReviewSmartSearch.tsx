@@ -81,7 +81,7 @@ export default function ReviewSmartSearch<T extends SearchableReviewCard>({
         <FilterField label="بحث ذكي">
           <input
             className="input-field"
-            style={{ minWidth: 220 }}
+            style={{ width: "100%", minWidth: 0, flex: 1 }}
             placeholder="رمز، اسم، إدارة، مسؤول، مدخل..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}

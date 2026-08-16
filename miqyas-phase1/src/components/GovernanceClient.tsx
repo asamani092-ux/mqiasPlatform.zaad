@@ -223,7 +223,7 @@ export default function GovernanceClient({
         </div>
       )}
 
-      <div className="card" style={{ marginBottom: "1rem", borderTop: "3px solid var(--color-primary, #8b1a2a)" }}>
+      <div className="card" style={{ marginBottom: "1rem", borderTop: "3px solid var(--tmkeen-primary)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ".85rem" }}>
           <h2 style={{ margin: 0, fontSize: "1rem" }}>درجة جاهزية الحوكمة الكلية</h2>
           <span style={{ fontSize: "1.8rem", fontWeight: 800 }}>{readinessPct}%</span>
@@ -232,7 +232,7 @@ export default function GovernanceClient({
           style={{
             height: 8,
             borderRadius: 99,
-            background: "var(--color-border, #e5e5e5)",
+            background: "var(--tmkeen-border)",
             overflow: "hidden",
           }}
         >
@@ -240,7 +240,7 @@ export default function GovernanceClient({
             style={{
               height: "100%",
               width: `${readinessPct}%`,
-              background: "var(--color-primary, #8b1a2a)",
+              background: "var(--tmkeen-primary)",
               transition: "width 1.2s ease",
             }}
           />
@@ -326,8 +326,8 @@ export default function GovernanceClient({
             )}
           </div>
 
-          <div className="card" style={{ marginBottom: "1rem", padding: 0, overflow: "hidden" }}>
-            <table className="tmkeen-table">
+          <div className="card table-wrap" style={{ marginBottom: "1rem", padding: 0 }}>
+            <table className="tmkeen-table table--stack">
               <thead>
                 <tr>
                   <th>الرمز</th>
@@ -342,18 +342,18 @@ export default function GovernanceClient({
               <tbody>
                 {filtered.map((r) => (
                   <tr key={r.id}>
-                    <td>{r.code}</td>
-                    <td>{r.title}</td>
-                    <td>{r.category || "—"}</td>
-                    <td>{r.owner || "—"}</td>
-                    <td>{r.compliancePct}%</td>
-                    <td>
+                    <td data-label="الرمز">{r.code}</td>
+                    <td data-label="المعيار">{r.title}</td>
+                    <td data-label="التصنيف">{r.category || "—"}</td>
+                    <td data-label="الجهة">{r.owner || "—"}</td>
+                    <td data-label="نسبة الالتزام">{r.compliancePct}%</td>
+                    <td data-label="الحالة">
                       <span className={STATUS_BADGE[r.status] ?? "badge-secondary"}>
                         {GOVERNANCE_STATUS_LABEL[r.status] ?? r.status}
                       </span>
                     </td>
                     {canManage && (
-                      <td>
+                      <td data-label="إجراءات">
                         <div style={{ display: "flex", gap: ".35rem", flexWrap: "wrap" }}>
                           <button
                             type="button"
@@ -389,8 +389,8 @@ export default function GovernanceClient({
       )}
 
       {tab === "observations" && (
-        <div className="card" style={{ marginBottom: "1rem", padding: 0, overflow: "hidden" }}>
-          <table className="tmkeen-table">
+        <div className="card table-wrap" style={{ marginBottom: "1rem", padding: 0 }}>
+          <table className="tmkeen-table table--stack">
             <thead>
               <tr>
                 <th>الملاحظة</th>
@@ -402,16 +402,16 @@ export default function GovernanceClient({
             <tbody>
               {observations.map((o) => (
                 <tr key={o.id}>
-                  <td>{o.title}</td>
-                  <td>
+                  <td data-label="الملاحظة">{o.title}</td>
+                  <td data-label="الحالة">
                     <span className={OBS_STATUS_BADGE[o.status] ?? "badge-secondary"}>
                       {OBS_STATUS_LABEL[o.status] ?? o.status}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="فترة الفتح">
                     {PERIOD_LABEL[o.openedPeriod as Period] ?? o.openedPeriod} {o.openedYear}
                   </td>
-                  <td>
+                  <td data-label="فترة الإغلاق">
                     {o.closedPeriod
                       ? `${PERIOD_LABEL[o.closedPeriod as Period] ?? o.closedPeriod} ${o.closedYear ?? ""}`
                       : "—"}

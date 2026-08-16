@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { ICON_PROPS } from "@/lib/icon-props";
 
-/** حوار تأكيد — عقد Dialog/Confirm · لا يغيّر واجهات الاستدعاء الخارجية */
+/** حوار تأكيد — عقد Dialog/Confirm · خصائص اختيارية إضافية لا تكسر الاستدعاءات الحالية */
 export default function ConfirmDialog({
   open,
   title,
@@ -12,6 +13,8 @@ export default function ConfirmDialog({
   cancelLabel = "إلغاء",
   destructive = false,
   busy = false,
+  confirmPhrase,
+  phraseHint,
   onConfirm,
   onClose,
 }: {
@@ -22,10 +25,22 @@ export default function ConfirmDialog({
   cancelLabel?: string;
   destructive?: boolean;
   busy?: boolean;
+  /** إن وُجد: تأكيد ثنائي بكتابة العبارة حرفيًا */
+  confirmPhrase?: string;
+  phraseHint?: string;
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const [typed, setTyped] = useState("");
+
+  useEffect(() => {
+    if (open) setTyped("");
+  }, [open, confirmPhrase]);
+
   if (!open) return null;
+
+  const phraseOk = !confirmPhrase || typed.trim() === confirmPhrase;
+
   return (
     <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div
@@ -46,11 +61,26 @@ export default function ConfirmDialog({
         <p className="text-muted" style={{ whiteSpace: "pre-wrap" }}>
           {body}
         </p>
+        {confirmPhrase ? (
+          <div style={{ marginBlockStart: "var(--space-3)" }}>
+            <label className="label-field" htmlFor="zad-confirm-phrase">
+              {phraseHint || `اكتب «${confirmPhrase}» للمتابعة`}
+            </label>
+            <input
+              id="zad-confirm-phrase"
+              className="input-field"
+              autoComplete="off"
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              disabled={busy}
+            />
+          </div>
+        ) : null}
         <div className="zad-confirm-actions">
           <button
             type="button"
             className={destructive ? "btn-danger" : "btn-primary"}
-            disabled={busy}
+            disabled={busy || !phraseOk}
             onClick={onConfirm}
           >
             {confirmLabel}

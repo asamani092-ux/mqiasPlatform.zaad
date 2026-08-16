@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import type { Period } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { requireManageKpis } from "@/lib/admin-auth";
 import { kpiBodySchema } from "@/lib/kpi-schemas";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
+import { getSetting } from "@/lib/settings";
+import { frequenciesForPeriod } from "@/lib/kpi";
+import { PERIOD_LABEL, type Period as UiPeriod } from "@/lib/types";
+import { syncRequirementOwnerFromKpi } from "@/lib/kpi-owner-sync";
+
+const PERIOD_VALUES = ["Q1", "Q2", "Q3", "Q4", "H1", "H2", "Y"] as const;
 
 const listQuery = z.object({
   type: z.enum(["STRATEGIC", "OPERATIONAL"]).optional(),
@@ -13,6 +20,8 @@ const listQuery = z.object({
   frequency: z.enum(["QUARTERLY", "SEMI_ANNUAL", "ANNUAL"]).optional(),
   search: z.string().optional(),
   active: z.enum(["true", "false", "all"]).optional().default("true"),
+  showAll: z.enum(["true", "false"]).optional().default("false"),
+  period: z.enum(PERIOD_VALUES).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -26,12 +35,22 @@ export async function GET(req: NextRequest) {
     if (q.active !== "all") where.active = q.active === "true";
     if (q.type) where.type = q.type;
     if (q.departmentId) where.departmentId = q.departmentId;
-    if (q.frequency) where.frequency = q.frequency;
     if (q.search) {
       where.OR = [
         { code: { contains: q.search, mode: "insensitive" } },
         { name: { contains: q.search, mode: "insensitive" } },
       ];
+    }
+
+    const roundYear =
+      parseInt(await getSetting("measurement_round_year"), 10) || new Date().getFullYear();
+    const roundPeriod = ((await getSetting("measurement_round_period")) || "Q1") as Period;
+    const filterPeriod = (q.period || roundPeriod) as Period;
+
+    if (q.frequency) {
+      where.frequency = q.frequency;
+    } else if (q.showAll !== "true") {
+      where.frequency = { in: frequenciesForPeriod(filterPeriod) };
     }
 
     const kpis = await db.kpi.findMany({
@@ -46,7 +65,16 @@ export async function GET(req: NextRequest) {
       orderBy: { code: "asc" },
     });
 
-    return NextResponse.json({ kpis });
+    return NextResponse.json({
+      kpis,
+      round: {
+        year: roundYear,
+        period: roundPeriod,
+        periodLabel: PERIOD_LABEL[roundPeriod as UiPeriod] || roundPeriod,
+        filterPeriod,
+        showAll: q.showAll === "true",
+      },
+    });
   } catch (e) {
     if (e instanceof z.ZodError) return jsonError("معاملات غير صالحة", 400);
     return handleApiError(e);
@@ -60,6 +88,7 @@ export async function POST(req: NextRequest) {
 
     const body = kpiBodySchema.parse(await req.json());
     const kpi = await db.kpi.create({ data: body });
+    await syncRequirementOwnerFromKpi(kpi);
 
     await audit(parseInt(user.id, 10), "CREATE_KPI", "Kpi", kpi.id, { code: kpi.code });
     return NextResponse.json({ kpi }, { status: 201 });

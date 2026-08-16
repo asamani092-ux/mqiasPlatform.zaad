@@ -27,6 +27,24 @@ export function resolvePeriods(frequency: Frequency): Period[] {
   }
 }
 
+/** التواترات المنتمية لفترة جولة القياس · O(1) */
+export function frequenciesForPeriod(period: Period): Frequency[] {
+  switch (period) {
+    case "Q1":
+    case "Q2":
+    case "Q3":
+    case "Q4":
+      return ["QUARTERLY"];
+    case "H1":
+    case "H2":
+      return ["SEMI_ANNUAL"];
+    case "Y":
+      return ["ANNUAL"];
+    default:
+      return ["QUARTERLY", "SEMI_ANNUAL", "ANNUAL"];
+  }
+}
+
 export function achievementPct(
   actual: number,
   target: number,

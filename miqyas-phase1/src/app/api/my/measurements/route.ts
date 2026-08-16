@@ -62,7 +62,10 @@ export async function POST(req: Request) {
     const fillerRole = roleToFillerRole(user.role);
 
     if (body.action === "submit" && (await getSetting("measurement_round_open")) === "0") {
-      return jsonError("جولة القياس مغلقة حالياً — يمكن حفظ القياس كمسودة فقط", 400);
+      return jsonError(
+        "جولة القياس مغلقة حالياً — يمكن حفظ القياس كمسودة فقط؛ التقديم والرفع والاعتماد المبدئي متوقفة",
+        400,
+      );
     }
 
     const requirement = await db.measurementRequirement.findUnique({

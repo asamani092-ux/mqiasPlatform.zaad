@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Download, X } from "lucide-react";
+import { Check, Download, ExternalLink, X } from "lucide-react";
 import {
   allFieldsAccepted,
   anyRejected,
@@ -12,6 +12,12 @@ import {
   FIELD_LABELS,
 } from "@/lib/review-feedback";
 import { ICON_PROPS } from "@/lib/icon-props";
+import {
+  evidenceDownloadUrl,
+  evidencePreviewUrl,
+  isPreviewableEvidence,
+  resolveEvidenceMime,
+} from "@/lib/evidence-preview";
 
 export type ReviewEvidence = {
   id: number;
@@ -118,11 +124,6 @@ function DecisionButtons({
       </button>
     </div>
   );
-}
-
-function isPreviewable(mime?: string | null) {
-  if (!mime) return false;
-  return mime.startsWith("image/") || mime === "application/pdf";
 }
 
 export default function ReviewWorkbenchModal({
@@ -366,12 +367,12 @@ export default function ReviewWorkbenchModal({
 
         <div className="review-field-block">
           <div className="label-field" style={{ marginBottom: ".35rem" }}>
-            الشواهد ({activeEvidences.length})
+            الشواهد ({activeEvidences.length}) — المعاينة داخل اللوحة · التنزيل اختياري
           </div>
           {activeEvidences.length === 0 ? (
             <p className="text-muted">لا شواهد نشطة</p>
           ) : (
-            <>
+            <div className="review-evidence-panel">
               <div className="review-evidence-list">
                 {activeEvidences.map((ev) => (
                   <div key={ev.id} className="review-evidence-row">
@@ -379,6 +380,7 @@ export default function ReviewWorkbenchModal({
                       type="button"
                       className={`badge-primary review-evidence-name ${previewId === ev.id ? "active" : ""}`}
                       onClick={() => setPreviewId(ev.id)}
+                      title="معاينة الشاهد"
                     >
                       {ev.fileName}
                     </button>
@@ -396,36 +398,57 @@ export default function ReviewWorkbenchModal({
               {preview && (
                 <div className="review-evidence-preview">
                   <div className="review-evidence-preview-bar">
-                    <span className="text-muted">{preview.fileName}</span>
-                    <a
-                      className="btn-secondary btn-sm"
-                      href={`/api/evidence/${preview.id}`}
-                      download
-                    >
-                      <Download {...ICON_PROPS} size={14} /> تنزيل
-                    </a>
+                    <span className="text-muted" style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+                      معاينة: {preview.fileName}
+                    </span>
+                    <div className="review-evidence-preview-actions">
+                      {isPreviewableEvidence(preview.mimeType, preview.fileName) ? (
+                        <a
+                          className="btn-secondary btn-sm"
+                          href={evidencePreviewUrl(preview.id)}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="فتح المعاينة في تبويب جديد"
+                        >
+                          <ExternalLink {...ICON_PROPS} size={14} /> تبويب
+                        </a>
+                      ) : null}
+                      <a
+                        className="btn-secondary btn-sm"
+                        href={evidenceDownloadUrl(preview.id)}
+                        download={preview.fileName}
+                        title="تنزيل الملف"
+                      >
+                        <Download {...ICON_PROPS} size={14} /> تنزيل
+                      </a>
+                    </div>
                   </div>
-                  {isPreviewable(preview.mimeType) ? (
-                    preview.mimeType?.startsWith("image/") ? (
+                  {isPreviewableEvidence(preview.mimeType, preview.fileName) ? (
+                    resolveEvidenceMime(preview.mimeType, preview.fileName).startsWith("image/") ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={`/api/evidence/${preview.id}?inline=1`}
+                        key={preview.id}
+                        src={evidencePreviewUrl(preview.id)}
                         alt={preview.fileName}
                         className="review-evidence-img"
                       />
                     ) : (
                       <iframe
-                        title={preview.fileName}
-                        src={`/api/evidence/${preview.id}?inline=1`}
+                        key={preview.id}
+                        title={`معاينة ${preview.fileName}`}
+                        src={`${evidencePreviewUrl(preview.id)}#view=FitH`}
                         className="review-evidence-iframe"
                       />
                     )
                   ) : (
-                    <p className="text-muted">لا يمكن الاستعراض لهذا النوع — استخدم التنزيل.</p>
+                    <p className="text-muted" style={{ padding: "0.75rem" }}>
+                      لا تتوفر معاينة مضمّنة لهذا النوع (مثل Word/Excel) — استخدم التنزيل أو افتح الملف بعد
+                      التنزيل.
+                    </p>
                   )}
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
 

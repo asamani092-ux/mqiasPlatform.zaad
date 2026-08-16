@@ -79,7 +79,7 @@ const ADMIN_NAV: NavItem[] = [
 
 const EXECUTIVE_NAV: NavItem = {
   href: "/executive",
-  label: "لوحة الإدارة العليا",
+  label: "لوحة الإدارة التنفيذية",
   Icon: Crown,
 };
 

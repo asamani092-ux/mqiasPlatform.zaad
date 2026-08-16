@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
-import { PERIOD_LABEL, STATUS_LABEL, STATUS_BADGE, type Period } from "@/lib/types";
+import { Download, ExternalLink, X } from "lucide-react";
+import { PERIOD_LABEL, type Period } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
+import {
+  evidenceDownloadUrl,
+  evidencePreviewUrl,
+  isPreviewableEvidence,
+} from "@/lib/evidence-preview";
 
 type Detail = {
   kpi: Record<string, unknown>;
@@ -34,60 +39,123 @@ export default function KpiDetailDrawer({
   if (!kpiId) return null;
 
   return (
-    <div className="drawer-overlay" role="presentation" onClick={onClose}>
-      <div
-        className="zad-detail-card drawer-panel"
+    <div className="zad-drawer-root" role="presentation">
+      <button type="button" className="zad-drawer-backdrop" aria-label="إغلاق" onClick={onClose} />
+      <aside
+        className="zad-drawer-panel"
         role="dialog"
         aria-modal="true"
         aria-label="تفاصيل المؤشر"
-        onClick={(e) => e.stopPropagation()}
       >
-        <div className="zad-detail-card-head">
-          <h3>{data ? String((data.kpi as { name?: string }).name) : "..."}</h3>
-          <button type="button" className="icon-btn btn-sm" onClick={onClose} aria-label="إغلاق">
+        <div className="zad-drawer-header">
+          <h3 className="zad-drawer-title">
+            {data ? String((data.kpi as { name?: string }).name) : "..."}
+          </h3>
+          <button type="button" className="icon-btn zad-drawer-close" onClick={onClose} aria-label="إغلاق">
             <X {...ICON_PROPS} />
           </button>
         </div>
-        {data && (
-          <>
-            <p className="text-muted">{(data.kpi as { code?: string }).code} · {(data.kpi as { unit?: string }).unit}</p>
-            <div style={{ fontSize: ".82rem", marginBottom: "1rem" }}>
-              <div>خط الأساس: {(data.kpi as { baseline?: number }).baseline ?? "—"}</div>
-              <div>المستهدف السنوي: {(data.kpi as { annualTarget?: number }).annualTarget ?? "—"}</div>
-              <div>البيانات المطلوبة: {(data.kpi as { requiredData?: string }).requiredData || "—"}</div>
-            </div>
-            <h4>المستهدفات vs المتحقق — {year}</h4>
-            <table className="tmkeen-table" style={{ marginBottom: "1rem" }}>
-              <thead><tr><th>الفترة</th><th>المستهدف</th><th>المتحقق</th><th>نسبة التحقق</th></tr></thead>
-              <tbody>
-                {data.targets.map((t) => (
-                  <tr key={t.period}>
-                    <td>{PERIOD_LABEL[t.period as Period] || t.period}</td>
-                    <td>{t.targetValue}</td>
-                    <td>{t.entry ? String((t.entry as { actualValue?: number }).actualValue) : "—"}</td>
-                    <td>{t.entry ? `${(t.entry as { achievementPct?: number }).achievementPct ?? "—"}%` : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {data.targets.filter((t) => t.entry).map((t) => (
-              <div key={`n-${t.period}`} style={{ marginBottom: ".75rem", fontSize: ".82rem" }}>
-                <strong>{PERIOD_LABEL[t.period as Period]} — ماذا/كيف حصل:</strong>
-                <p>{(t.entry as { whatHappened?: string })?.whatHappened || "—"}</p>
-                <p>{(t.entry as { howHappened?: string })?.howHappened || "—"}</p>
-                {(t.entry as { evidences?: { id: number; fileName: string }[] })?.evidences?.map((ev) => (
-                  <a key={ev.id} href={`/api/evidence/${ev.id}`} className="badge-primary" style={{ marginLeft: ".3rem" }}>{ev.fileName}</a>
-                ))}
+        <div className="zad-drawer-body">
+          {data ? (
+            <>
+              <p className="text-muted">
+                {(data.kpi as { code?: string }).code} · {(data.kpi as { unit?: string }).unit}
+              </p>
+              <div style={{ fontSize: "var(--text-sm)", marginBottom: "var(--space-4)" }}>
+                <div>خط الأساس: {(data.kpi as { baseline?: number }).baseline ?? "—"}</div>
+                <div>المستهدف السنوي: {(data.kpi as { annualTarget?: number }).annualTarget ?? "—"}</div>
+                <div>البيانات المطلوبة: {(data.kpi as { requiredData?: string }).requiredData || "—"}</div>
               </div>
-            ))}
-            {data.deviationCard && (
-              <div className="alert alert-warn">
-                بطاقة انحراف: {(data.deviationCard as { deviationPct?: number }).deviationPct}% — {(data.deviationCard as { status?: string }).status}
+              <h4>المستهدفات vs المتحقق — {year}</h4>
+              <div className="zad-table-wrap">
+                <table className="tmkeen-table">
+                  <thead>
+                    <tr>
+                      <th>الفترة</th>
+                      <th>المستهدف</th>
+                      <th>المتحقق</th>
+                      <th>نسبة التحقق</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.targets.map((t) => (
+                      <tr key={t.period}>
+                        <td>{PERIOD_LABEL[t.period as Period] || t.period}</td>
+                        <td dir="ltr">{t.targetValue}</td>
+                        <td dir="ltr">
+                          {t.entry ? String((t.entry as { actualValue?: number }).actualValue) : "—"}
+                        </td>
+                        <td dir="ltr">
+                          {t.entry
+                            ? `${(t.entry as { achievementPct?: number }).achievementPct ?? "—"}%`
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </>
-        )}
-      </div>
+              {data.targets
+                .filter((t) => t.entry)
+                .map((t) => (
+                  <div
+                    key={`n-${t.period}`}
+                    style={{ marginBottom: "var(--space-3)", fontSize: "var(--text-sm)" }}
+                  >
+                    <strong>{PERIOD_LABEL[t.period as Period]} — ماذا/كيف حصل:</strong>
+                    <p>{(t.entry as { whatHappened?: string })?.whatHappened || "—"}</p>
+                    <p>{(t.entry as { howHappened?: string })?.howHappened || "—"}</p>
+                    {(t.entry as { evidences?: { id: number; fileName: string; mimeType?: string | null }[] })?.evidences?.map(
+                      (ev) => (
+                        <span
+                          key={ev.id}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.25rem",
+                            marginInlineEnd: "var(--space-2)",
+                            marginBlockEnd: "var(--space-1)",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          {isPreviewableEvidence(ev.mimeType, ev.fileName) ? (
+                            <a
+                              href={evidencePreviewUrl(ev.id)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="badge-primary"
+                              title="معاينة"
+                            >
+                              <ExternalLink {...ICON_PROPS} size={12} /> {ev.fileName}
+                            </a>
+                          ) : (
+                            <span className="badge-neutral">{ev.fileName}</span>
+                          )}
+                          <a
+                            href={evidenceDownloadUrl(ev.id)}
+                            className="btn-secondary btn-sm"
+                            download={ev.fileName}
+                            title="تنزيل"
+                          >
+                            <Download {...ICON_PROPS} size={12} /> تنزيل
+                          </a>
+                        </span>
+                      )
+                    )}
+                  </div>
+                ))}
+              {data.deviationCard ? (
+                <div className="alert alert-warn">
+                  بطاقة انحراف: {(data.deviationCard as { deviationPct?: number }).deviationPct}% —{" "}
+                  {(data.deviationCard as { status?: string }).status}
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-muted">جاري التحميل...</p>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

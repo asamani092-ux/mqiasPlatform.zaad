@@ -84,6 +84,13 @@ type ClosureRow = {
   finalApproved: number;
   remaining: number;
   partial: number;
+  missingEvidence: number;
+  ownersMissingEvidence?: {
+    ownerId: number;
+    ownerName: string;
+    count: number;
+    codes: string[];
+  }[];
 };
 
 function evidencePayload(map: Record<number, Decision>) {
@@ -300,19 +307,25 @@ export default function ApprovalsClient() {
     }
   }
 
-  async function remindDepartment(departmentId: number) {
+  async function remindDepartment(
+    departmentId: number,
+    mode: "closure" | "missing_evidence" = "closure",
+  ) {
     setRemindingDeptId(departmentId);
     const res = await fetch("/api/approvals/closure-progress", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ departmentId }),
+      body: JSON.stringify({ departmentId, mode }),
     });
     setRemindingDeptId(null);
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
+      const label = mode === "missing_evidence" ? "تذكير الشواهد" : "تذكير الإغلاق";
       notifyToast.success(
-        data.notified != null ? `أُرسل تذكير لـ ${data.notified} مسؤولًا` : "أُرسل التذكير",
-        { duration: "normal" }
+        data.notified != null
+          ? `${label}: أُرسل لـ ${data.notified} مسؤولًا`
+          : `أُرسل ${label}`,
+        { duration: "normal" },
       );
     } else {
       const err = await res.json().catch(() => ({}));
@@ -397,14 +410,15 @@ export default function ApprovalsClient() {
           />
         ) : (
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table table--stack">
             <thead>
               <tr>
                 <th>الإدارة</th>
                 <th>عدد المؤشرات</th>
                 <th>متحقق (نهائي)</th>
                 <th>متبقي</th>
-                <th>متحقق جزئي</th>
+                <th>بلا شواهد</th>
+                <th>المسؤولون بلا شواهد</th>
                 <th>التقدّم</th>
                 <th></th>
               </tr>
@@ -416,7 +430,21 @@ export default function ApprovalsClient() {
                     <td data-label="عدد المؤشرات">{row.total}</td>
                     <td data-label="متحقق (نهائي)">{row.finalApproved}</td>
                     <td data-label="متبقي">{row.remaining}</td>
-                    <td data-label="متحقق جزئي">{row.partial}</td>
+                    <td data-label="بلا شواهد">{row.missingEvidence ?? 0}</td>
+                    <td data-label="المسؤولون بلا شواهد">
+                      {(row.ownersMissingEvidence ?? []).length === 0 ? (
+                        <span className="text-muted">—</span>
+                      ) : (
+                        <ul style={{ margin: 0, paddingInlineStart: "1.1rem", fontSize: ".82rem" }}>
+                          {(row.ownersMissingEvidence ?? []).slice(0, 5).map((o) => (
+                            <li key={o.ownerId}>
+                              {o.ownerName} ({o.count})
+                              {o.codes?.length ? ` — ${o.codes.join("، ")}` : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
                     <td data-label="التقدّم">
                       <ProgressBar
                         value={row.total ? (row.finalApproved / row.total) * 100 : 0}
@@ -425,14 +453,29 @@ export default function ApprovalsClient() {
                       />
                     </td>
                     <td data-label="">
-                      <button
-                        type="button"
-                        className="btn-secondary btn-sm"
-                        disabled={row.remaining === 0 || remindingDeptId === row.departmentId}
-                        onClick={() => void remindDepartment(row.departmentId)}
-                      >
-                        {remindingDeptId === row.departmentId ? "جاري الإرسال..." : "تذكير"}
-                      </button>
+                      <div style={{ display: "flex", flexDirection: "column", gap: ".35rem" }}>
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm"
+                          disabled={row.remaining === 0 || remindingDeptId === row.departmentId}
+                          onClick={() => void remindDepartment(row.departmentId, "closure")}
+                        >
+                          {remindingDeptId === row.departmentId ? "جاري..." : "تذكير إغلاق"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm"
+                          disabled={
+                            (row.missingEvidence ?? 0) === 0 ||
+                            remindingDeptId === row.departmentId
+                          }
+                          onClick={() =>
+                            void remindDepartment(row.departmentId, "missing_evidence")
+                          }
+                        >
+                          تذكير شواهد
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

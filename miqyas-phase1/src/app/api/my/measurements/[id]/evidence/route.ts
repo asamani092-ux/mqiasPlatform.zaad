@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
@@ -9,6 +9,10 @@ import { syncKpiEntriesFromMeasurement } from "@/lib/measurement-sync";
 import { canFillerEdit } from "@/lib/approval-status";
 import { matchesFileSignature } from "@/lib/file-signature";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
+import {
+  isMeasurementRoundOpen,
+  ROUND_CLOSED_UPLOAD_MSG,
+} from "@/lib/measurement-round";
 
 const STORAGE_DIR = path.join(process.cwd(), "storage", "evidence");
 const MAX_SIZE = 10 * 1024 * 1024;
@@ -35,6 +39,10 @@ export async function POST(
     const userId = parseInt(user.id, 10);
     const measurementPeriodId = parseInt(params.id, 10);
     if (Number.isNaN(measurementPeriodId)) return jsonError("معرف غير صالح", 400);
+
+    if (!(await isMeasurementRoundOpen())) {
+      return jsonError(ROUND_CLOSED_UPLOAD_MSG, 400);
+    }
 
     const mp = await db.measurementPeriod.findUnique({
       where: { id: measurementPeriodId },
@@ -65,7 +73,6 @@ export async function POST(
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    // بصمة ثنائية — لا اعتماد على MIME/الامتداد من العميل
     if (!matchesFileSignature(buffer, ext)) {
       return jsonError("محتوى الملف لا يطابق نوعه المعلن", 400);
     }
@@ -98,6 +105,7 @@ export async function POST(
   }
 }
 
+/** حذف نهائي — السجل + الملف · فقط رافع الشاهد · O(1) */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } },
@@ -112,6 +120,10 @@ export async function DELETE(
       return jsonError("معرف غير صالح", 400);
     }
 
+    if (!(await isMeasurementRoundOpen())) {
+      return jsonError(ROUND_CLOSED_UPLOAD_MSG, 400);
+    }
+
     const mp = await db.measurementPeriod.findUnique({
       where: { id: measurementPeriodId },
       include: {
@@ -120,14 +132,10 @@ export async function DELETE(
     });
 
     if (!mp) return jsonError("فترة القياس غير موجودة", 404);
-    if (mp.requirement.ownerId !== userId && user.role !== "SYSTEM_ADMIN") {
-      return jsonError("غير مصرح", 403);
-    }
-    // STEP 3: الحذف فقط حين يمكن للمدخل التعديل (مسودة أو رفض)
     if (!canFillerEdit(mp.approvalStatus)) {
       return jsonError(
         "لا يمكن حذف الشواهد بعد التقديم — الحذف متاح في المسودة أو بعد الإرجاع/الرفض فقط",
-        400
+        400,
       );
     }
 
@@ -136,25 +144,26 @@ export async function DELETE(
     });
 
     if (!evidence) return jsonError("الشاهد غير موجود", 404);
+    if (evidence.uploadedById !== userId) {
+      return jsonError("حذف الشاهد متاح فقط لمن رفعه", 403);
+    }
 
-    // STEP 4: حذف ناعم — الإبقاء على الملف والسجل
-    await db.evidence.update({
-      where: { id: evidenceId },
-      data: {
-        status: "REJECTED",
-        rejectReason: "حُذف من المدخل",
-        rejectedById: userId,
-        rejectedAt: new Date(),
-      },
-    });
+    const filePath = path.join(STORAGE_DIR, evidence.storedName);
+    await db.evidence.delete({ where: { id: evidenceId } });
+    try {
+      await unlink(filePath);
+    } catch {
+      // الملف قد يكون مفقودًا على القرص — السجل حُذف من القاعدة
+    }
 
     await syncKpiEntriesFromMeasurement(measurementPeriodId);
     await audit(userId, "DELETE_EVIDENCE", "Evidence", evidenceId, {
       measurementPeriodId,
-      soft: true,
+      hard: true,
+      storedName: evidence.storedName,
     });
 
-    return NextResponse.json({ ok: true, softDeleted: true });
+    return NextResponse.json({ ok: true, deleted: true });
   } catch (e) {
     return handleApiError(e);
   }

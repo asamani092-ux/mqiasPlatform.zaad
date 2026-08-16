@@ -65,7 +65,7 @@ export default function ExecutiveClient({
   return (
     <>
       <TrackTitleRow
-        title="لوحة الإدارة العليا"
+        title="لوحة الإدارة التنفيذية"
         subtitle={`انحرافات وإجراءات متأخرة — قيم معتمدة نهائيًا فقط — ${PERIOD_LABEL[period]} ${year}`}
         help={EXECUTIVE_HELP}
         extra={<PeriodSelector year={year} period={period} />}
@@ -111,7 +111,8 @@ export default function ExecutiveClient({
               : "جميع المؤشرات المنحرفة لديها بطاقة متابعة مفتوحة لهذه الفترة."}
           </p>
         ) : (
-          <table className="tmkeen-table">
+          <div className="table-wrap">
+          <table className="tmkeen-table table--stack">
             <thead>
               <tr>
                 <th>الرمز</th><th>المؤشر</th><th>الجهة</th><th>المستهدف</th><th>المتحقق</th>
@@ -121,18 +122,19 @@ export default function ExecutiveClient({
             <tbody>
               {visibleDeviatedKpis.map((k) => (
                 <tr key={k.kpiId} style={{ cursor: "pointer" }} onClick={() => setDrawerId(k.kpiId)}>
-                  <td>{k.code}</td>
-                  <td>{k.name}</td>
-                  <td>{k.departmentName || k.ownerLabel || "—"}</td>
-                  <td>{k.target}</td>
-                  <td>{k.actual}</td>
-                  <td>{k.achievementPct != null ? `${k.achievementPct}%` : "—"}</td>
-                  <td style={{ color: "var(--tmkeen-danger)", fontWeight: 700 }}>{k.deviationPct != null ? `${k.deviationPct}%` : "—"}</td>
-                  <td><StatusBadge status={k.status} /></td>
+                  <td data-label="الرمز">{k.code}</td>
+                  <td data-label="المؤشر">{k.name}</td>
+                  <td data-label="الجهة">{k.departmentName || k.ownerLabel || "—"}</td>
+                  <td data-label="المستهدف">{k.target}</td>
+                  <td data-label="المتحقق">{k.actual}</td>
+                  <td data-label="نسبة التحقق">{k.achievementPct != null ? `${k.achievementPct}%` : "—"}</td>
+                  <td data-label="الانحراف %" style={{ color: "var(--tmkeen-danger)", fontWeight: 700 }}>{k.deviationPct != null ? `${k.deviationPct}%` : "—"}</td>
+                  <td data-label="الحالة"><StatusBadge status={k.status} /></td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
@@ -141,23 +143,25 @@ export default function ExecutiveClient({
         {lateActions.length === 0 ? (
           <p className="text-muted">لا توجد إجراءات متأخرة — جميع المعالجات ضمن الإطار الزمني.</p>
         ) : (
-          <table className="tmkeen-table">
+          <div className="table-wrap">
+          <table className="tmkeen-table table--stack">
             <thead>
               <tr><th>الإجراء</th><th>المؤشر</th><th>المسؤول</th><th>تاريخ الاستحقاق</th><th>أيام التأخير</th><th>الحالة</th></tr>
             </thead>
             <tbody>
               {lateActions.map((a) => (
                 <tr key={a.id}>
-                  <td>{a.description}</td>
-                  <td>{a.kpiName}</td>
-                  <td>{a.responsible}</td>
-                  <td>{new Date(a.dueDate).toLocaleDateString("ar-SA")}</td>
-                  <td style={{ color: "var(--tmkeen-danger)", fontWeight: 700 }}>{a.daysLate}</td>
-                  <td><Link href="/deviation">{a.status === "LATE" ? "متأخر" : "قيد التنفيذ"}</Link></td>
+                  <td data-label="الإجراء">{a.description}</td>
+                  <td data-label="المؤشر">{a.kpiName}</td>
+                  <td data-label="المسؤول">{a.responsible}</td>
+                  <td data-label="تاريخ الاستحقاق">{new Date(a.dueDate).toLocaleDateString("ar-SA")}</td>
+                  <td data-label="أيام التأخير" style={{ color: "var(--tmkeen-danger)", fontWeight: 700 }}>{a.daysLate}</td>
+                  <td data-label="الحالة"><Link href="/deviation">{a.status === "LATE" ? "متأخر" : "قيد التنفيذ"}</Link></td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FilterBar, { FilterField } from "@/components/ui/FilterBar";
-import { ROLE_LABEL } from "@/lib/types";
+import { FILLER_ROLE_LABEL, ROLE_LABEL } from "@/lib/types";
 import { notifyToast } from "@/lib/ui-toast";
 import { filterAssignCandidates } from "@/lib/requirement-owner-scope";
 import { roleToFillerRole } from "@/lib/approval-status";
@@ -222,9 +222,9 @@ export default function AssignRequirementsClient() {
             onChange={(e) => setFillerRole(e.target.value)}
           >
             <option value="">الكل</option>
-            <option value="EMPLOYEE">موظف</option>
-            <option value="SECTION_HEAD">رئيس قسم</option>
-            <option value="DEPT_MANAGER">مدير إدارة</option>
+            <option value="EMPLOYEE">{FILLER_ROLE_LABEL.EMPLOYEE}</option>
+            <option value="SECTION_HEAD">{FILLER_ROLE_LABEL.SECTION_HEAD}</option>
+            <option value="DEPT_MANAGER">{FILLER_ROLE_LABEL.DEPT_MANAGER}</option>
           </select>
         </FilterField>
         <FilterField label="بحث">
@@ -248,7 +248,7 @@ export default function AssignRequirementsClient() {
         <p className="text-muted">جاري التحميل...</p>
       ) : (
         <div className="card" style={{ overflowX: "auto" }}>
-          <table className="tmkeen-table">
+          <table className="tmkeen-table table--stack">
             <thead>
               <tr>
                 <th>الرمز</th>
@@ -261,7 +261,7 @@ export default function AssignRequirementsClient() {
             <tbody>
               {requirements.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-muted">
+                  <td colSpan={5} data-label="" className="text-muted">
                     لا متطلبات مطابقة للفلتر
                   </td>
                 </tr>
@@ -275,14 +275,14 @@ export default function AssignRequirementsClient() {
                     r.owner.departmentId !== r.departmentId;
                   return (
                     <tr key={r.id}>
-                      <td>{r.code}</td>
-                      <td>{r.name}</td>
-                      <td>{r.department?.name || "—"}</td>
-                      <td>{r.section?.name || "—"}</td>
-                      <td>
+                      <td data-label="الرمز">{r.code}</td>
+                      <td data-label="المتطلب">{r.name}</td>
+                      <td data-label="الإدارة">{r.department?.name || "—"}</td>
+                      <td data-label="القسم">{r.section?.name || "—"}</td>
+                      <td data-label="المسؤول">
                         <select
                           className="input-field"
-                          style={{ minWidth: 220 }}
+                          style={{ width: "100%", minWidth: 0 }}
                           disabled={savingId === r.id}
                           value={r.ownerId ?? ""}
                           onChange={(e) => {
