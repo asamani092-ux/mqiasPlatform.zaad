@@ -112,11 +112,11 @@ export default function MyKpisClient({
     router.refresh();
   }
 
-  async function save(requirementId: number, action: "draft" | "submit") {
+  async function save(requirementId: number, action: "draft" | "submit"): Promise<number | null> {
     const draft = drafts[requirementId];
     if (!draft?.actual) {
       notifyToast.error("أدخل القيمة الفعلية");
-      return;
+      return null;
     }
     if (action === "submit") {
       const item = items.find((it) => it.requirement.id === requirementId);
@@ -124,7 +124,7 @@ export default function MyKpisClient({
         item?.measurement?.evidences.filter((e) => e.status !== "REJECTED").length ?? 0;
       if (!item?.measurement || activeCount < 1) {
         notifyToast.error("احفظ مسودة وارفع شاهدًا واحدًا على الأقل قبل التقديم");
-        return;
+        return null;
       }
     }
     setSaving(requirementId);
@@ -146,18 +146,26 @@ export default function MyKpisClient({
       const data = await res.json().catch(() => ({}));
       notifyToast.success(
         action === "draft"
-          ? "تم حفظ المسودة"
+          ? "تم حفظ المسودة — يمكنك الآن رفع الشواهد"
           : data.message ||
               (data.skipDeptInitial
                 ? "قُدِّم مباشرة للاعتماد النهائي"
                 : "تم تقديم القياس لمراجعة الإدارة"),
-        { duration: action === "submit" ? "normal" : "short" }
+        { duration: action === "submit" ? "normal" : "short" },
       );
       await reload();
-    } else {
-      const err = await res.json().catch(() => ({}));
-      notifyToast.error(err.error || "فشل الحفظ");
+      return typeof data.measurement?.id === "number" ? data.measurement.id : null;
     }
+    const err = await res.json().catch(() => ({}));
+    notifyToast.error(err.error || "فشل الحفظ");
+    return null;
+  }
+
+  /** يضمن وجود فترة قياس (مسودة) قبل الرفع — زمن O(1) */
+  async function ensureDraftMeasurement(requirementId: number): Promise<number | null> {
+    const item = items.find((it) => it.requirement.id === requirementId);
+    if (item?.measurement?.id) return item.measurement.id;
+    return save(requirementId, "draft");
   }
 
   async function uploadEvidence(measurementPeriodId: number, file: File) {
@@ -168,7 +176,7 @@ export default function MyKpisClient({
       body: fd,
     });
     if (res.ok) {
-      notifyToast.success("تم رفع الشاهد — إن كان مرفوضاً اضغط إعادة التقديم", {
+      notifyToast.success("تم رفع الشاهد — يمكنك التقديم للمراجعة", {
         duration: "normal",
       });
       await reload();
@@ -176,6 +184,12 @@ export default function MyKpisClient({
       const err = await res.json().catch(() => ({}));
       notifyToast.error(err.error || "فشل الرفع");
     }
+  }
+
+  async function uploadEvidenceForRequirement(requirementId: number, file: File) {
+    const mpId = await ensureDraftMeasurement(requirementId);
+    if (mpId == null) return;
+    await uploadEvidence(mpId, file);
   }
 
   async function softDeleteEvidence(measurementPeriodId: number, evidenceId: number) {
@@ -214,6 +228,8 @@ export default function MyKpisClient({
 
       <div className="alert alert-info" style={{ marginBottom: "var(--space-4)" }}>
         تُعرض المهام ذات التواتر المناسب للفترة المختارة فقط ({PERIOD_LABEL[period]} {year}).
+        {" "}
+        للتقديم: أدخل المتحقق ← احفظ مسودة ← ارفع شاهدًا ← قدّم للمراجعة.
       </div>
 
       {items.some(
@@ -252,11 +268,14 @@ export default function MyKpisClient({
               {items.map((item) => {
                 const draft = drafts[item.requirement.id] ?? { actual: "", what: "", how: "" };
                 const isExpanded = expanded === item.requirement.id;
-                const status = item.measurement?.approvalStatus ?? "DRAFT";
+                const hasMeasurement = !!item.measurement;
+                const status = item.measurement?.approvalStatus ?? "NEW";
                 const locked = item.measurement
                   ? !canFillerEdit(status as never)
                   : false;
-                const label = displayApprovalLabel(status, item.measurement?.rejectReason);
+                const label = hasMeasurement
+                  ? displayApprovalLabel(status, item.measurement?.rejectReason)
+                  : "جديد — لم تُحفظ مسودة";
                 const showReturnAlert =
                   !!item.measurement?.rejectReason &&
                   (status === "DRAFT" ||
@@ -341,12 +360,31 @@ export default function MyKpisClient({
                                   accept=".pdf,.png,.jpg,.jpeg,.xlsx,.docx"
                                   onChange={(e) => {
                                     const f = e.target.files?.[0];
-                                    if (f) void uploadEvidence(item.measurement!.id, f);
+                                    if (f) void uploadEvidenceForRequirement(item.requirement.id, f);
+                                    e.target.value = "";
                                   }}
                                 />
                               </label>
                             )}
                           </>
+                        ) : !locked ? (
+                          <label
+                            className="btn-secondary btn-sm"
+                            style={{ cursor: "pointer", fontSize: ".75rem" }}
+                            title="يُحفظ تلقائياً كمسودة إن لزم ثم يُرفع الشاهد"
+                          >
+                            رفع شاهد
+                            <input
+                              type="file"
+                              hidden
+                              accept=".pdf,.png,.jpg,.jpeg,.xlsx,.docx"
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) void uploadEvidenceForRequirement(item.requirement.id, f);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
                         ) : (
                           "—"
                         )}
@@ -500,9 +538,14 @@ export default function MyKpisClient({
                               />
                             ))}
                           </div>
-                          {!locked && item.measurement ? (
+                          {!locked ? (
                             <EvidenceDropzone
-                              onFile={(f) => void uploadEvidence(item.measurement!.id, f)}
+                              onFile={(f) => void uploadEvidenceForRequirement(item.requirement.id, f)}
+                              label={
+                                item.measurement
+                                  ? "اسحب الشاهد هنا أو استعرض ملفًا"
+                                  : "ارفع شاهدًا (يُحفظ كمسودة تلقائيًا إن أدخلت المتحقق)"
+                              }
                             />
                           ) : null}
                           {(status === "REJECTED_EVIDENCE" ||

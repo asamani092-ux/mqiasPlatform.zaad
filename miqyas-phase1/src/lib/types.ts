@@ -40,6 +40,7 @@ export const APPROVAL_LABEL: Record<string, string> = {
 };
 
 export const APPROVAL_BADGE: Record<string, string> = {
+  NEW: "badge-neutral",
   DRAFT: "badge-neutral",
   SUBMITTED: "badge-warning",
   INITIAL_APPROVED: "badge-primary",
