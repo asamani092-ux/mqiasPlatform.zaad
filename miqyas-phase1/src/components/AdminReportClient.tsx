@@ -82,6 +82,7 @@ export default function AdminReportClient() {
   const [loading, setLoading] = useState(true);
   const [presenting, setPresenting] = useState(false);
   const [slideIdx, setSlideIdx] = useState(0);
+  const [printAll, setPrintAll] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -135,8 +136,28 @@ export default function AdminReportClient() {
 
   function startPresent() {
     setSlideIdx(0);
+    setPrintAll(false);
     setPresenting(true);
   }
+
+  /** تصدير PDF — يعرض كل الشرائح ثم يطبع بدون صفحات فارغة من الواجهة الخلفية */
+  function exportPdf() {
+    if (!data) return;
+    setSlideIdx(0);
+    setPrintAll(true);
+    setPresenting(true);
+    window.setTimeout(() => {
+      window.print();
+    }, 200);
+  }
+
+  useEffect(() => {
+    function onAfterPrint() {
+      setPrintAll(false);
+    }
+    window.addEventListener("afterprint", onAfterPrint);
+    return () => window.removeEventListener("afterprint", onAfterPrint);
+  }, []);
 
   function toggleAll(on: boolean) {
     const next: Record<string, boolean> = {};
@@ -388,10 +409,10 @@ export default function AdminReportClient() {
               <button
                 type="button"
                 className="btn-secondary btn-block"
-                onClick={() => window.print()}
+                onClick={exportPdf}
                 disabled={!data}
               >
-                طباعة / تصدير
+                طباعة / تصدير PDF
               </button>
               <Link href="/admin/settings" className="text-muted" style={{ fontSize: "var(--text-2xs)" }}>
                 إعدادات جولة القياس
@@ -410,7 +431,7 @@ export default function AdminReportClient() {
 
       {presenting && data ? (
         <div
-          className={`zrp-stage zrp-stage--${theme}`}
+          className={`zrp-stage zrp-stage--${theme}${printAll ? " zrp-stage--print printable-region" : ""}`}
           role="dialog"
           aria-modal="true"
           aria-label="عرض تقديمي"
@@ -429,8 +450,9 @@ export default function AdminReportClient() {
             <div className="zrp-stage-logo">
               <BrandMark variant="login" />
             </div>
-            <div className="zrp-slide" key={`${current}-${slideIdx}`}>
-              {current === "cover" ? (
+            {(printAll ? deck : [current]).map((slideId) => (
+            <div className="zrp-slide" key={`${slideId}-${printAll ? "all" : slideIdx}`}>
+              {slideId === "cover" ? (
                 <div className="zrp-slide-center">
                   <div className="zrp-accent-bar" />
                   <h1 className="zrp-cover-title">{title}</h1>
@@ -582,6 +604,7 @@ export default function AdminReportClient() {
                 </div>
               ) : null}
             </div>
+            ))}
           </div>
 
           <div className="zrp-nav">

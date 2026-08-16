@@ -459,10 +459,21 @@ a:visited {
   margin: 0.75rem 0 0;
   padding-inline-start: 1.25rem;
   line-height: 1.7;
+  color: var(--tmkeen-brand-gray);
 }
 
 .track-help-list li {
   margin-bottom: 0.35rem;
+  color: var(--tmkeen-brand-gray);
+}
+
+/* نافذة شرح المسار — خلفية صلبة ونص واضح (modal-panel وحده بلا خلفية في الحزمة) */
+.track-help-modal.modal-panel {
+  background: var(--tmkeen-surface) !important;
+  color: var(--tmkeen-brand-gray);
+  border: 2px solid var(--tmkeen-surface-border);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.18);
+  padding: 0;
 }
 
 [id^="critical"],
@@ -1219,54 +1230,79 @@ textarea.input-field {
 }
 
 @media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: var(--tmkeen-surface) !important;
+  }
+
   .app-topbar-bar,
   .nav-drawer-overlay,
   .no-print,
   .no-print-overlay,
   .modal-actions,
   .modal-footer,
-  button.no-print {
+  button.no-print,
+  .zad-breadcrumb,
+  .app-shell > header {
     display: none !important;
   }
 
-  body {
-    background: var(--tmkeen-surface) !important;
-  }
-
-  body * {
-    visibility: hidden;
-  }
-
-  .printable-region,
-  .printable-region *,
-  .print-modal,
-  .print-modal * {
-    visibility: visible;
-  }
-
-  .app-shell {
+  .app-shell,
+  .app-main {
     display: block !important;
     background: transparent !important;
     min-height: 0 !important;
+    height: auto !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
   }
 
-  .app-main {
+  /* عند وجود منطقة طباعة: أخفِ بقية محتوى الصفحة (يمنع الصفحات الفارغة) */
+  body:has(.printable-region) .app-main > *:not(:has(.printable-region)) {
+    display: none !important;
+  }
+
+  body:has(.zrp-stage--print) .zrp-builder-page,
+  body:has(.zrp-stage--print) .topbar {
+    display: none !important;
+  }
+
+  .modal-overlay:has(.printable-region) {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    background: transparent !important;
     padding: 0 !important;
-    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    backdrop-filter: none !important;
   }
 
   .print-modal,
   .printable-region {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    max-width: none;
-    max-height: none;
-    overflow: visible;
-    box-shadow: none;
-    border: none;
-    margin: 0;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
     background: var(--tmkeen-surface) !important;
+    color: var(--tmkeen-brand-gray) !important;
     padding: 0.25rem !important;
     font-size: 0.68rem !important;
     line-height: 1.35 !important;
@@ -1324,14 +1360,6 @@ textarea.input-field {
 
   .print-modal {
     page-break-after: avoid;
-  }
-
-  .modal-overlay {
-    position: static !important;
-    display: block !important;
-    background: transparent !important;
-    padding: 0 !important;
-    backdrop-filter: none !important;
   }
 }
 
@@ -1822,18 +1850,62 @@ textarea.input-field {
 @media print {
   .zrp-builder-page,
   .zrp-nav,
+  .zrp-progress,
   .topbar,
   .zad-breadcrumb,
   .app-shell > header,
   .nav-drawer-overlay {
     display: none !important;
   }
-  .zrp-stage {
+
+  .zrp-stage,
+  .zrp-stage--print {
     position: static !important;
+    inset: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
     background: white !important;
     color: black !important;
     --zrp-head: var(--primary-700);
     --zrp-text: var(--neutral-800);
+    --zrp-card: var(--neutral-0);
+    --zrp-panel: var(--neutral-50);
+    --zrp-border: var(--neutral-200);
+    --zrp-track: var(--neutral-100);
+  }
+
+  .zrp-stage-body {
+    position: static !important;
+    flex: none !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  .zrp-stage-logo {
+    position: static !important;
+    margin-bottom: 0.75rem;
+  }
+
+  .zrp-slide {
+    position: relative !important;
+    inset: auto !important;
+    min-height: auto !important;
+    height: auto !important;
+    padding: 1rem 0 1.25rem !important;
+    page-break-after: always;
+    break-after: page;
+    animation: none !important;
+    display: flex !important;
+  }
+
+  .zrp-slide:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  .zrp-slide > * {
+    max-width: 100% !important;
   }
 }
 

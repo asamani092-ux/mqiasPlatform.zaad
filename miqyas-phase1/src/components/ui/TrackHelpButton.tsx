@@ -37,20 +37,22 @@ export default function TrackHelpButton({ content }: { content: TrackHelpContent
       {open && (
         <div className="modal-overlay" role="presentation" onClick={() => setOpen(false)}>
           <div
-            className="modal-panel"
+            className="modal-panel card track-help-modal"
             role="dialog"
             aria-modal="true"
             aria-label={content.title}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-head">
-              <h2 style={{ margin: 0, fontSize: "1.1rem" }}>{content.title}</h2>
+              <h2 style={{ margin: 0, fontSize: "1.1rem", color: "var(--tmkeen-brand-gray)" }}>
+                {content.title}
+              </h2>
               <button type="button" className="icon-btn icon-btn--sm" aria-label="إغلاق" onClick={() => setOpen(false)}>
                 <X {...ICON_PROPS} />
               </button>
             </div>
-            <div className="modal-body">
-              <p style={{ marginTop: 0, lineHeight: 1.7 }}>{content.body}</p>
+            <div className="modal-body" style={{ color: "var(--tmkeen-brand-gray)" }}>
+              <p style={{ marginTop: 0, lineHeight: 1.7, color: "var(--tmkeen-brand-gray)" }}>{content.body}</p>
               <ul className="track-help-list">
                 {content.bullets.map((b) => (
                   <li key={b}>{b}</li>
