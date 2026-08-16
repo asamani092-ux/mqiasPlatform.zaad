@@ -2283,13 +2283,21 @@ textarea.input-field {
     display: none;
   }
 
-  .zad-table-wrap:has(.table--stack),
-  .table-wrap:has(.table--stack),
-  .card.zad-table-wrap:has(.table--stack) {
+  /* غلاف الجدول فقط — لا تُفرَّغ بطاقة تحتوي عنواناً مع الجدول */
+  .table-wrap:has(> .table--stack),
+  .zad-table-wrap:has(> .table--stack):not(.card),
+  .card.zad-table-wrap:has(> .table--stack):not(:has(h3)) {
     overflow: visible !important;
     background: transparent;
     border: none;
     box-shadow: none;
     padding: 0;
+  }
+
+  .card > .table-wrap:has(> .table--stack) {
+    margin: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
   }
 }

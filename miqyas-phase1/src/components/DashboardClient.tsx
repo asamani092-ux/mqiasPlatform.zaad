@@ -147,7 +147,7 @@ export default function DashboardClient({
         ))}
       </div>
 
-      <div className="card zad-table-wrap" style={{ marginBottom: "var(--space-4)" }}>
+      <div className="card" style={{ marginBottom: "var(--space-4)" }}>
         <div
           style={{
             display: "flex",
@@ -179,38 +179,40 @@ export default function DashboardClient({
             body="لا توجد مؤشرات انحراف معتمدة لهذه الفترة."
           />
         ) : (
-          <table className="tmkeen-table table--stack">
-            <thead>
-              <tr>
-                <th>الرمز</th>
-                <th>المؤشر</th>
-                <th>الإدارة</th>
-                <th>المسؤول</th>
-                <th>المستهدف</th>
-                <th>المتحقق</th>
-                <th>الإنجاز</th>
-                <th>الانحراف</th>
-                <th>الحالة</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deviationKpis.map((k) => (
-                <tr key={k.kpiId}>
-                  <td data-label="الرمز"><code>{k.code}</code></td>
-                  <td data-label="المؤشر">{k.name}</td>
-                  <td data-label="الإدارة">{k.departmentName || "—"}</td>
-                  <td data-label="المسؤول">{k.ownerLabel || "—"}</td>
-                  <td data-label="المستهدف">{k.target ?? "—"}</td>
-                  <td data-label="المتحقق">{k.actual}</td>
-                  <td data-label="الإنجاز">{pct(k.achievementPct)}</td>
-                  <td data-label="الانحراف">{pct(k.deviationPct)}</td>
-                  <td data-label="الحالة">
-                    <span className={STATUS_BADGE[k.status]}>{STATUS_LABEL[k.status]}</span>
-                  </td>
+          <div className="table-wrap">
+            <table className="tmkeen-table table--stack">
+              <thead>
+                <tr>
+                  <th>الرمز</th>
+                  <th>المؤشر</th>
+                  <th>الإدارة</th>
+                  <th>المسؤول</th>
+                  <th>المستهدف</th>
+                  <th>المتحقق</th>
+                  <th>الإنجاز</th>
+                  <th>الانحراف</th>
+                  <th>الحالة</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {deviationKpis.map((k) => (
+                  <tr key={k.kpiId}>
+                    <td data-label="الرمز"><code>{k.code}</code></td>
+                    <td data-label="المؤشر">{k.name}</td>
+                    <td data-label="الإدارة">{k.departmentName || "—"}</td>
+                    <td data-label="المسؤول">{k.ownerLabel || "—"}</td>
+                    <td data-label="المستهدف">{k.target ?? "—"}</td>
+                    <td data-label="المتحقق">{k.actual}</td>
+                    <td data-label="الإنجاز">{pct(k.achievementPct)}</td>
+                    <td data-label="الانحراف">{pct(k.deviationPct)}</td>
+                    <td data-label="الحالة">
+                      <span className={STATUS_BADGE[k.status]}>{STATUS_LABEL[k.status]}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
