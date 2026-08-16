@@ -250,8 +250,8 @@ export default function MyKpisClient({
           body="لا متطلبات بتواتر يطابق الفترة المختارة، أو لم يُسند إليك شيء. غيّر الفترة أو راجع الإسناد."
         />
       ) : (
-        <div className="card zad-table-wrap">
-          <table className="tmkeen-table">
+        <div className="card zad-table-wrap my-kpis-wrap">
+          <table className="tmkeen-table my-kpis-table">
             <thead>
               <tr>
                 <th>الرمز</th>
@@ -287,9 +287,9 @@ export default function MyKpisClient({
 
                 return (
                   <Fragment key={item.requirement.id}>
-                    <tr id={`req-row-${item.requirement.id}`}>
-                      <td>{item.requirement.code}</td>
-                      <td>
+                    <tr id={`req-row-${item.requirement.id}`} className="my-kpis-row">
+                      <td data-label="الرمز">{item.requirement.code}</td>
+                      <td data-label="المتطلب" className="my-kpis-span">
                         {item.requirement.name}
                         <div className="text-muted" style={{ fontSize: ".75rem" }}>
                           المسؤول: أنت
@@ -305,13 +305,13 @@ export default function MyKpisClient({
                           </button>
                         ) : null}
                       </td>
-                      <td style={{ fontSize: ".8rem" }}>
+                      <td data-label="الإدارة" style={{ fontSize: ".8rem" }}>
                         {item.requirement.departmentName || "—"}
                         {item.requirement.sectionName
                           ? ` · ${item.requirement.sectionName}`
                           : ""}
                       </td>
-                      <td style={{ fontSize: ".75rem" }}>
+                      <td data-label="المؤشرات" style={{ fontSize: ".75rem" }}>
                         {item.kpis.length === 0
                           ? "—"
                           : item.kpis
@@ -321,10 +321,9 @@ export default function MyKpisClient({
                               )
                               .join(" · ")}
                       </td>
-                      <td>
+                      <td data-label="المتحقق">
                         <input
-                          className="input-field"
-                          style={{ width: 88 }}
+                          className="input-field my-kpis-actual"
                           type="number"
                           step="any"
                           value={draft.actual}
@@ -340,10 +339,10 @@ export default function MyKpisClient({
                           {item.requirement.unit}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="الحالة">
                         <span className={APPROVAL_BADGE[status] || "badge-neutral"}>{label}</span>
                       </td>
-                      <td>
+                      <td data-label="الشواهد">
                         {item.measurement ? (
                           <>
                             {item.measurement.evidences.filter((e) => e.status !== "REJECTED").length}
@@ -389,7 +388,7 @@ export default function MyKpisClient({
                           "—"
                         )}
                       </td>
-                      <td>
+                      <td data-label="إجراءات" className="my-kpis-actions">
                         <ActionToolbar>
                           <IconActionButton
                             icon={Save}
@@ -433,8 +432,8 @@ export default function MyKpisClient({
                       </td>
                     </tr>
                     {isExpanded && (
-                      <tr>
-                        <td colSpan={8} style={{ background: "var(--tmkeen-surface-muted)" }}>
+                      <tr className="my-kpis-expand">
+                        <td colSpan={8} data-label="" style={{ background: "var(--tmkeen-surface-muted)" }}>
                           {showReturnAlert && (
                             <div className="alert alert-warn" style={{ marginBottom: ".75rem" }}>
                               <div>

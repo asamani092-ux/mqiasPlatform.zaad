@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "@zaad/design-system/tokens.css";
 import "@zaad/design-system/components.css";
 import "@zaad/design-system/zaad-addons.css";
@@ -7,6 +7,12 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "منصة مِقياس | جمعية الزاد",
   description: "منصة قياس الأداء المؤسسي — جمعية الزاد",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

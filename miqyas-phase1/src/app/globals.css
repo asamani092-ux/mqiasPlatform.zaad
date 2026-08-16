@@ -207,7 +207,7 @@ a:visited {
 @media (max-width: 640px) {
   .app-main {
     padding: 1rem 0.75rem 1.5rem;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   .demo-data-banner {
@@ -1462,16 +1462,16 @@ textarea.input-field {
 }
 
 @media (max-width: 767px) {
-  .table-wrap .tmkeen-table,
+  .table-wrap .tmkeen-table:not(.my-kpis-table),
   .table-wrap .data-table,
-  .tmkeen-table-wrap .tmkeen-table,
-  .zad-table-wrap .tmkeen-table,
+  .tmkeen-table-wrap .tmkeen-table:not(.my-kpis-table),
+  .zad-table-wrap .tmkeen-table:not(.my-kpis-table),
   .zad-table-wrap .data-table,
-  .card > .tmkeen-table {
+  .card > .tmkeen-table:not(.my-kpis-table) {
     min-width: 36rem;
   }
 
-  .card:has(> .tmkeen-table) {
+  .card:has(> .tmkeen-table:not(.my-kpis-table)) {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
