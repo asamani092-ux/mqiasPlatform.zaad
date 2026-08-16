@@ -1593,6 +1593,24 @@ textarea.input-field {
   max-width: min(94rem, 94%);
   margin-inline: auto;
 }
+
+/* وضع التصدير: تكديس الشرائح بدل تراكبها المطلق (يمنع الصفحات الفارغة) */
+.zrp-stage--print {
+  position: fixed;
+  overflow: auto;
+}
+.zrp-stage--print .zrp-stage-body {
+  position: relative;
+  overflow: visible;
+  height: auto;
+  flex: none;
+}
+.zrp-stage--print .zrp-slide {
+  position: relative;
+  inset: auto;
+  min-height: 100vh;
+  animation: none;
+}
 .zrp-slide-center {
   text-align: center;
   display: flex;
