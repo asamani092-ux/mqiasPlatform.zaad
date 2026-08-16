@@ -588,7 +588,7 @@ export default function AdminKpisClient({
           )}
 
           <div className="card zad-table-wrap">
-            <table className="tmkeen-table">
+            <table className="tmkeen-table table--stack">
               <thead>
                 <tr>
                   <th>الرمز</th>
@@ -602,12 +602,12 @@ export default function AdminKpisClient({
               <tbody>
                 {visibleKpis.map((k) => (
                   <tr key={k.id}>
-                    <td><code>{k.code}</code></td>
-                    <td>{k.name}</td>
-                    <td>{TYPE_LABEL[k.type as keyof typeof TYPE_LABEL]}</td>
-                    <td>{k.department?.name || "—"}</td>
-                    <td>{k.owner?.name || k.ownerLabel || "—"}</td>
-                    <td style={{ whiteSpace: "normal" }}>
+                    <td data-label="الرمز"><code>{k.code}</code></td>
+                    <td data-label="المؤشر">{k.name}</td>
+                    <td data-label="النوع">{TYPE_LABEL[k.type as keyof typeof TYPE_LABEL]}</td>
+                    <td data-label="الإدارة المالكة">{k.department?.name || "—"}</td>
+                    <td data-label="المسؤول">{k.owner?.name || k.ownerLabel || "—"}</td>
+                    <td data-label="إجراءات" style={{ whiteSpace: "normal" }}>
                       <button type="button" className="btn-secondary btn-sm" title="تعديل المؤشر" onClick={() => startEdit(k)}>
                         تعديل
                       </button>
@@ -625,7 +625,7 @@ export default function AdminKpisClient({
                 ))}
                 {visibleKpis.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-muted">
+                    <td colSpan={6} data-label="" className="text-muted">
                       <EmptyState
                         title="لا نتائج"
                         body={

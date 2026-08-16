@@ -299,7 +299,7 @@ export default function UatChecklistClient() {
               <div key={group.id} className="card" style={{ marginBottom: "1rem" }}>
                 <h3 style={{ marginBottom: ".75rem" }}>{group.title}</h3>
                 <div style={{ overflowX: "auto" }}>
-                  <table className="tmkeen-table">
+                  <table className="tmkeen-table table--stack">
                     <thead>
                       <tr>
                         <th>الأداة</th>
@@ -320,13 +320,13 @@ export default function UatChecklistClient() {
                         };
                         return (
                           <tr key={tool.id}>
-                            <td>
+                            <td data-label="الأداة">
                               <strong>{tool.tool}</strong>
                               <div>
                                 <span className={`badge ${toolsVerdictBadge(v)}`}>{v}</span>
                               </div>
                             </td>
-                            <td>
+                            <td data-label="المسار">
                               {tool.href ? (
                                 <Link
                                   href={tool.href}
@@ -345,17 +345,17 @@ export default function UatChecklistClient() {
                                 <code>{tool.path}</code>
                               )}
                             </td>
-                            <td>
+                            <td data-label="ما يُتحقق منه">
                               <ul style={{ margin: 0, paddingInlineStart: "1.1rem" }}>
                                 {tool.checks.map((c) => (
                                   <li key={c}>{c}</li>
                                 ))}
                               </ul>
                             </td>
-                            <td className="text-muted" style={{ fontSize: ".85rem" }}>
+                            <td data-label="الصلاحية" className="text-muted" style={{ fontSize: ".85rem" }}>
                               {tool.permission}
                             </td>
-                            <td>
+                            <td data-label="التقييم">
                               <select
                                 className="input-field"
                                 value={v}
@@ -368,7 +368,7 @@ export default function UatChecklistClient() {
                                 ))}
                               </select>
                             </td>
-                            <td>
+                            <td data-label="تصنيف الملاحظة">
                               <select
                                 className="input-field"
                                 value={note.category}
@@ -383,7 +383,7 @@ export default function UatChecklistClient() {
                                 ))}
                               </select>
                             </td>
-                            <td>
+                            <td data-label="ملاحظة">
                               <input
                                 className="input-field"
                                 placeholder="ملاحظات التجربة…"

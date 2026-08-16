@@ -300,7 +300,7 @@ export default function OperationalTrackClient({
           <p className="text-muted">لا توجد مؤشرات للعرض.</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table className="tmkeen-table">
+            <table className="tmkeen-table table--stack">
               <thead>
                 <tr>
                   <th>الرمز</th>
@@ -318,18 +318,18 @@ export default function OperationalTrackClient({
               <tbody>
                 {tableRows.map((r) => (
                   <tr key={r.kpiId}>
-                    <td>{r.code}</td>
-                    <td>{r.name}</td>
-                    <td>{r.baseline ?? "—"}</td>
-                    <td>{r.annualTarget ?? "—"}</td>
-                    <td>{r.target ?? "—"}</td>
-                    <td>{r.actual ?? "—"}</td>
-                    <td>{r.achievementPct != null ? `${r.achievementPct}%` : "—"}</td>
-                    <td>{formatDeviation(r.deviationPct)}</td>
-                    <td>
+                    <td data-label="الرمز">{r.code}</td>
+                    <td data-label="المؤشر">{r.name}</td>
+                    <td data-label="خط الأساس">{r.baseline ?? "—"}</td>
+                    <td data-label="المستهدف السنوي">{r.annualTarget ?? "—"}</td>
+                    <td data-label="المستهدف الربعي">{r.target ?? "—"}</td>
+                    <td data-label="المتحقق الفعلي">{r.actual ?? "—"}</td>
+                    <td data-label="نسبة الإنجاز">{r.achievementPct != null ? `${r.achievementPct}%` : "—"}</td>
+                    <td data-label="الانحراف">{formatDeviation(r.deviationPct)}</td>
+                    <td data-label="الحالة">
                       <Status5Badge status={r.status5} />
                     </td>
-                    <td>
+                    <td data-label="تحليل">
                       <button
                         type="button"
                         className="btn-primary btn-sm"

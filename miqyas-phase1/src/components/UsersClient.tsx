@@ -384,7 +384,7 @@ export default function UsersClient({ departments }: { departments: Department[]
       </div>
 
       <div className="card table-wrap" style={{ padding: 0 }}>
-        <table className="tmkeen-table">
+        <table className="tmkeen-table table--stack">
           <thead>
             <tr>
               <th>الاسم</th>
@@ -400,29 +400,29 @@ export default function UsersClient({ departments }: { departments: Department[]
           <tbody>
             {users.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: "center", color: "var(--tmkeen-brand-gray)" }}>
+                <td colSpan={8} data-label="" style={{ textAlign: "center", color: "var(--tmkeen-brand-gray)" }}>
                   لا يوجد مستخدمون
                 </td>
               </tr>
             ) : (
               users.map((u) => (
                 <tr key={u.id}>
-                  <td>{u.name}</td>
-                  <td dir="ltr" style={{ textAlign: "start" }}>{u.email}</td>
-                  <td>
+                  <td data-label="الاسم">{u.name}</td>
+                  <td data-label="البريد" dir="ltr" style={{ textAlign: "start" }}>{u.email}</td>
+                  <td data-label="الدور">
                     <span className={ROLE_BADGE[u.role] || "badge-neutral"}>
                       {ROLE_LABEL[u.role] || u.role}
                     </span>
                   </td>
-                  <td>{u.department?.name ?? "—"}</td>
-                  <td>{u.section?.name ?? "—"}</td>
-                  <td>
+                  <td data-label="الإدارة">{u.department?.name ?? "—"}</td>
+                  <td data-label="القسم">{u.section?.name ?? "—"}</td>
+                  <td data-label="الحالة">
                     <span className={u.status === "ACTIVE" ? "badge-success" : "badge-danger"}>
                       {USER_STATUS_LABEL[u.status] || u.status}
                     </span>
                   </td>
-                  <td>{fmtLastLogin(u.lastLogin)}</td>
-                  <td>
+                  <td data-label="آخر دخول">{fmtLastLogin(u.lastLogin)}</td>
+                  <td data-label="إجراءات">
                     <div style={{ display: "flex", gap: ".35rem", flexWrap: "wrap" }}>
                       <button type="button" className="btn-secondary btn-sm" onClick={() => openEdit(u)}>
                         تعديل

@@ -112,7 +112,7 @@ export default function ExecutiveClient({
           </p>
         ) : (
           <div className="table-wrap">
-          <table className="tmkeen-table">
+          <table className="tmkeen-table table--stack">
             <thead>
               <tr>
                 <th>الرمز</th><th>المؤشر</th><th>الجهة</th><th>المستهدف</th><th>المتحقق</th>
@@ -122,14 +122,14 @@ export default function ExecutiveClient({
             <tbody>
               {visibleDeviatedKpis.map((k) => (
                 <tr key={k.kpiId} style={{ cursor: "pointer" }} onClick={() => setDrawerId(k.kpiId)}>
-                  <td>{k.code}</td>
-                  <td>{k.name}</td>
-                  <td>{k.departmentName || k.ownerLabel || "—"}</td>
-                  <td>{k.target}</td>
-                  <td>{k.actual}</td>
-                  <td>{k.achievementPct != null ? `${k.achievementPct}%` : "—"}</td>
-                  <td style={{ color: "var(--tmkeen-danger)", fontWeight: 700 }}>{k.deviationPct != null ? `${k.deviationPct}%` : "—"}</td>
-                  <td><StatusBadge status={k.status} /></td>
+                  <td data-label="الرمز">{k.code}</td>
+                  <td data-label="المؤشر">{k.name}</td>
+                  <td data-label="الجهة">{k.departmentName || k.ownerLabel || "—"}</td>
+                  <td data-label="المستهدف">{k.target}</td>
+                  <td data-label="المتحقق">{k.actual}</td>
+                  <td data-label="نسبة التحقق">{k.achievementPct != null ? `${k.achievementPct}%` : "—"}</td>
+                  <td data-label="الانحراف %" style={{ color: "var(--tmkeen-danger)", fontWeight: 700 }}>{k.deviationPct != null ? `${k.deviationPct}%` : "—"}</td>
+                  <td data-label="الحالة"><StatusBadge status={k.status} /></td>
                 </tr>
               ))}
             </tbody>

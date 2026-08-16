@@ -327,7 +327,7 @@ export default function GovernanceClient({
           </div>
 
           <div className="card table-wrap" style={{ marginBottom: "1rem", padding: 0 }}>
-            <table className="tmkeen-table">
+            <table className="tmkeen-table table--stack">
               <thead>
                 <tr>
                   <th>الرمز</th>
@@ -342,18 +342,18 @@ export default function GovernanceClient({
               <tbody>
                 {filtered.map((r) => (
                   <tr key={r.id}>
-                    <td>{r.code}</td>
-                    <td>{r.title}</td>
-                    <td>{r.category || "—"}</td>
-                    <td>{r.owner || "—"}</td>
-                    <td>{r.compliancePct}%</td>
-                    <td>
+                    <td data-label="الرمز">{r.code}</td>
+                    <td data-label="المعيار">{r.title}</td>
+                    <td data-label="التصنيف">{r.category || "—"}</td>
+                    <td data-label="الجهة">{r.owner || "—"}</td>
+                    <td data-label="نسبة الالتزام">{r.compliancePct}%</td>
+                    <td data-label="الحالة">
                       <span className={STATUS_BADGE[r.status] ?? "badge-secondary"}>
                         {GOVERNANCE_STATUS_LABEL[r.status] ?? r.status}
                       </span>
                     </td>
                     {canManage && (
-                      <td>
+                      <td data-label="إجراءات">
                         <div style={{ display: "flex", gap: ".35rem", flexWrap: "wrap" }}>
                           <button
                             type="button"
@@ -390,7 +390,7 @@ export default function GovernanceClient({
 
       {tab === "observations" && (
         <div className="card table-wrap" style={{ marginBottom: "1rem", padding: 0 }}>
-          <table className="tmkeen-table">
+          <table className="tmkeen-table table--stack">
             <thead>
               <tr>
                 <th>الملاحظة</th>

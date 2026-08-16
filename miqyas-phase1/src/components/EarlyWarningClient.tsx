@@ -170,7 +170,7 @@ export default function EarlyWarningClient({
       </div>
 
       <div className="card" style={{ overflowX: "auto" }}>
-        <table className="tmkeen-table">
+        <table className="tmkeen-table table--stack">
           <thead>
             <tr>
               <th>الرمز</th>
@@ -186,20 +186,20 @@ export default function EarlyWarningClient({
           <tbody>
             {rows.map((r) => (
               <tr key={r.kpiId}>
-                <td>
+                <td data-label="الرمز">
                   <span className="badge-primary">{r.code}</span>
                 </td>
-                <td>{r.name}</td>
-                <td>{fmtNum(r.target)}</td>
-                <td>{fmtNum(r.actual)}</td>
-                <td>{fmtNum(r.achievementPct)}%</td>
-                <td>{fmtNum(r.gapPct)}%</td>
-                <td>
+                <td data-label="المؤشر">{r.name}</td>
+                <td data-label="المستهدف">{fmtNum(r.target)}</td>
+                <td data-label="المتحقق">{fmtNum(r.actual)}</td>
+                <td data-label="الإنجاز %">{fmtNum(r.achievementPct)}%</td>
+                <td data-label="الفجوة %">{fmtNum(r.gapPct)}%</td>
+                <td data-label="مستوى الخطر">
                   <span className={RISK_BADGE[r.riskLevel] || "badge-secondary"}>
                     {r.riskLabel}
                   </span>
                 </td>
-                <td>
+                <td data-label="بطاقة الانحراف">
                   {r.deviationCardId != null ? (
                     <button
                       type="button"

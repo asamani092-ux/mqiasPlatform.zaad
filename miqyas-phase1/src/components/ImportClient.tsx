@@ -131,18 +131,18 @@ export default function ImportClient({ embedded = false }: { embedded?: boolean 
           </div>
 
           <div className="card" style={{ overflowX: "auto", maxHeight: 400, overflowY: "auto" }}>
-            <table className="tmkeen-table">
+            <table className="tmkeen-table table--stack">
               <thead>
                 <tr><th>الرمز</th><th>الاسم</th><th>الفترة</th><th>الحالة</th><th>ملاحظة</th></tr>
               </thead>
               <tbody>
                 {preview.rows.map((r, i) => (
                   <tr key={`${r.code}-${r.period}-${i}`}>
-                    <td>{r.code}</td>
-                    <td>{r.name}</td>
-                    <td>{r.period}</td>
-                    <td><span className={r.status === "ERROR" ? "badge-danger" : r.status === "NEW" ? "badge-success" : "badge-primary"}>{r.status}</span></td>
-                    <td>{r.error || r.ownerLabel || ""}</td>
+                    <td data-label="الرمز">{r.code}</td>
+                    <td data-label="الاسم">{r.name}</td>
+                    <td data-label="الفترة">{r.period}</td>
+                    <td data-label="الحالة"><span className={r.status === "ERROR" ? "badge-danger" : r.status === "NEW" ? "badge-success" : "badge-primary"}>{r.status}</span></td>
+                    <td data-label="ملاحظة">{r.error || r.ownerLabel || ""}</td>
                   </tr>
                 ))}
               </tbody>

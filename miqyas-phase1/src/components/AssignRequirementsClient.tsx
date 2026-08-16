@@ -248,7 +248,7 @@ export default function AssignRequirementsClient() {
         <p className="text-muted">جاري التحميل...</p>
       ) : (
         <div className="card" style={{ overflowX: "auto" }}>
-          <table className="tmkeen-table">
+          <table className="tmkeen-table table--stack">
             <thead>
               <tr>
                 <th>الرمز</th>
@@ -261,7 +261,7 @@ export default function AssignRequirementsClient() {
             <tbody>
               {requirements.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-muted">
+                  <td colSpan={5} data-label="" className="text-muted">
                     لا متطلبات مطابقة للفلتر
                   </td>
                 </tr>
@@ -275,11 +275,11 @@ export default function AssignRequirementsClient() {
                     r.owner.departmentId !== r.departmentId;
                   return (
                     <tr key={r.id}>
-                      <td>{r.code}</td>
-                      <td>{r.name}</td>
-                      <td>{r.department?.name || "—"}</td>
-                      <td>{r.section?.name || "—"}</td>
-                      <td>
+                      <td data-label="الرمز">{r.code}</td>
+                      <td data-label="المتطلب">{r.name}</td>
+                      <td data-label="الإدارة">{r.department?.name || "—"}</td>
+                      <td data-label="القسم">{r.section?.name || "—"}</td>
+                      <td data-label="المسؤول">
                         <select
                           className="input-field"
                           style={{ width: "100%", minWidth: 0 }}

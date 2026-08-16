@@ -179,7 +179,7 @@ export default function DashboardClient({
             body="لا توجد مؤشرات انحراف معتمدة لهذه الفترة."
           />
         ) : (
-          <table className="tmkeen-table">
+          <table className="tmkeen-table table--stack">
             <thead>
               <tr>
                 <th>الرمز</th>
@@ -196,15 +196,15 @@ export default function DashboardClient({
             <tbody>
               {deviationKpis.map((k) => (
                 <tr key={k.kpiId}>
-                  <td><code>{k.code}</code></td>
-                  <td>{k.name}</td>
-                  <td>{k.departmentName || "—"}</td>
-                  <td>{k.ownerLabel || "—"}</td>
-                  <td>{k.target ?? "—"}</td>
-                  <td>{k.actual}</td>
-                  <td>{pct(k.achievementPct)}</td>
-                  <td>{pct(k.deviationPct)}</td>
-                  <td>
+                  <td data-label="الرمز"><code>{k.code}</code></td>
+                  <td data-label="المؤشر">{k.name}</td>
+                  <td data-label="الإدارة">{k.departmentName || "—"}</td>
+                  <td data-label="المسؤول">{k.ownerLabel || "—"}</td>
+                  <td data-label="المستهدف">{k.target ?? "—"}</td>
+                  <td data-label="المتحقق">{k.actual}</td>
+                  <td data-label="الإنجاز">{pct(k.achievementPct)}</td>
+                  <td data-label="الانحراف">{pct(k.deviationPct)}</td>
+                  <td data-label="الحالة">
                     <span className={STATUS_BADGE[k.status]}>{STATUS_LABEL[k.status]}</span>
                   </td>
                 </tr>
