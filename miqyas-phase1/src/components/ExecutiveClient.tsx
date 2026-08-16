@@ -111,6 +111,7 @@ export default function ExecutiveClient({
               : "جميع المؤشرات المنحرفة لديها بطاقة متابعة مفتوحة لهذه الفترة."}
           </p>
         ) : (
+          <div className="table-wrap">
           <table className="tmkeen-table">
             <thead>
               <tr>
@@ -133,6 +134,7 @@ export default function ExecutiveClient({
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
@@ -141,6 +143,7 @@ export default function ExecutiveClient({
         {lateActions.length === 0 ? (
           <p className="text-muted">لا توجد إجراءات متأخرة — جميع المعالجات ضمن الإطار الزمني.</p>
         ) : (
+          <div className="table-wrap">
           <table className="tmkeen-table">
             <thead>
               <tr><th>الإجراء</th><th>المؤشر</th><th>المسؤول</th><th>تاريخ الاستحقاق</th><th>أيام التأخير</th><th>الحالة</th></tr>
@@ -158,6 +161,7 @@ export default function ExecutiveClient({
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

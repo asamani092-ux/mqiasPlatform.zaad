@@ -404,6 +404,7 @@ export default function UatChecklistClient() {
 
           <div className="card">
             <h3 style={{ marginBottom: ".75rem" }}>خارج نطاق التجربة</h3>
+            <div className="table-wrap">
             <table className="tmkeen-table">
               <thead>
                 <tr>
@@ -420,6 +421,7 @@ export default function UatChecklistClient() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </>
       ) : (

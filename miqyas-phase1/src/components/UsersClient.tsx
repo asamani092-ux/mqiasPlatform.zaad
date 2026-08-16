@@ -383,7 +383,7 @@ export default function UsersClient({ departments }: { departments: Department[]
         </div>
       </div>
 
-      <div className="card">
+      <div className="card table-wrap" style={{ padding: 0 }}>
         <table className="tmkeen-table">
           <thead>
             <tr>

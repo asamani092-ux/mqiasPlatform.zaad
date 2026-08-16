@@ -326,7 +326,7 @@ export default function GovernanceClient({
             )}
           </div>
 
-          <div className="card" style={{ marginBottom: "1rem", padding: 0, overflow: "hidden" }}>
+          <div className="card table-wrap" style={{ marginBottom: "1rem", padding: 0 }}>
             <table className="tmkeen-table">
               <thead>
                 <tr>
@@ -389,7 +389,7 @@ export default function GovernanceClient({
       )}
 
       {tab === "observations" && (
-        <div className="card" style={{ marginBottom: "1rem", padding: 0, overflow: "hidden" }}>
+        <div className="card table-wrap" style={{ marginBottom: "1rem", padding: 0 }}>
           <table className="tmkeen-table">
             <thead>
               <tr>

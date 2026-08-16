@@ -212,7 +212,7 @@ export default function SettingsClient() {
                 <input
                   type="number"
                   className="input-field"
-                  style={{ width: 160 }}
+                  style={{ width: "100%", maxWidth: 160 }}
                   defaultValue={getValue("measurement_round_year", String(defaults.year))}
                   key={`round-year-${getValue("measurement_round_year", String(defaults.year))}`}
                   onBlur={onMeasurementRoundYearBlur}
@@ -222,7 +222,7 @@ export default function SettingsClient() {
                 <label className="label-field">فترة جولة القياس</label>
                 <select
                   className="input-field"
-                  style={{ width: 180 }}
+                  style={{ width: "100%", maxWidth: 180 }}
                   value={getValue("measurement_round_period", defaults.period)}
                   onChange={(e) => void save("measurement_round_period", e.target.value)}
                 >
