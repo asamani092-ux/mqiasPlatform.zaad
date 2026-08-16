@@ -410,7 +410,7 @@ export default function ApprovalsClient() {
           />
         ) : (
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table table--stack">
             <thead>
               <tr>
                 <th>الإدارة</th>

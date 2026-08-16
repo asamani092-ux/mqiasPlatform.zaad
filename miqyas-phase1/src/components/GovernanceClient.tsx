@@ -402,16 +402,16 @@ export default function GovernanceClient({
             <tbody>
               {observations.map((o) => (
                 <tr key={o.id}>
-                  <td>{o.title}</td>
-                  <td>
+                  <td data-label="الملاحظة">{o.title}</td>
+                  <td data-label="الحالة">
                     <span className={OBS_STATUS_BADGE[o.status] ?? "badge-secondary"}>
                       {OBS_STATUS_LABEL[o.status] ?? o.status}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="فترة الفتح">
                     {PERIOD_LABEL[o.openedPeriod as Period] ?? o.openedPeriod} {o.openedYear}
                   </td>
-                  <td>
+                  <td data-label="فترة الإغلاق">
                     {o.closedPeriod
                       ? `${PERIOD_LABEL[o.closedPeriod as Period] ?? o.closedPeriod} ${o.closedYear ?? ""}`
                       : "—"}

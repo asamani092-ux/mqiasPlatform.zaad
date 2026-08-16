@@ -144,19 +144,19 @@ export default function ExecutiveClient({
           <p className="text-muted">لا توجد إجراءات متأخرة — جميع المعالجات ضمن الإطار الزمني.</p>
         ) : (
           <div className="table-wrap">
-          <table className="tmkeen-table">
+          <table className="tmkeen-table table--stack">
             <thead>
               <tr><th>الإجراء</th><th>المؤشر</th><th>المسؤول</th><th>تاريخ الاستحقاق</th><th>أيام التأخير</th><th>الحالة</th></tr>
             </thead>
             <tbody>
               {lateActions.map((a) => (
                 <tr key={a.id}>
-                  <td>{a.description}</td>
-                  <td>{a.kpiName}</td>
-                  <td>{a.responsible}</td>
-                  <td>{new Date(a.dueDate).toLocaleDateString("ar-SA")}</td>
-                  <td style={{ color: "var(--tmkeen-danger)", fontWeight: 700 }}>{a.daysLate}</td>
-                  <td><Link href="/deviation">{a.status === "LATE" ? "متأخر" : "قيد التنفيذ"}</Link></td>
+                  <td data-label="الإجراء">{a.description}</td>
+                  <td data-label="المؤشر">{a.kpiName}</td>
+                  <td data-label="المسؤول">{a.responsible}</td>
+                  <td data-label="تاريخ الاستحقاق">{new Date(a.dueDate).toLocaleDateString("ar-SA")}</td>
+                  <td data-label="أيام التأخير" style={{ color: "var(--tmkeen-danger)", fontWeight: 700 }}>{a.daysLate}</td>
+                  <td data-label="الحالة"><Link href="/deviation">{a.status === "LATE" ? "متأخر" : "قيد التنفيذ"}</Link></td>
                 </tr>
               ))}
             </tbody>
