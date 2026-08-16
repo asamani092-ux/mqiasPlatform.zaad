@@ -23,12 +23,24 @@ import { upsertMeasurementPeriod } from "../src/lib/measurement-sync";
 
 const YEAR = 2026;
 const EXCEL_PATH = path.join(__dirname, "../data/performance-2026.xlsx");
-const DEMO_PASSWORD = "Demo@123456";
+/** كلمة مرور حسابات العرض — من البيئة فقط، بلا افتراضي مضمّن */
+const DEMO_PASSWORD = process.env.DEMO_USER_PASSWORD || process.env.TEST_USER_PASSWORD || "";
 const DEMO_PERIODS: Period[] = ["Q1", "Q2"];
 const SHEETS: { name: string; period: Period }[] = [
   { name: "قياس الأداء للربع الأول", period: "Q1" },
   { name: "قياس الأداء للربع الثاني", period: "Q2" },
 ];
+
+if (process.env.ENABLE_UAT !== "true" && process.env.ALLOW_DEMO_SEED !== "true") {
+  throw new Error(
+    "seed:excel لبيئة التجربة فقط — اضبط ENABLE_UAT=true أو ALLOW_DEMO_SEED=true",
+  );
+}
+if (!DEMO_PASSWORD || DEMO_PASSWORD.length < 10) {
+  throw new Error(
+    "اضبط DEMO_USER_PASSWORD أو TEST_USER_PASSWORD (10+ أحرف) قبل seed:excel — بلا كلمة مرور مضمّنة في الكود",
+  );
+}
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error("يجب ضبط DATABASE_URL في ملف .env");

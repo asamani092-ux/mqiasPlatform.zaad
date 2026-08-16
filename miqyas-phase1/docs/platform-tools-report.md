@@ -153,11 +153,11 @@ flowchart LR
 
 | البريد | الدور | كلمة المرور النموذجية |
 |--------|-------|------------------------|
-| `admin@zad.org.sa` | مشرف | من `ADMIN_PASSWORD` / محلياً غالباً `Admin@123456` |
-| `executive@zad.org.sa` | تنفيذي | `Demo@123456` (بعد `seed:excel`) |
-| `manager@zad.org.sa` | مدير إدارة | `Demo@123456` |
-| `head@zad.org.sa` | رئيس قسم | `Demo@123456` |
-| `employee@zad.org.sa` | موظف | `Demo@123456` |
+| `admin@zad.org.sa` | مشرف | من `ADMIN_PASSWORD` |
+| `executive@zad.org.sa` | تنفيذي | من `DEMO_USER_PASSWORD` بعد `seed:excel` (UAT فقط) |
+| `manager@zad.org.sa` | مدير إدارة | من `DEMO_USER_PASSWORD` بعد `seed:excel` (UAT فقط) |
+| `head@zad.org.sa` | رئيس قسم | من `DEMO_USER_PASSWORD` بعد `seed:excel` (UAT فقط) |
+| `employee@zad.org.sa` | موظف | من `DEMO_USER_PASSWORD` بعد `seed:excel` (UAT فقط) |
 
 أوامر: `npm run seed` · `npm run seed:excel`.
 

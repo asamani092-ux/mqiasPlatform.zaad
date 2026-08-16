@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # إعداد محلي سريع — PostgreSQL + .env + migrate + seed + dev
+# ليس لمسار الإنتاج — كلمات المرور تُولَّد محلياً ولا تُفرَض كثوابت مضمّنة للنشر
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -11,6 +12,7 @@ fi
 if [ ! -f .env ] || grep -q "CHANGE_ME" .env 2>/dev/null; then
   echo "==> إنشاء .env"
   DB_PASS="${MIQYAS_DB_PASS:-miqyas_dev_local}"
+  ADMIN_PASS="${LOCAL_ADMIN_PASSWORD:-$(openssl rand -base64 18)}"
   sudo -u postgres psql -v ON_ERROR_STOP=1 <<EOF
 DO \$\$ BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'miqyas') THEN
@@ -27,7 +29,7 @@ DATABASE_URL="postgresql://miqyas:${DB_PASS}@localhost:5432/miqyas?schema=public
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="$(openssl rand -base64 32)"
 ADMIN_EMAIL="admin@zad.org.sa"
-ADMIN_PASSWORD="Admin@123456"
+ADMIN_PASSWORD="${ADMIN_PASS}"
 SMTP_HOST="smtp.office365.com"
 SMTP_PORT="587"
 SMTP_USER=""
@@ -37,6 +39,7 @@ APP_URL="http://localhost:3000"
 CRON_SECRET="$(openssl rand -hex 24)"
 ENABLE_UAT=true
 EOF
+  echo "   ADMIN_PASSWORD المحلي في .env (احفظه): ${ADMIN_PASS}"
 fi
 
 echo "==> prisma generate + migrate"
@@ -52,5 +55,5 @@ rm -rf .next
 echo ""
 echo "✅ جاهز. شغّل: npm run dev  (منفذ 3000 فقط — لا تشغّل نسختين)"
 echo "   الدخول: http://localhost:3000/login"
-echo "   admin@zad.org.sa / Admin@123456"
+echo "   البريد: admin@zad.org.sa · كلمة المرور من ADMIN_PASSWORD في .env"
 echo "   الحوكمة: http://localhost:3000/governance"

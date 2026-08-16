@@ -39,7 +39,7 @@ export const UAT_ROLE_SECTIONS: UatRoleSection[] = [
     id: "employee",
     title: "1) الموظف",
     roleLabel: ROLE_LABEL.EMPLOYEE,
-    demoHint: "employee@zad.org.sa · Demo@123456 (بعد seed:excel) — مع متطلبات مسندة لإدارته",
+    demoHint: "employee@zad.org.sa (بعد seed:excel إن وُجد) — مع متطلبات مسندة لإدارته",
     goldenRule: "رؤية: شواهد فقط · وصول: ممنوع /dept-follow و/approvals و/admin · نطاق: ما يملكه فقط",
     cases: [
       {
