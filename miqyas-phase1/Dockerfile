@@ -46,6 +46,7 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+# سكربتات الصيانة تُشغَّل عبر API داخل الحاوية — لا تعتمد على tsx/scripts
 
 EXPOSE 3000
 # Docker/Coolify يضبط HOSTNAME لاسم الحاوية — Next يفسّره كعنوان استماع فيحدث Bad Gateway

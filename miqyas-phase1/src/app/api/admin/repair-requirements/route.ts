@@ -1,18 +1,30 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { requireManageKpis } from "@/lib/admin-auth";
 import { ensureRequirementFromKpi } from "@/lib/kpi-owner-sync";
-import { handleApiError } from "@/lib/api-helpers";
+import { handleApiError, jsonError } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
 
+function authorizedViaCron(req: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  return req.headers.get("authorization") === `Bearer ${secret}`;
+}
+
 /** ترحيل تراكمي: ربط كل مؤشر نشط بمتطلب قياس · زمن O(n) · مكان O(1) */
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
-    const user = await requireUser();
-    requireManageKpis(user);
+    const viaCron = authorizedViaCron(req);
+    let actorId = 0;
+
+    if (!viaCron) {
+      const user = await requireUser();
+      requireManageKpis(user);
+      actorId = parseInt(user.id, 10);
+    }
 
     const kpis = await db.kpi.findMany({
       where: { active: true },
@@ -39,13 +51,20 @@ export async function POST() {
       synced++;
     }
 
-    await audit(parseInt(user.id, 10), "REPAIR_REQUIREMENTS", "MeasurementRequirement", 0, {
-      synced,
-      total: kpis.length,
-    });
+    if (actorId > 0) {
+      await audit(actorId, "REPAIR_REQUIREMENTS", "MeasurementRequirement", 0, {
+        synced,
+        total: kpis.length,
+      });
+    }
 
     return NextResponse.json({ ok: true, synced, total: kpis.length });
   } catch (e) {
     return handleApiError(e);
   }
+}
+
+export async function GET(req: NextRequest) {
+  if (!authorizedViaCron(req)) return jsonError("غير مصرح", 401);
+  return POST(req);
 }
