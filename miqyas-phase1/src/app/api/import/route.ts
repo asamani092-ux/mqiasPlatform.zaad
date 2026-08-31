@@ -12,6 +12,7 @@ import { getSetting } from "@/lib/settings";
 import { matchesFileSignature } from "@/lib/file-signature";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
 import type { ValidatedImportRow } from "@/lib/import-schemas";
+import { ensureRequirementFromKpi } from "@/lib/kpi-owner-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,8 @@ async function commitImport(rows: ValidatedImportRow[], adminUserId: number, yea
           active: true,
         },
       });
+
+      await ensureRequirementFromKpi(kpi);
 
       kpiByCode.set(row.code, { id: kpi.id });
       if (existing) updated++;

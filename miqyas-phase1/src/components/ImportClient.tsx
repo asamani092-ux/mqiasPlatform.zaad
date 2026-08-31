@@ -23,11 +23,13 @@ export default function ImportClient({ embedded = false }: { embedded?: boolean 
   const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [codesOpen, setCodesOpen] = useState(false);
 
   async function upload(file: File) {
     setLoading(true);
     setMsg("");
     setSummary(null);
+    setCodesOpen(false);
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch("/api/import", { method: "POST", body: fd });
@@ -54,6 +56,10 @@ export default function ImportClient({ embedded = false }: { embedded?: boolean 
       setMsg((await res.json()).error || "فشل الاستيراد");
     }
   }
+
+  const validCount = preview
+    ? preview.summary.new + preview.summary.update
+    : 0;
 
   return (
     <>
@@ -98,8 +104,8 @@ export default function ImportClient({ embedded = false }: { embedded?: boolean 
         <>
           <div className="card" style={{ marginBottom: "1rem" }}>
             <p>
-              المجموع: {preview.summary.total} · جديد: {preview.summary.new} · تحديث: {preview.summary.update} ·
-              أخطاء: {preview.summary.errors} · رموز فريدة: {preview.summary.uniqueKpiCodes}
+              صفوف: {preview.summary.total} · رموز فريدة: {preview.summary.uniqueKpiCodes} ·
+              أخطاء: {preview.summary.errors} · صالح: {validCount}
             </p>
             <button type="button" className="btn-primary" style={{ marginTop: ".75rem" }} disabled={loading || preview.summary.errors === preview.summary.total} onClick={confirmImport}>
               تأكيد الاستيراد
@@ -107,10 +113,24 @@ export default function ImportClient({ embedded = false }: { embedded?: boolean 
           </div>
 
           <div className="card" style={{ marginBottom: "1rem" }}>
-            <h3>رموز KPI الفريدة ({preview.codeAnalysis.uniqueCodes.length})</h3>
-            <p className="text-muted" style={{ fontSize: ".78rem", marginBottom: ".5rem" }}>
-              {preview.codeAnalysis.uniqueCodes.join("، ")}
-            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: ".75rem", flexWrap: "wrap" }}>
+              <h3 style={{ margin: 0 }}>
+                رموز KPI الفريدة ({preview.codeAnalysis.uniqueCodes.length})
+              </h3>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setCodesOpen((o) => !o)}
+                style={{ fontSize: ".82rem" }}
+              >
+                {codesOpen ? "طي القائمة" : "عرض الرموز"}
+              </button>
+            </div>
+            {codesOpen && (
+              <p className="text-muted" style={{ fontSize: ".78rem", marginTop: ".5rem", marginBottom: ".5rem" }}>
+                {preview.codeAnalysis.uniqueCodes.join("، ")}
+              </p>
+            )}
             {preview.codeAnalysis.quarterOnlyFlags.length > 0 && (
               <>
                 <h4 style={{ marginTop: ".75rem", color: "var(--tmkeen-warning)" }}>رموز ناقصة في بعض الأرباع — للمراجعة</h4>
@@ -133,7 +153,14 @@ export default function ImportClient({ embedded = false }: { embedded?: boolean 
           <div className="card" style={{ overflowX: "auto", maxHeight: 400, overflowY: "auto" }}>
             <table className="tmkeen-table table--stack">
               <thead>
-                <tr><th>الرمز</th><th>الاسم</th><th>الفترة</th><th>الحالة</th><th>ملاحظة</th></tr>
+                <tr>
+                  <th>الرمز</th>
+                  <th>الاسم</th>
+                  <th>الفترة</th>
+                  <th>الحالة</th>
+                  <th>الخطأ</th>
+                  <th>ملاحظة الإدارة</th>
+                </tr>
               </thead>
               <tbody>
                 {preview.rows.map((r, i) => (
@@ -142,7 +169,8 @@ export default function ImportClient({ embedded = false }: { embedded?: boolean 
                     <td data-label="الاسم">{r.name}</td>
                     <td data-label="الفترة">{r.period}</td>
                     <td data-label="الحالة"><span className={r.status === "ERROR" ? "badge-danger" : r.status === "NEW" ? "badge-success" : "badge-primary"}>{r.status}</span></td>
-                    <td data-label="ملاحظة">{r.error || r.ownerLabel || ""}</td>
+                    <td data-label="الخطأ">{r.error || ""}</td>
+                    <td data-label="ملاحظة الإدارة">{r.ownerLabel || ""}</td>
                   </tr>
                 ))}
               </tbody>

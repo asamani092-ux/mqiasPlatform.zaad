@@ -165,6 +165,13 @@ function parseSheet(
       };
 
       if (!parsed.name) error = "اسم المؤشر فارغ";
+      else if (
+        departmentId == null &&
+        deptRaw.trim() &&
+        !deptRaw.trim().includes("جميع الإدارات")
+      ) {
+        error = `تعذّر ربط الإدارة: ${deptRaw.trim()}`;
+      }
       out.push(error ? { ...parsed, status: "ERROR", error } : parsed);
     } catch (e) {
       out.push({

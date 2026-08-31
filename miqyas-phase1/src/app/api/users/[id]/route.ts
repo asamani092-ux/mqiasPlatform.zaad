@@ -12,6 +12,7 @@ import {
   updateUserSchema,
 } from "@/lib/user-schemas";
 import { clearCrossDepartmentAssignments } from "@/lib/my-measurements";
+import { roleToFillerRole } from "@/lib/approval-status";
 
 const userSelect = {
   id: true,
@@ -75,6 +76,17 @@ export async function PUT(
       },
       select: userSelect,
     });
+
+    // تغيّر الدور إلى دور تعبئة: مزامنة fillerRole على المتطلبات المملوكة
+    if (body.role != null && body.role !== existing.role) {
+      const filler = roleToFillerRole(updated.role);
+      if (filler) {
+        await db.measurementRequirement.updateMany({
+          where: { ownerId: id },
+          data: { fillerRole: filler },
+        });
+      }
+    }
 
     // نقل الإدارة: إلغاء إسناد المتطلبات خارج الإدارة الجديدة
     let clearedAssignments = 0;
