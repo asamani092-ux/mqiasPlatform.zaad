@@ -1,7 +1,6 @@
 /**
- * إصلاح تراكمي: ضمان MeasurementRequirement لكل Kpi عبر ensureRequirementFromKpi.
- * الاستخدام: npx tsx scripts/ensure-requirements-from-kpis.ts
- * أو: npm run repair:requirements
+ * @deprecated استخدم scripts/ensure-requirements-from-kpis.mjs عبر npm run repair:requirements
+ * يُبقى للتوافق المحلي مع tsx إن وُجد.
  */
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";

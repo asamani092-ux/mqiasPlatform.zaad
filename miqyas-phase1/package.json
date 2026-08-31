@@ -15,7 +15,7 @@
     "seed": "prisma db seed",
     "seed:excel": "tsx scripts/import-excel-2026.ts",
     "db:migrate": "prisma migrate deploy",
-    "repair:requirements": "tsx scripts/ensure-requirements-from-kpis.ts",
+    "repair:requirements": "node scripts/ensure-requirements-from-kpis.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
