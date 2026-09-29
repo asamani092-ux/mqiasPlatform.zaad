@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
+import { can } from "@/lib/rbac";
 import { getKpiRows } from "@/lib/analytics";
 import { enrichStrategicRows } from "@/lib/strategic-analytics";
 import { parseTrackParams } from "@/lib/track-params";
@@ -14,6 +15,7 @@ export default async function StrategicPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  if (!can.viewStrategyOffice(user)) redirect("/my");
   const { year, period } = await parseTrackParams(searchParams);
   const rows = await getKpiRows({ user, year, period, type: "STRATEGIC" });
   return (

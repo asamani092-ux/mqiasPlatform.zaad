@@ -15,6 +15,7 @@ export default async function GovernancePage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  if (!can.viewGovernance(user)) redirect("/my");
   const { year, period } = await parseTrackParams(searchParams);
 
   const [stats, requirements, observations] = await Promise.all([

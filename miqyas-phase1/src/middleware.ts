@@ -4,6 +4,13 @@ import type { Role } from "@prisma/client";
 
 const ENTRY_ROLES: Role[] = ["EMPLOYEE", "SECTION_HEAD", "DEPT_MANAGER"];
 
+/** مسارات مكتب الاستراتيجية المتاحة لمدراء/رؤساء أقسام (وللموظف عبر فحص الصفحة) */
+const STRATEGY_PATHS = ["/governance", "/strategic", "/strategy", "/calendar"];
+
+function isStrategyPath(path: string): boolean {
+  return STRATEGY_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+}
+
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
@@ -16,11 +23,16 @@ export default withAuth(
 
     if (ENTRY_ROLES.includes(role)) {
       if (path.startsWith("/approvals") || path.startsWith("/api/approvals")) {
-        // الاعتماد النهائي لمشرف النظام فقط
         return NextResponse.redirect(myUrl);
       }
-      // إسناد المسؤولين متاح لمدير الإدارة (RBAC + صفحة /admin/assign)
       if (role === "DEPT_MANAGER" && path.startsWith("/admin/assign")) {
+        return NextResponse.next();
+      }
+      // كتالوج الاستراتيجية لمدير الإدارة / رئيس القسم / موظف الاستراتيجية (الصفحة تفرض النطاق)
+      if (
+        (role === "DEPT_MANAGER" || role === "SECTION_HEAD" || role === "EMPLOYEE") &&
+        (isStrategyPath(path) || path.startsWith("/api/calendar") || path.startsWith("/api/strategy"))
+      ) {
         return NextResponse.next();
       }
       if (
@@ -33,7 +45,9 @@ export default withAuth(
         path.startsWith("/knowledge") ||
         path.startsWith("/executive") ||
         path.startsWith("/admin") ||
-        path.startsWith("/uat")
+        path.startsWith("/uat") ||
+        path.startsWith("/strategy") ||
+        path.startsWith("/calendar")
       ) {
         return NextResponse.redirect(myUrl);
       }
@@ -44,6 +58,7 @@ export default withAuth(
     }
 
     if (path.startsWith("/admin") && role !== "SYSTEM_ADMIN") {
+      // السماح بمسار الإسناد لمدير الإدارة مُعالَج أعلاه
       return NextResponse.redirect(dash);
     }
 

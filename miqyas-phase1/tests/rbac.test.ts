@@ -30,15 +30,21 @@ describe("rbac.can", () => {
     expect(can.assignRequirements(u("EMPLOYEE"))).toBe(false);
   });
 
-  it("قراءة الحوكمة/المعرفة: مشرف أو إدارة عليا — تُحجب عن أدوار الإدخال", () => {
+  it("قراءة المعرفة: مشرف أو إدارة عليا — تُحجب عن أدوار الإدخال", () => {
     for (const role of ["SYSTEM_ADMIN", "EXECUTIVE"] as const) {
-      expect(can.viewGovernance(u(role))).toBe(true);
       expect(can.viewKnowledge(u(role))).toBe(true);
     }
     for (const role of ["DEPT_MANAGER", "SECTION_HEAD", "EMPLOYEE"] as const) {
-      expect(can.viewGovernance(u(role))).toBe(false);
       expect(can.viewKnowledge(u(role))).toBe(false);
     }
+  });
+
+  it("قراءة الحوكمة موسّعة لمدراء ورؤساء أقسام دون سحب صلاحيات التنفيذي", () => {
+    expect(can.viewGovernance(u("SYSTEM_ADMIN"))).toBe(true);
+    expect(can.viewGovernance(u("EXECUTIVE"))).toBe(true);
+    expect(can.viewGovernance(u("DEPT_MANAGER"))).toBe(true);
+    expect(can.viewGovernance(u("SECTION_HEAD"))).toBe(true);
+    expect(can.viewGovernance(u("EMPLOYEE"))).toBe(false);
   });
 });
 

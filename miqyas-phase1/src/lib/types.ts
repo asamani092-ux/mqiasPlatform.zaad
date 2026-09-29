@@ -71,6 +71,12 @@ export const ROLE_LABEL: Record<string, string> = {
   EMPLOYEE: "موظف",
 };
 
+export const DOMAIN_LABEL: Record<string, string> = {
+  STRATEGIC: "استراتيجي",
+  OPERATIONAL: "تشغيلي",
+  GOVERNANCE: "حوكمة",
+};
+
 export const ROLE_VALUES = [
   "SYSTEM_ADMIN",
   "EXECUTIVE",

@@ -54,6 +54,8 @@ model User {
   deviationCards  DeviationCard[]    @relation("CardCreator")
   auditLogs       AuditLog[]
   loginAttempts   LoginAttempt[]
+  calendarEventsCreated CalendarEvent[] @relation("CalendarCreatedBy")
+  calendarEventsUpdated CalendarEvent[] @relation("CalendarUpdatedBy")
 }
 
 // ── الهيكل التنظيمي ─────────────────────────────────────────────
@@ -69,6 +71,7 @@ model Department {
   kpis             Kpi[]
   knowledgeAssets  KnowledgeAsset[]
   requirements     MeasurementRequirement[]
+  calendarEvents   CalendarEvent[]
 }
 
 model Section {
@@ -83,6 +86,7 @@ model Section {
   operationalGoals OperationalGoal[]
   kpis             Kpi[]
   requirements     MeasurementRequirement[]
+  calendarEvents   CalendarEvent[]
 
   @@unique([departmentId, sectionNo])
 }
@@ -119,6 +123,13 @@ enum KpiType {
   OPERATIONAL
 }
 
+/** مجال القياس الموحّد — استراتيجي / تشغيلي / حوكمة (شاهد واحد) */
+enum MeasurementDomain {
+  STRATEGIC
+  OPERATIONAL
+  GOVERNANCE
+}
+
 enum Frequency {
   QUARTERLY
   SEMI_ANNUAL
@@ -150,6 +161,7 @@ model Kpi {
   strategicGoalId   Int?
   operationalGoalId Int?
   requirementId     Int? // متطلب القياس الموحّد (مصدر الشواهد/الفعلي)
+  domain            MeasurementDomain @default(STRATEGIC)
   active            Boolean   @default(true)
   createdAt         DateTime  @default(now())
 
@@ -169,6 +181,7 @@ model Kpi {
   @@index([departmentId])
   @@index([ownerId])
   @@index([active, type])
+  @@index([domain])
 }
 
 // دور من يملأ متطلب القياس (الطبقة 1)
@@ -180,31 +193,34 @@ enum FillerRole {
 
 // ── متطلب القياس الموحّد (مصدر واحد للاستراتيجي والتشغيلي) ─────
 model MeasurementRequirement {
-  id           Int        @id @default(autoincrement())
-  code         String     @unique
+  id           Int               @id @default(autoincrement())
+  code         String            @unique
   name         String
-  unit         String     @default("%")
-  polarity     Polarity   @default(HIGHER_BETTER)
-  frequency    Frequency  @default(QUARTERLY)
+  unit         String            @default("%")
+  polarity     Polarity          @default(HIGHER_BETTER)
+  frequency    Frequency         @default(QUARTERLY)
   requiredData String?
   departmentId Int?
   sectionId    Int?
   ownerId      Int?
-  fillerRole   FillerRole @default(EMPLOYEE)
-  active       Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  fillerRole   FillerRole        @default(EMPLOYEE)
+  domain       MeasurementDomain @default(STRATEGIC)
+  active       Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
-  department Department?         @relation(fields: [departmentId], references: [id])
-  section    Section?            @relation(fields: [sectionId], references: [id])
-  owner      User?               @relation("RequirementOwner", fields: [ownerId], references: [id])
-  periods    MeasurementPeriod[]
-  kpis       Kpi[]
+  department              Department?              @relation(fields: [departmentId], references: [id])
+  section                 Section?                 @relation(fields: [sectionId], references: [id])
+  owner                   User?                    @relation("RequirementOwner", fields: [ownerId], references: [id])
+  periods                 MeasurementPeriod[]
+  kpis                    Kpi[]
+  governanceRequirements  GovernanceRequirement[]
 
   @@index([ownerId])
   @@index([departmentId])
   @@index([sectionId])
   @@index([fillerRole])
+  @@index([domain])
 }
 
 model MeasurementPeriod {
@@ -457,16 +473,46 @@ enum GovernanceStatus {
 }
 
 model GovernanceRequirement {
-  id             Int              @id @default(autoincrement())
-  code           String           @unique
-  title          String
-  category       String?
-  year           Int
-  owner          String?
-  status         GovernanceStatus @default(PENDING)
-  compliancePct  Float            @default(0)
-  notes          String?
-  updatedAt      DateTime         @updatedAt
+  id                      Int              @id @default(autoincrement())
+  code                    String           @unique
+  title                   String
+  category                String?
+  year                    Int
+  owner                   String?
+  status                  GovernanceStatus @default(PENDING)
+  compliancePct           Float            @default(0)
+  notes                   String?
+  measurementRequirementId Int? // ربط اختياري بشاهد القياس الموحّد — دون حذف السجل
+  updatedAt               DateTime         @updatedAt
+
+  measurementRequirement MeasurementRequirement? @relation(fields: [measurementRequirementId], references: [id], onDelete: SetNull)
+
+  @@index([measurementRequirementId])
+}
+
+// ── رزنامة مكتب الاستراتيجية / القسم ─────────────────────────────
+model CalendarEvent {
+  id           Int       @id @default(autoincrement())
+  title        String
+  startsAt     DateTime
+  endsAt       DateTime?
+  eventType    String    @default("GENERAL") // GENERAL | MEETING | DEADLINE | MILESTONE
+  notes        String?
+  departmentId Int?
+  sectionId    Int?
+  createdById  Int
+  updatedById  Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  section    Section?    @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  createdBy  User        @relation("CalendarCreatedBy", fields: [createdById], references: [id])
+  updatedBy  User?       @relation("CalendarUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([startsAt])
+  @@index([departmentId])
+  @@index([sectionId])
 }
 
 enum ObservationStatus {

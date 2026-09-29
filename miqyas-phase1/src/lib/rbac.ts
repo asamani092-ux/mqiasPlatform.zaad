@@ -1,5 +1,6 @@
 import type { Role } from "@prisma/client";
 import { roleToFillerRole } from "@/lib/approval-status";
+import { isStrategySectionMeta } from "@/lib/strategy-meta";
 
 export type SessionUser = {
   id: string;
@@ -8,17 +9,27 @@ export type SessionUser = {
   role: Role;
   departmentId: number | null;
   sectionId: number | null;
+  /** يُملأ من إعادة التحقق — لكشف مكتب الاستراتيجية دون استعلام إضافي */
+  sectionCode?: string | null;
+  sectionName?: string | null;
 };
 
 function isAdmin(u: SessionUser) {
   return u.role === "SYSTEM_ADMIN";
 }
 
+/** عضو مكتب الاستراتيجية من بيانات الجلسة فقط (بدون I/O) */
+export function isStrategyOfficeFromSession(u: SessionUser): boolean {
+  if (isAdmin(u)) return true;
+  return isStrategySectionMeta({ code: u.sectionCode, name: u.sectionName });
+}
+
 export const can = {
   manageUsers: (u: SessionUser) => isAdmin(u),
   manageStructure: (u: SessionUser) => isAdmin(u),
+  /** إدارة كاملة للمؤشرات — مشرف النظام */
   manageKpis: (u: SessionUser) => isAdmin(u),
-  manageGovernance: (u: SessionUser) => isAdmin(u),
+  manageGovernance: (u: SessionUser) => isAdmin(u) || isStrategyOfficeFromSession(u),
   viewExecutive: (u: SessionUser) => isAdmin(u) || u.role === "EXECUTIVE",
   /** الاعتماد النهائي — مشرف النظام فقط */
   finalApprove: (u: SessionUser) => isAdmin(u),
@@ -26,10 +37,41 @@ export const can = {
   approveEntries: (u: SessionUser) => isAdmin(u),
   manageDeviation: (u: SessionUser) => isAdmin(u) || u.role === "EXECUTIVE",
   manageKnowledge: (u: SessionUser) => isAdmin(u),
-  /** قراءة مسار الحوكمة — بما يطابق حجب الصفحة عن أدوار الإدخال */
-  viewGovernance: (u: SessionUser) => isAdmin(u) || u.role === "EXECUTIVE",
-  /** قراءة مسار المعرفة — بما يطابق حجب الصفحة عن أدوار الإدخال */
+  /**
+   * قراءة مسار الحوكمة — مشرف / تنفيذي / مدراء ورؤساء أقسام / مكتب الاستراتيجية
+   * (توسيع تراكمي دون سحب صلاحيات سابقة)
+   */
+  viewGovernance: (u: SessionUser) =>
+    isAdmin(u) ||
+    u.role === "EXECUTIVE" ||
+    u.role === "DEPT_MANAGER" ||
+    u.role === "SECTION_HEAD" ||
+    isStrategyOfficeFromSession(u),
+  /** قراءة مسار المعرفة — بما يطابق حجب الصفحة عن أدوار الإدخال العامة */
   viewKnowledge: (u: SessionUser) => isAdmin(u) || u.role === "EXECUTIVE",
+  /** مكتب الاستراتيجية: مسارات الاستراتيجية/الحوكمة/الرزنامة/الكتالوج */
+  viewStrategyOffice: (u: SessionUser) =>
+    isAdmin(u) ||
+    u.role === "EXECUTIVE" ||
+    u.role === "DEPT_MANAGER" ||
+    u.role === "SECTION_HEAD" ||
+    isStrategyOfficeFromSession(u),
+  /**
+   * تعديل كتالوج المؤشرات/المتطلبات الاستراتيجية والحوكمة
+   * مشرف أو مكتب الاستراتيجية أو مدير إدارة (نطاق إدارته يُفرض في الـ API)
+   */
+  manageStrategyCatalog: (u: SessionUser) =>
+    isAdmin(u) || isStrategyOfficeFromSession(u) || u.role === "DEPT_MANAGER",
+  /** إدارة رزنامة القسم */
+  manageDeptCalendar: (u: SessionUser) =>
+    isAdmin(u) || isStrategyOfficeFromSession(u),
+  /** قراءة الرزنامة */
+  viewDeptCalendar: (u: SessionUser) =>
+    isAdmin(u) ||
+    u.role === "EXECUTIVE" ||
+    u.role === "DEPT_MANAGER" ||
+    u.role === "SECTION_HEAD" ||
+    isStrategyOfficeFromSession(u),
   enterOwnKpis: (_u: SessionUser) => true,
   /** مراجعة الإدارة: اعتماد مبدئي + تعديل السرد */
   reviewDepartment: (u: SessionUser) => isAdmin(u) || u.role === "DEPT_MANAGER",

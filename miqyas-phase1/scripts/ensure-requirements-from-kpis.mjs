@@ -23,6 +23,10 @@ async function ensureRequirementFromKpi(db, kpi) {
     if (mapped) fillerRole = mapped;
   }
 
+  const domain =
+    kpi.domain ||
+    (kpi.type === "OPERATIONAL" ? "OPERATIONAL" : "STRATEGIC");
+
   const base = {
     name: kpi.name,
     unit: kpi.unit,
@@ -33,6 +37,7 @@ async function ensureRequirementFromKpi(db, kpi) {
     sectionId: kpi.sectionId,
     ownerId: kpi.ownerId,
     active: kpi.active,
+    domain,
   };
 
   const req = await db.measurementRequirement.upsert({
@@ -82,6 +87,8 @@ async function main() {
       ownerId: true,
       requirementId: true,
       active: true,
+      domain: true,
+      type: true,
     },
   });
 

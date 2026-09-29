@@ -145,6 +145,8 @@ function sessionToUser(session: Session | null): SessionUser | null {
     role: u.role,
     departmentId: u.departmentId ?? null,
     sectionId: u.sectionId ?? null,
+    sectionCode: null,
+    sectionName: null,
   };
 }
 
@@ -155,7 +157,13 @@ function sessionToUser(session: Session | null): SessionUser | null {
 async function revalidateFromDb(user: SessionUser): Promise<SessionUser | null> {
   const dbUser = await db.user.findUnique({
     where: { id: parseInt(user.id, 10) },
-    select: { status: true, role: true, departmentId: true, sectionId: true },
+    select: {
+      status: true,
+      role: true,
+      departmentId: true,
+      sectionId: true,
+      section: { select: { code: true, name: true } },
+    },
   });
   if (!dbUser || dbUser.status !== "ACTIVE") return null;
   return {
@@ -163,6 +171,8 @@ async function revalidateFromDb(user: SessionUser): Promise<SessionUser | null> 
     role: dbUser.role,
     departmentId: dbUser.departmentId,
     sectionId: dbUser.sectionId,
+    sectionCode: dbUser.section?.code ?? null,
+    sectionName: dbUser.section?.name ?? null,
   };
 }
 

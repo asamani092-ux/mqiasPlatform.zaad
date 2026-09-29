@@ -87,7 +87,9 @@ export async function POST(req: NextRequest) {
     requireManageKpis(user);
 
     const body = kpiBodySchema.parse(await req.json());
-    const kpi = await db.kpi.create({ data: body });
+    const domain = body.domain ?? (body.type === "OPERATIONAL" ? "OPERATIONAL" : "STRATEGIC");
+    const { domain: _d, ...rest } = body;
+    const kpi = await db.kpi.create({ data: { ...rest, domain } });
     await ensureRequirementFromKpi(kpi);
 
     await audit(parseInt(user.id, 10), "CREATE_KPI", "Kpi", kpi.id, { code: kpi.code });

@@ -9,6 +9,13 @@ export function requireManageKpis(user: SessionUser): void {
   }
 }
 
+/** كتالوج الاستراتيجية/الحوكمة — مشرف أو مكتب الاستراتيجية أو مدير إدارة */
+export function requireManageStrategyCatalog(user: SessionUser): void {
+  if (!can.manageStrategyCatalog(user)) {
+    throw { status: 403 as const, message: "غير مصرح — كتالوج الاستراتيجية" };
+  }
+}
+
 export function requireManageUsers(user: SessionUser): void {
   if (!can.manageUsers(user)) {
     throw { status: 403 as const, message: "غير مصرح — مشرف النظام فقط" };

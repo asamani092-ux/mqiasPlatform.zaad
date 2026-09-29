@@ -16,6 +16,7 @@ export default function AppShell({
   user,
   showApprovals,
   showUat = false,
+  strategyOffice = false,
   children,
 }: {
   user: {
@@ -26,12 +27,13 @@ export default function AppShell({
   };
   showApprovals: boolean;
   showUat?: boolean;
+  strategyOffice?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const sections = buildNavSections(user.role, { showApprovals, showUat });
+  const sections = buildNavSections(user.role, { showApprovals, showUat, strategyOffice });
   const orgLine = [user.departmentName, user.sectionName].filter(Boolean).join(" · ");
 
   useEffect(() => {

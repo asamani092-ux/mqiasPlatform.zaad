@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   BookOpen,
   Building2,
+  CalendarDays,
   CheckCircle2,
   ClipboardCheck,
   ClipboardList,
@@ -10,6 +11,7 @@ import {
   FileWarning,
   Landmark,
   LayoutDashboard,
+  Library,
   Presentation,
   Ruler,
   Settings,
@@ -34,6 +36,8 @@ export type NavSection = {
 export type NavFlags = {
   showApprovals?: boolean;
   showUat?: boolean;
+  /** عضو مكتب الاستراتيجية (قسم الاستراتيجية) */
+  strategyOffice?: boolean;
 };
 
 const DASHBOARD_NAV: NavItem = {
@@ -54,6 +58,13 @@ const DEPT_FOLLOW_NAV: NavItem = {
   Icon: Building2,
 };
 
+const STRATEGY_OFFICE_NAV: NavItem[] = [
+  { href: "/strategic", label: "المسار الاستراتيجي", Icon: Target },
+  { href: "/governance", label: "الحوكمة", Icon: Landmark },
+  { href: "/strategy", label: "كتالوج الاستراتيجية والحوكمة", Icon: Library },
+  { href: "/calendar", label: "رزنامة القسم", Icon: CalendarDays },
+];
+
 const TRACK_NAV: NavItem[] = [
   { href: "/strategic", label: "المسار الاستراتيجي", Icon: Target },
   { href: "/operational", label: "المسار التشغيلي", Icon: Settings },
@@ -61,6 +72,8 @@ const TRACK_NAV: NavItem[] = [
   { href: "/deviation", label: "بطاقات الانحراف", Icon: FileWarning },
   { href: "/governance", label: "الحوكمة", Icon: Landmark },
   { href: "/knowledge", label: "المعرفة المؤسسية", Icon: BookOpen },
+  { href: "/strategy", label: "كتالوج الاستراتيجية والحوكمة", Icon: Library },
+  { href: "/calendar", label: "رزنامة القسم", Icon: CalendarDays },
 ];
 
 const ASSIGN_NAV: NavItem = {
@@ -95,23 +108,29 @@ const UAT_NAV: NavItem = {
   Icon: ClipboardCheck,
 };
 
-/** بناء أقسام التنقّل حسب الدور */
+/** بناء أقسام التنقّل حسب الدور — تراكمياً دون حذف مسارات */
 export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[] {
-  const { showApprovals = false, showUat = false } = flags;
+  const { showApprovals = false, showUat = false, strategyOffice = false } = flags;
   const sections: NavSection[] = [];
 
   if (role === "EMPLOYEE") {
-    sections.push({ label: "الرئيسية", items: [MY_NAV] });
+    const items: NavItem[] = [MY_NAV];
+    if (strategyOffice) {
+      items.push(...STRATEGY_OFFICE_NAV);
+    }
+    sections.push({ label: "الرئيسية", items });
     return sections;
   }
 
   if (role === "SECTION_HEAD") {
     sections.push({ label: "الرئيسية", items: [MY_NAV] });
+    sections.push({ label: "مكتب الاستراتيجية", items: STRATEGY_OFFICE_NAV });
     return sections;
   }
 
   if (role === "DEPT_MANAGER") {
     sections.push({ label: "الرئيسية", items: [MY_NAV, DEPT_FOLLOW_NAV, ASSIGN_NAV] });
+    sections.push({ label: "مكتب الاستراتيجية", items: STRATEGY_OFFICE_NAV });
     return sections;
   }
 

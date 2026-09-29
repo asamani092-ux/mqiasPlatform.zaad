@@ -1,6 +1,7 @@
-import type { Frequency, Polarity, Prisma } from "@prisma/client";
+import type { Frequency, MeasurementDomain, Polarity, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { roleToFillerRole, type FillerRoleValue } from "@/lib/approval-status";
+import { domainFromKpiType } from "@/lib/strategy-office";
 
 type Tx = Prisma.TransactionClient | typeof db;
 
@@ -18,6 +19,8 @@ export type KpiForRequirementSync = {
   ownerId: number | null;
   requirementId: number | null;
   active: boolean;
+  domain?: MeasurementDomain;
+  type?: "STRATEGIC" | "OPERATIONAL";
 };
 
 /**
@@ -39,6 +42,9 @@ export async function ensureRequirementFromKpi(
     if (mapped) fillerRole = mapped;
   }
 
+  const domain: MeasurementDomain =
+    kpi.domain ?? (kpi.type ? domainFromKpiType(kpi.type) : "STRATEGIC");
+
   const base = {
     name: kpi.name,
     unit: kpi.unit,
@@ -49,6 +55,7 @@ export async function ensureRequirementFromKpi(
     sectionId: kpi.sectionId,
     ownerId: kpi.ownerId,
     active: kpi.active,
+    domain,
   };
 
   const req = await tx.measurementRequirement.upsert({
@@ -67,7 +74,12 @@ export async function ensureRequirementFromKpi(
   if (kpi.requirementId == null || kpi.requirementId !== req.id) {
     await tx.kpi.update({
       where: { id: kpi.id },
-      data: { requirementId: req.id },
+      data: { requirementId: req.id, domain },
+    });
+  } else if (kpi.domain == null) {
+    await tx.kpi.update({
+      where: { id: kpi.id },
+      data: { domain },
     });
   }
 }
