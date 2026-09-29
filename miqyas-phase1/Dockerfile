@@ -26,6 +26,15 @@ ENV DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build?schema=public"
 RUN npx prisma generate
 RUN npm run build
 
+# ===== 1ب) حزمة CLI كاملة للهجرة في التشغيل (بدون صورة standalone الناقصة) =====
+FROM node:22-bookworm-slim AS prisma-cli
+WORKDIR /prisma-cli
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts --omit=dev \
+  && ./node_modules/.bin/prisma version
+
 # ===== 2) صورة التشغيل النهائية (خفيفة) =====
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
@@ -46,8 +55,12 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-# سكربتات الصيانة تُشغَّل عبر API داخل الحاوية — لا تعتمد على tsx/scripts
+
+# CLI كامل للهجرة عند الإقلاع / يدوياً: /opt/prisma-cli/node_modules/.bin/prisma migrate deploy
+COPY --from=prisma-cli /prisma-cli/node_modules /opt/prisma-cli/node_modules
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 3000
-# Docker/Coolify يضبط HOSTNAME لاسم الحاوية — Next يفسّره كعنوان استماع فيحدث Bad Gateway
-CMD ["sh", "-c", "export HOSTNAME=0.0.0.0; export HOST=0.0.0.0; exec node server.js"]
+# Docker/Coolify يضبط HOSTNAME لاسم الحاوية — يُفرَض 0.0.0.0 في entrypoint
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
