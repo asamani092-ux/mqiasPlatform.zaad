@@ -24,5 +24,10 @@ else
   fi
 fi
 
+if [ -n "${ADMIN_PASSWORD:-}" ] && [ -f /app/scripts/sync-admin-password.mjs ]; then
+  echo "==> مزامنة حساب المشرف من البيئة"
+  node /app/scripts/sync-admin-password.mjs || echo "تحذير: فشلت مزامنة المشرف"
+fi
+
 echo "==> تشغيل الخادم"
 exec node server.js

@@ -55,6 +55,8 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/dotenv ./node_modules/dotenv
+COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
+COPY scripts/sync-admin-password.mjs ./scripts/sync-admin-password.mjs
 
 # CLI للهجرة عند الإقلاع: /opt/prisma-cli/node_modules/.bin/prisma migrate deploy
 COPY --from=prisma-cli /prisma-cli/node_modules /opt/prisma-cli/node_modules
