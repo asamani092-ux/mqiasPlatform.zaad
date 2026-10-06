@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import FilterBar, { FilterField } from "@/components/ui/FilterBar";
+import { FREQUENCY_LABEL } from "@/lib/kpi-schemas";
 import { DOMAIN_LABEL } from "@/lib/types";
 import { notifyToast } from "@/lib/ui-toast";
 
@@ -107,63 +109,112 @@ export default function StrategyCatalogClient({ canManage }: { canManage: boolea
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: "1rem", display: "flex", gap: ".75rem", flexWrap: "wrap" }}>
-        <select className="input" value={domain} onChange={(e) => setDomain(e.target.value)} style={{ maxWidth: "12rem" }}>
-          <option value="all">كل المجالات</option>
-          <option value="STRATEGIC">استراتيجي</option>
-          <option value="GOVERNANCE">حوكمة</option>
-        </select>
-        <input
-          className="input"
-          placeholder="بحث بالرمز أو الاسم"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: 1, minWidth: "12rem" }}
-        />
-        <button type="button" className="btn-secondary" onClick={() => void load()}>تحديث</button>
-      </div>
+      <FilterBar
+        actions={
+          <button type="button" className="btn-secondary" onClick={() => void load()}>
+            تحديث
+          </button>
+        }
+      >
+        <FilterField label="المجال">
+          <select
+            className="input-field"
+            value={domain}
+            onChange={(e) => setDomain(e.target.value)}
+          >
+            <option value="all">كل المجالات</option>
+            <option value="STRATEGIC">استراتيجي</option>
+            <option value="GOVERNANCE">حوكمة</option>
+          </select>
+        </FilterField>
+        <FilterField label="بحث">
+          <input
+            className="input-field"
+            placeholder="الرمز أو الاسم"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </FilterField>
+      </FilterBar>
 
       {canManage && (
-        <form className="card" style={{ marginBottom: "1rem" }} onSubmit={save}>
-          <h3 style={{ marginTop: 0 }}>{editId ? "تعديل بند" : "إضافة مؤشر / متطلب"}</h3>
-          <div style={{ display: "grid", gap: ".75rem", gridTemplateColumns: "repeat(auto-fit,minmax(11rem,1fr))" }}>
-            <label>
-              الرمز
-              <input className="input" required disabled={!!editId} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
-            </label>
-            <label>
-              الاسم
-              <input className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </label>
-            <label>
-              المجال
-              <select className="input" value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })}>
-                <option value="STRATEGIC">استراتيجي</option>
-                <option value="GOVERNANCE">حوكمة</option>
+        <form className="card" onSubmit={save} style={{ marginBottom: "1rem" }}>
+          <h3 style={{ marginBottom: "1rem" }}>{editId ? "تعديل بند" : "إضافة مؤشر / متطلب"}</h3>
+          <div className="grid grid-4" style={{ gap: ".75rem", marginBottom: ".75rem" }}>
+            <div>
+              <label className="label-field" htmlFor="cat-code">الرمز</label>
+              <input
+                id="cat-code"
+                className="input-field"
+                required
+                disabled={!!editId}
+                dir="ltr"
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label-field" htmlFor="cat-name">الاسم</label>
+              <input
+                id="cat-name"
+                className="input-field"
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label-field" htmlFor="cat-domain">المجال</label>
+              <select
+                id="cat-domain"
+                className="input-field"
+                value={form.domain}
+                onChange={(e) => setForm({ ...form, domain: e.target.value })}
+              >
+                <option value="STRATEGIC">{DOMAIN_LABEL.STRATEGIC}</option>
+                <option value="GOVERNANCE">{DOMAIN_LABEL.GOVERNANCE}</option>
               </select>
-            </label>
-            <label>
-              الوحدة
-              <input className="input" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
-            </label>
-            <label>
-              الدورية
-              <select className="input" value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value })}>
-                <option value="QUARTERLY">ربع سنوي</option>
-                <option value="SEMI_ANNUAL">نصف سنوي</option>
-                <option value="ANNUAL">سنوي</option>
+            </div>
+            <div>
+              <label className="label-field" htmlFor="cat-unit">وحدة القياس</label>
+              <input
+                id="cat-unit"
+                className="input-field"
+                value={form.unit}
+                onChange={(e) => setForm({ ...form, unit: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label-field" htmlFor="cat-freq">الدورية</label>
+              <select
+                id="cat-freq"
+                className="input-field"
+                value={form.frequency}
+                onChange={(e) => setForm({ ...form, frequency: e.target.value })}
+              >
+                {Object.entries(FREQUENCY_LABEL).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
               </select>
-            </label>
+            </div>
           </div>
-          <label style={{ display: "block", marginTop: ".75rem" }}>
-            البيانات المطلوبة
-            <textarea className="input" rows={2} value={form.requiredData} onChange={(e) => setForm({ ...form, requiredData: e.target.value })} />
-          </label>
-          <div style={{ marginTop: ".75rem", display: "flex", gap: ".5rem" }}>
+          <div style={{ marginBottom: "1rem" }}>
+            <label className="label-field" htmlFor="cat-data">البيانات المطلوبة</label>
+            <textarea
+              id="cat-data"
+              className="input-field"
+              rows={2}
+              value={form.requiredData}
+              onChange={(e) => setForm({ ...form, requiredData: e.target.value })}
+            />
+          </div>
+          <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
             <button type="submit" className="btn-primary">{editId ? "حفظ" : "إضافة"}</button>
-            {editId && (
-              <button type="button" className="btn-secondary" onClick={() => { setEditId(null); setForm(emptyForm); }}>إلغاء</button>
-            )}
+            {editId ? (
+              <button type="button" className="btn-secondary" onClick={() => { setEditId(null); setForm(emptyForm); }}>
+                إلغاء
+              </button>
+            ) : null}
           </div>
         </form>
       )}
@@ -171,6 +222,8 @@ export default function StrategyCatalogClient({ canManage }: { canManage: boolea
       <div className="card" style={{ overflowX: "auto" }}>
         {loading ? (
           <p className="text-muted">جاري التحميل…</p>
+        ) : kpis.length === 0 ? (
+          <p className="text-muted">لا بنود في الكتالوج</p>
         ) : (
           <table className="tmkeen-table table--stack">
             <thead>
@@ -181,7 +234,7 @@ export default function StrategyCatalogClient({ canManage }: { canManage: boolea
                 <th>الإدارة</th>
                 <th>المالك</th>
                 <th>متطلب القياس</th>
-                {canManage && <th></th>}
+                {canManage ? <th>إجراءات</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -189,15 +242,19 @@ export default function StrategyCatalogClient({ canManage }: { canManage: boolea
                 <tr key={k.id}>
                   <td data-label="الرمز">{k.code}</td>
                   <td data-label="الاسم">{k.name}</td>
-                  <td data-label="المجال">{DOMAIN_LABEL[k.domain] || k.domain}</td>
+                  <td data-label="المجال">
+                    <span className="badge-neutral">{DOMAIN_LABEL[k.domain] || k.domain}</span>
+                  </td>
                   <td data-label="الإدارة">{k.department?.name ?? "—"}</td>
                   <td data-label="المالك">{k.owner?.name ?? "—"}</td>
-                  <td data-label="متطلب القياس">{k.requirement ? `#${k.requirement.id}` : "غير مربوط"}</td>
-                  {canManage && (
-                    <td>
-                      <button type="button" className="btn-secondary btn-sm" onClick={() => startEdit(k)}>تعديل</button>
+                  <td data-label="متطلب القياس">{k.requirement ? "مربوط" : "غير مربوط"}</td>
+                  {canManage ? (
+                    <td data-label="إجراءات">
+                      <button type="button" className="btn-secondary btn-sm" onClick={() => startEdit(k)}>
+                        تعديل
+                      </button>
                     </td>
-                  )}
+                  ) : null}
                 </tr>
               ))}
             </tbody>

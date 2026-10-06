@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import FilterBar, { FilterField } from "@/components/ui/FilterBar";
 import { notifyToast } from "@/lib/ui-toast";
 
 type CalEvent = {
@@ -28,6 +29,14 @@ const emptyForm = {
   eventType: "GENERAL",
   notes: "",
 };
+
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 16);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export default function CalendarClient({ canManage }: { canManage: boolean }) {
   const [events, setEvents] = useState<CalEvent[]>([]);
@@ -91,8 +100,8 @@ export default function CalendarClient({ canManage }: { canManage: boolean }) {
     setEditId(ev.id);
     setForm({
       title: ev.title,
-      startsAt: ev.startsAt.slice(0, 16),
-      endsAt: ev.endsAt ? ev.endsAt.slice(0, 16) : "",
+      startsAt: toLocalInput(ev.startsAt),
+      endsAt: toLocalInput(ev.endsAt),
       eventType: ev.eventType,
       notes: ev.notes ?? "",
     });
@@ -108,41 +117,77 @@ export default function CalendarClient({ canManage }: { canManage: boolean }) {
       </div>
 
       {canManage && (
-        <form className="card" style={{ marginBottom: "1rem" }} onSubmit={save}>
-          <h3 style={{ marginTop: 0 }}>{editId ? "تعديل حدث" : "إضافة حدث"}</h3>
-          <div className="form-grid" style={{ display: "grid", gap: ".75rem", gridTemplateColumns: "repeat(auto-fit,minmax(12rem,1fr))" }}>
-            <label>
-              العنوان
-              <input className="input" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            </label>
-            <label>
-              البداية
-              <input className="input" type="datetime-local" required value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
-            </label>
-            <label>
-              النهاية
-              <input className="input" type="datetime-local" value={form.endsAt} onChange={(e) => setForm({ ...form, endsAt: e.target.value })} />
-            </label>
-            <label>
-              النوع
-              <select className="input" value={form.eventType} onChange={(e) => setForm({ ...form, eventType: e.target.value })}>
+        <form className="card" onSubmit={save} style={{ marginBottom: "1rem" }}>
+          <h3 style={{ marginBottom: "1rem" }}>{editId ? "تعديل حدث" : "إضافة حدث"}</h3>
+          <div className="grid grid-4" style={{ gap: ".75rem", marginBottom: ".75rem" }}>
+            <div>
+              <label className="label-field" htmlFor="cal-title">العنوان</label>
+              <input
+                id="cal-title"
+                className="input-field"
+                required
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label-field" htmlFor="cal-start">البداية</label>
+              <input
+                id="cal-start"
+                className="input-field"
+                type="datetime-local"
+                dir="ltr"
+                required
+                value={form.startsAt}
+                onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label-field" htmlFor="cal-end">النهاية</label>
+              <input
+                id="cal-end"
+                className="input-field"
+                type="datetime-local"
+                dir="ltr"
+                value={form.endsAt}
+                onChange={(e) => setForm({ ...form, endsAt: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label-field" htmlFor="cal-type">النوع</label>
+              <select
+                id="cal-type"
+                className="input-field"
+                value={form.eventType}
+                onChange={(e) => setForm({ ...form, eventType: e.target.value })}
+              >
                 {Object.entries(TYPE_LABEL).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
               </select>
-            </label>
+            </div>
           </div>
-          <label style={{ display: "block", marginTop: ".75rem" }}>
-            ملاحظات
-            <textarea className="input" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-          </label>
-          <div style={{ marginTop: ".75rem", display: "flex", gap: ".5rem" }}>
+          <div style={{ marginBottom: "1rem" }}>
+            <label className="label-field" htmlFor="cal-notes">ملاحظات</label>
+            <textarea
+              id="cal-notes"
+              className="input-field"
+              rows={2}
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            />
+          </div>
+          <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
             <button type="submit" className="btn-primary">{editId ? "حفظ التعديل" : "إضافة"}</button>
-            {editId && (
-              <button type="button" className="btn-secondary" onClick={() => { setEditId(null); setForm(emptyForm); }}>
+            {editId ? (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => { setEditId(null); setForm(emptyForm); }}
+              >
                 إلغاء
               </button>
-            )}
+            ) : null}
           </div>
         </form>
       )}
@@ -160,7 +205,7 @@ export default function CalendarClient({ canManage }: { canManage: boolean }) {
                 <th>البداية</th>
                 <th>النوع</th>
                 <th>أنشأه</th>
-                {canManage && <th></th>}
+                {canManage ? <th>إجراءات</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -168,17 +213,19 @@ export default function CalendarClient({ canManage }: { canManage: boolean }) {
                 <tr key={ev.id}>
                   <td data-label="العنوان">
                     <div>{ev.title}</div>
-                    {ev.notes && <div className="text-muted" style={{ fontSize: ".78rem" }}>{ev.notes}</div>}
+                    {ev.notes ? <div className="text-muted">{ev.notes}</div> : null}
                   </td>
                   <td data-label="البداية">{new Date(ev.startsAt).toLocaleString("ar-SA")}</td>
-                  <td data-label="النوع">{TYPE_LABEL[ev.eventType] || ev.eventType}</td>
+                  <td data-label="النوع"><span className="badge-neutral">{TYPE_LABEL[ev.eventType] || ev.eventType}</span></td>
                   <td data-label="أنشأه">{ev.createdBy.name}</td>
-                  {canManage && (
-                    <td>
-                      <button type="button" className="btn-secondary btn-sm" onClick={() => startEdit(ev)}>تعديل</button>{" "}
-                      <button type="button" className="btn-secondary btn-sm" onClick={() => void remove(ev.id)}>حذف</button>
+                  {canManage ? (
+                    <td data-label="إجراءات">
+                      <div style={{ display: "flex", gap: ".35rem", flexWrap: "wrap" }}>
+                        <button type="button" className="btn-secondary btn-sm" onClick={() => startEdit(ev)}>تعديل</button>
+                        <button type="button" className="btn-secondary btn-sm" onClick={() => void remove(ev.id)}>حذف</button>
+                      </div>
                     </td>
-                  )}
+                  ) : null}
                 </tr>
               ))}
             </tbody>
