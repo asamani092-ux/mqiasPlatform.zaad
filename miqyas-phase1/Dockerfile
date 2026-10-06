@@ -32,7 +32,8 @@ WORKDIR /prisma-cli
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts --omit=dev \
+# prisma CLI ضمن devDependencies — يلزم التثبيت كاملاً للهجرة عند الإقلاع
+RUN npm ci --ignore-scripts \
   && ./node_modules/.bin/prisma version
 
 # ===== 2) صورة التشغيل النهائية (خفيفة) =====
@@ -55,6 +56,7 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/dotenv ./node_modules/dotenv
 
 # CLI كامل للهجرة عند الإقلاع / يدوياً: /opt/prisma-cli/node_modules/.bin/prisma migrate deploy
 COPY --from=prisma-cli /prisma-cli/node_modules /opt/prisma-cli/node_modules

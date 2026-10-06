@@ -4,6 +4,7 @@ set -e
 
 export HOSTNAME=0.0.0.0
 export HOST=0.0.0.0
+export NODE_PATH="/opt/prisma-cli/node_modules${NODE_PATH:+:$NODE_PATH}"
 
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "تحذير: DATABASE_URL غير معرّف — تُتخطى الهجرة"

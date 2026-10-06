@@ -1,5 +1,11 @@
-import "dotenv/config";
+import { createRequire } from "node:module";
 import { defineConfig, env } from "prisma/config";
+
+try {
+  createRequire(import.meta.url)("dotenv/config");
+} catch {
+  // الإنتاج: DATABASE_URL يأتي من بيئة الحاوية دون حزمة dotenv
+}
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -8,6 +14,6 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    url: process.env.DATABASE_URL ?? env("DATABASE_URL"),
   },
 });
