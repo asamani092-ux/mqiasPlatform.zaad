@@ -26,14 +26,12 @@ ENV DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build?schema=public"
 RUN npx prisma generate
 RUN npm run build
 
-# ===== 1ب) حزمة CLI كاملة للهجرة في التشغيل (بدون صورة standalone الناقصة) =====
+# ===== 1ب) Prisma CLI فقط للهجرة — بدون npm ci كامل للتطبيق =====
 FROM node:22-bookworm-slim AS prisma-cli
 WORKDIR /prisma-cli
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-COPY package.json package-lock.json ./
-# prisma CLI ضمن devDependencies — يلزم التثبيت كاملاً للهجرة عند الإقلاع
-RUN npm ci --ignore-scripts \
+RUN npm install --ignore-scripts --no-save prisma@7.8.0 dotenv@17.4.2 \
   && ./node_modules/.bin/prisma version
 
 # ===== 2) صورة التشغيل النهائية (خفيفة) =====
@@ -58,7 +56,7 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/dotenv ./node_modules/dotenv
 
-# CLI كامل للهجرة عند الإقلاع / يدوياً: /opt/prisma-cli/node_modules/.bin/prisma migrate deploy
+# CLI للهجرة عند الإقلاع: /opt/prisma-cli/node_modules/.bin/prisma migrate deploy
 COPY --from=prisma-cli /prisma-cli/node_modules /opt/prisma-cli/node_modules
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
