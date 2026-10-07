@@ -28,10 +28,18 @@ export default withAuth(
       if (role === "DEPT_MANAGER" && path.startsWith("/admin/assign")) {
         return NextResponse.next();
       }
+      // واجهة المؤشرات الموحّدة لمدير الإدارة (الصفحة/الـ API تفرضان النطاق)
+      if (role === "DEPT_MANAGER" && (path.startsWith("/admin/kpis") || path.startsWith("/api/kpis"))) {
+        return NextResponse.next();
+      }
       // كتالوج الاستراتيجية لمدير الإدارة / رئيس القسم / موظف الاستراتيجية (الصفحة تفرض النطاق)
       if (
         (role === "DEPT_MANAGER" || role === "SECTION_HEAD" || role === "EMPLOYEE") &&
-        (isStrategyPath(path) || path.startsWith("/api/calendar") || path.startsWith("/api/strategy"))
+        (isStrategyPath(path) ||
+          path.startsWith("/api/calendar") ||
+          path.startsWith("/api/strategy") ||
+          path.startsWith("/admin/kpis") ||
+          path.startsWith("/api/kpis"))
       ) {
         return NextResponse.next();
       }

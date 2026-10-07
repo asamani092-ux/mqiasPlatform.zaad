@@ -1,32 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import type { MeasurementDomain } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { can } from "@/lib/rbac";
-import { audit } from "@/lib/audit";
-import { requireManageStrategyCatalog } from "@/lib/admin-auth";
-import { kpiBodySchema } from "@/lib/kpi-schemas";
-import { ensureRequirementFromKpi } from "@/lib/kpi-owner-sync";
-import { catalogDeptScope, domainFromKpiType } from "@/lib/strategy-office";
+import { catalogDeptScope } from "@/lib/strategy-office";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
 
 const listQuery = z.object({
   domain: z.enum(["STRATEGIC", "OPERATIONAL", "GOVERNANCE"]).optional(),
+  feedsStrategic: z.enum(["true", "false"]).optional(),
+  isGovernanceRequirement: z.enum(["true", "false"]).optional(),
   search: z.string().optional(),
   active: z.enum(["true", "false", "all"]).optional().default("true"),
 });
 
-function resolveDomain(
-  type: "STRATEGIC" | "OPERATIONAL",
-  domain?: MeasurementDomain,
-): MeasurementDomain {
-  if (domain) return domain;
-  return domainFromKpiType(type);
-}
-
+/** قراءة الكتالوج — الكتابة موحّدة في /api/kpis */
 export async function GET(req: NextRequest) {
   try {
     const user = await requireUser();
@@ -34,20 +24,41 @@ export async function GET(req: NextRequest) {
 
     const q = listQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
     const where: Record<string, unknown> = {
-      domain: q.domain ? q.domain : { in: ["STRATEGIC", "GOVERNANCE"] },
+      OR: [{ feedsStrategic: true }, { isGovernanceRequirement: true }],
     };
     if (q.active !== "all") where.active = q.active === "true";
+    if (q.feedsStrategic) where.feedsStrategic = q.feedsStrategic === "true";
+    if (q.isGovernanceRequirement) {
+      where.isGovernanceRequirement = q.isGovernanceRequirement === "true";
+      delete (where as { OR?: unknown }).OR;
+    }
+    if (q.feedsStrategic === "true") {
+      delete (where as { OR?: unknown }).OR;
+    }
+    if (q.domain === "GOVERNANCE") {
+      where.isGovernanceRequirement = true;
+      delete (where as { OR?: unknown }).OR;
+    } else if (q.domain === "STRATEGIC") {
+      where.feedsStrategic = true;
+      delete (where as { OR?: unknown }).OR;
+    } else if (q.domain === "OPERATIONAL") {
+      where.domain = "OPERATIONAL";
+      delete (where as { OR?: unknown }).OR;
+    }
 
     const deptScope = catalogDeptScope(user);
     if (deptScope && !can.manageKpis(user) && user.role === "DEPT_MANAGER") {
-      // مدير إدارة يرى نطاق إدارته في الكتالوج
       where.departmentId = deptScope.departmentId;
     }
 
     if (q.search?.trim()) {
-      where.OR = [
-        { code: { contains: q.search.trim(), mode: "insensitive" } },
-        { name: { contains: q.search.trim(), mode: "insensitive" } },
+      where.AND = [
+        {
+          OR: [
+            { code: { contains: q.search.trim(), mode: "insensitive" } },
+            { name: { contains: q.search.trim(), mode: "insensitive" } },
+          ],
+        },
       ];
     }
 
@@ -64,7 +75,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       kpis,
-      canManage: can.manageStrategyCatalog(user),
+      canManage: can.writeKpis(user),
     });
   } catch (e) {
     if (e instanceof z.ZodError) return jsonError("معاملات غير صالحة", 400);
@@ -72,122 +83,10 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const user = await requireUser();
-    requireManageStrategyCatalog(user);
-
-    const raw = kpiBodySchema.parse(await req.json());
-    const domain = resolveDomain(raw.type, raw.domain as MeasurementDomain | undefined);
-
-    // حوكمة تُخزَّن كمؤشر استراتيجي بالنوع مع domain=GOVERNANCE لدورة الشاهد الموحّدة
-    const type = domain === "OPERATIONAL" ? "OPERATIONAL" : "STRATEGIC";
-
-    let departmentId = raw.departmentId ?? null;
-    if (user.role === "DEPT_MANAGER") {
-      if (user.departmentId == null) return jsonError("لا إدارة مربوطة بحسابك", 400);
-      departmentId = user.departmentId;
-    }
-
-    const kpi = await db.kpi.create({
-      data: {
-        code: raw.code,
-        name: raw.name,
-        type,
-        domain,
-        unit: raw.unit,
-        polarity: raw.polarity,
-        frequency: raw.frequency,
-        requiredData: raw.requiredData ?? null,
-        departmentId,
-        sectionId: raw.sectionId ?? null,
-        ownerLabel: raw.ownerLabel ?? null,
-        ownerId: raw.ownerId ?? null,
-        baseline: raw.baseline ?? null,
-        annualTarget: raw.annualTarget ?? null,
-        strategicGoalId: raw.strategicGoalId ?? null,
-        operationalGoalId: raw.operationalGoalId ?? null,
-        recommendation: raw.recommendation ?? null,
-        measureFormula: raw.measureFormula ?? null,
-        active: true,
-      },
-    });
-
-    await ensureRequirementFromKpi(kpi);
-
-    // ربط سجل حوكمة موجود بنفس الرمز إن وُجد (تراكمي)
-    if (domain === "GOVERNANCE") {
-      const req = await db.measurementRequirement.findUnique({
-        where: { code: kpi.code },
-        select: { id: true },
-      });
-      if (req) {
-        await db.governanceRequirement.updateMany({
-          where: { code: kpi.code, measurementRequirementId: null },
-          data: { measurementRequirementId: req.id },
-        });
-      }
-    }
-
-    await audit(parseInt(user.id, 10), "CREATE_STRATEGY_KPI", "Kpi", kpi.id, {
-      code: kpi.code,
-      domain,
-    });
-
-    return NextResponse.json({ kpi }, { status: 201 });
-  } catch (e) {
-    if (e instanceof z.ZodError) return jsonError("بيانات غير صالحة", 400);
-    return handleApiError(e);
-  }
+export async function POST() {
+  return jsonError("الكتابة موحّدة في إدارة المؤشرات — استخدم /admin/kpis", 410);
 }
 
-export async function PUT(req: NextRequest) {
-  try {
-    const user = await requireUser();
-    requireManageStrategyCatalog(user);
-
-    const body = z
-      .object({ id: z.number().int().positive() })
-      .merge(kpiBodySchema.partial())
-      .parse(await req.json());
-
-    const existing = await db.kpi.findUnique({ where: { id: body.id } });
-    if (!existing) return jsonError("المؤشر غير موجود", 404);
-
-    if (user.role === "DEPT_MANAGER") {
-      if (user.departmentId == null || existing.departmentId !== user.departmentId) {
-        return jsonError("خارج نطاق إدارتك", 403);
-      }
-    }
-
-    const { id, domain: domainIn, type: typeIn, ...rest } = body;
-    const type = typeIn ?? existing.type;
-    const domain = domainIn
-      ? (domainIn as MeasurementDomain)
-      : existing.domain === "GOVERNANCE"
-        ? "GOVERNANCE"
-        : domainFromKpiType(type);
-
-    const kpi = await db.kpi.update({
-      where: { id },
-      data: {
-        ...rest,
-        type: domain === "OPERATIONAL" ? "OPERATIONAL" : type === "OPERATIONAL" ? "OPERATIONAL" : "STRATEGIC",
-        domain,
-        ...(user.role === "DEPT_MANAGER" ? { departmentId: user.departmentId } : {}),
-      },
-    });
-
-    await ensureRequirementFromKpi(kpi);
-
-    await audit(parseInt(user.id, 10), "UPDATE_STRATEGY_KPI", "Kpi", kpi.id, {
-      code: kpi.code,
-      domain: kpi.domain,
-    });
-
-    return NextResponse.json({ kpi });
-  } catch (e) {
-    if (e instanceof z.ZodError) return jsonError("بيانات غير صالحة", 400);
-    return handleApiError(e);
-  }
+export async function PUT() {
+  return jsonError("الكتابة موحّدة في إدارة المؤشرات — استخدم /admin/kpis", 410);
 }

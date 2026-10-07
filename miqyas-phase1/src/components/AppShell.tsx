@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LogOut, Menu, X } from "lucide-react";
+import { ChevronDown, LogOut, Menu, X } from "lucide-react";
 import BrandMark from "@/components/BrandMark";
 import NotifBell from "@/components/NotifBell";
 import { buildNavSections } from "@/lib/nav";
@@ -33,12 +33,32 @@ export default function AppShell({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const sections = buildNavSections(user.role, { showApprovals, showUat, strategyOffice });
+  const [sectionOpen, setSectionOpen] = useState<Record<string, boolean>>({});
+  const sections = useMemo(
+    () => buildNavSections(user.role, { showApprovals, showUat, strategyOffice }),
+    [user.role, showApprovals, showUat, strategyOffice],
+  );
   const orgLine = [user.departmentName, user.sectionName].filter(Boolean).join(" · ");
 
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    setSectionOpen((prev) => {
+      const next = { ...prev };
+      for (const section of sections) {
+        if (!section.collapsible || !section.label) continue;
+        const key = section.label;
+        const onActivePath = section.items.some(
+          (i) => pathname === i.href || pathname.startsWith(`${i.href}/`),
+        );
+        if (onActivePath) next[key] = true;
+        else if (next[key] === undefined) next[key] = section.defaultOpen ?? false;
+      }
+      return next;
+    });
+  }, [pathname, sections]);
 
   useEffect(() => {
     if (!open) return;
@@ -119,30 +139,57 @@ export default function AppShell({
             </div>
 
             <nav className="nav-drawer-nav">
-              {sections.map((section) => (
-                <div key={section.label ?? section.items[0]?.href} className="nav-drawer-section">
-                  {section.label && (
-                    <div className="nav-drawer-section-label">{section.label}</div>
-                  )}
-                  {section.items.map((item) => {
-                    const { Icon } = item;
-                    const active = pathname === item.href;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`nav-drawer-link${active ? " active" : ""}`}
+              {sections.map((section) => {
+                const key = section.label ?? section.items[0]?.href ?? "sec";
+                const isCollapsible = Boolean(section.collapsible && section.label);
+                const expanded = isCollapsible
+                  ? (sectionOpen[section.label!] ?? section.defaultOpen ?? false)
+                  : true;
+                return (
+                  <div key={key} className="nav-drawer-section">
+                    {section.label && isCollapsible ? (
+                      <button
+                        type="button"
+                        className="nav-drawer-section-toggle"
+                        aria-expanded={expanded}
+                        onClick={() =>
+                          setSectionOpen((prev) => ({
+                            ...prev,
+                            [section.label!]: !expanded,
+                          }))
+                        }
                       >
-                        <Icon {...ICON_PROPS} className="nav-drawer-link-icon" />
-                        <span>{item.label}</span>
-                        {item.badge === "v2" ? (
-                          <span className="nav-badge-v2" aria-label="إصدار 2">v2</span>
-                        ) : null}
-                      </Link>
-                    );
-                  })}
-                </div>
-              ))}
+                        <span>{section.label}</span>
+                        <ChevronDown
+                          {...ICON_PROPS}
+                          className={`nav-drawer-section-chevron${expanded ? " is-open" : ""}`}
+                        />
+                      </button>
+                    ) : section.label ? (
+                      <div className="nav-drawer-section-label">{section.label}</div>
+                    ) : null}
+                    {expanded
+                      ? section.items.map((item) => {
+                          const { Icon } = item;
+                          const active = pathname === item.href;
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              className={`nav-drawer-link${active ? " active" : ""}`}
+                            >
+                              <Icon {...ICON_PROPS} className="nav-drawer-link-icon" />
+                              <span>{item.label}</span>
+                              {item.badge === "v2" ? (
+                                <span className="nav-badge-v2" aria-label="إصدار 2">v2</span>
+                              ) : null}
+                            </Link>
+                          );
+                        })
+                      : null}
+                  </div>
+                );
+              })}
             </nav>
 
             <div className="nav-drawer-footer">

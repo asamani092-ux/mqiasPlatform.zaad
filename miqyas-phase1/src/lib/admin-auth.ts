@@ -9,6 +9,13 @@ export function requireManageKpis(user: SessionUser): void {
   }
 }
 
+/** كتابة تعريف المؤشر (الواجهة الموحّدة) — أوسع من manageKpis */
+export function requireWriteKpis(user: SessionUser): void {
+  if (!can.writeKpis(user)) {
+    throw { status: 403 as const, message: "غير مصرح — إدارة المؤشرات" };
+  }
+}
+
 /** كتالوج الاستراتيجية/الحوكمة — مشرف أو مكتب الاستراتيجية أو مدير إدارة */
 export function requireManageStrategyCatalog(user: SessionUser): void {
   if (!can.manageStrategyCatalog(user)) {

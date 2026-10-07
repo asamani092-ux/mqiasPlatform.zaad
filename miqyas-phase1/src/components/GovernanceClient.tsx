@@ -24,6 +24,8 @@ type Requirement = {
   owner: string | null;
   status: string;
   compliancePct: number;
+  measurementRequirementId?: number | null;
+  assignedOwnerName?: string | null;
 };
 
 type Observation = {
@@ -345,7 +347,14 @@ export default function GovernanceClient({
                     <td data-label="الرمز">{r.code}</td>
                     <td data-label="المعيار">{r.title}</td>
                     <td data-label="التصنيف">{r.category || "—"}</td>
-                    <td data-label="الجهة">{r.owner || "—"}</td>
+                    <td data-label="الجهة">
+                      {r.assignedOwnerName || r.owner || "—"}
+                      {r.measurementRequirementId ? (
+                        <div className="text-muted" style={{ fontSize: ".75rem" }}>
+                          مربوط بمتطلب القياس
+                        </div>
+                      ) : null}
+                    </td>
                     <td data-label="نسبة الالتزام">{r.compliancePct}%</td>
                     <td data-label="الحالة">
                       <span className={STATUS_BADGE[r.status] ?? "badge-secondary"}>

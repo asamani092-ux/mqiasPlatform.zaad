@@ -37,9 +37,16 @@ export async function getKpiRows(opts: {
   year: number;
   period: Period;
   type?: KpiType;
+  /** عند true: فقط المؤشرات التي تغذي المسار الاستراتيجي */
+  feedsStrategic?: boolean;
 }): Promise<KpiAnalyticsRow[]> {
   const scope = scopeFilter(opts.user);
-  const where = { active: true, ...scope, ...(opts.type ? { type: opts.type } : {}) };
+  const where = {
+    active: true,
+    ...scope,
+    ...(opts.type ? { type: opts.type } : {}),
+    ...(opts.feedsStrategic != null ? { feedsStrategic: opts.feedsStrategic } : {}),
+  };
 
   const kpis = await db.kpi.findMany({
     where,

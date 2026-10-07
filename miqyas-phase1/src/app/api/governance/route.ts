@@ -23,11 +23,37 @@ export async function GET(req: NextRequest) {
       | "H2"
       | "Y";
 
-    const [stats, requirements, observations] = await Promise.all([
+    const [stats, rawRequirements, observations] = await Promise.all([
       governanceStats(year, period),
-      db.governanceRequirement.findMany({ where: { year }, orderBy: { id: "asc" }, take: 1000 }),
+      db.governanceRequirement.findMany({
+        where: { year },
+        orderBy: { id: "asc" },
+        take: 1000,
+        include: {
+          measurementRequirement: {
+            select: {
+              id: true,
+              ownerId: true,
+              owner: { select: { id: true, name: true } },
+            },
+          },
+        },
+      }),
       db.governanceObservation.findMany({ orderBy: { createdAt: "desc" }, take: 1000 }),
     ]);
+
+    const requirements = rawRequirements.map((r) => ({
+      id: r.id,
+      code: r.code,
+      title: r.title,
+      category: r.category,
+      year: r.year,
+      owner: r.owner,
+      status: r.status,
+      compliancePct: r.compliancePct,
+      measurementRequirementId: r.measurementRequirementId,
+      assignedOwnerName: r.measurementRequirement?.owner?.name ?? null,
+    }));
 
     return NextResponse.json({ stats, requirements, observations });
   } catch (e) {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildNavSections } from "@/lib/nav";
 import { can, type SessionUser } from "@/lib/rbac";
+import { resolveFeedFlags } from "@/lib/kpi-flags";
 
 function u(role: SessionUser["role"], extra: Partial<SessionUser> = {}): SessionUser {
   return {
@@ -26,49 +27,38 @@ describe("مسارات قائمة — لا حذف للمسارات الأساس�
     expect(hrefs).toEqual(["/my"]);
   });
 
-  it("موظف مكتب الاستراتيجية: شواهد + قسم المكتب مع وسم v2 على الأدوات الجديدة", () => {
+  it("موظف مكتب الاستراتيجية: مسارات مطوية + كتالوج v2 بدون نموذج كتابة موازٍ", () => {
     const sections = buildNavSections("EMPLOYEE", { strategyOffice: true });
-    const hrefs = sections.flatMap((s) => s.items.map((i) => i.href));
-    expect(hrefs).toContain("/my");
-    expect(hrefs).toContain("/strategy");
-    expect(hrefs).toContain("/calendar");
-    expect(hrefs).toContain("/governance");
+    const tracks = sections.find((s) => s.label === "مسارات القياس");
+    expect(tracks?.collapsible).toBe(true);
+    expect(tracks?.defaultOpen).toBe(false);
+    expect(tracks?.items.map((i) => i.href)).toEqual(["/strategic", "/governance"]);
 
-    const office = sectionByLabel("EMPLOYEE", "مكتب الاستراتيجية", { strategyOffice: true });
-    expect(office).toBeTruthy();
-    const catalog = office!.items.find((i) => i.href === "/strategy");
-    const calendar = office!.items.find((i) => i.href === "/calendar");
-    const strategic = office!.items.find((i) => i.href === "/strategic");
-    expect(catalog?.badge).toBe("v2");
-    expect(calendar?.badge).toBe("v2");
-    expect(strategic?.badge).toBeUndefined();
+    const office = sections.find((s) => s.label === "مكتب الاستراتيجية");
+    expect(office?.items.map((i) => i.href)).toContain("/strategy");
+    expect(office?.items.map((i) => i.href)).toContain("/calendar");
+    expect(office?.items.map((i) => i.href)).toContain("/admin/kpis");
+    expect(office?.items.find((i) => i.href === "/strategy")?.badge).toBe("v2");
   });
 
-  it("مدير الإدارة يحتفظ بمراجعة وإسناد ويحصل على مكتب الاستراتيجية", () => {
+  it("مدير الإدارة يحتفظ بمراجعة وإسناد وإدارة المؤشرات", () => {
     const hrefs = buildNavSections("DEPT_MANAGER").flatMap((s) => s.items.map((i) => i.href));
     expect(hrefs).toContain("/my");
     expect(hrefs).toContain("/dept-follow");
     expect(hrefs).toContain("/admin/assign");
+    expect(hrefs).toContain("/admin/kpis");
     expect(hrefs).toContain("/strategy");
     expect(hrefs).toContain("/calendar");
   });
 
-  it("مشرف النظام: مسارات القياس بلا كتالوج/رزنامة وقسم مكتب منفصل بوسم v2", () => {
-    const sections = buildNavSections("SYSTEM_ADMIN", { showApprovals: true });
-    const hrefs = sections.flatMap((s) => s.items.map((i) => i.href));
-    expect(hrefs).toContain("/executive");
-    expect(hrefs).toContain("/dashboard");
-    expect(hrefs).toContain("/my");
-    expect(hrefs).toContain("/approvals");
-    expect(hrefs).toContain("/admin/users");
-    expect(hrefs).toContain("/admin/kpis");
-    expect(hrefs).toContain("/strategy");
-    expect(hrefs).toContain("/calendar");
-
+  it("مشرف النظام: مسارات القياس مطوية وبلا كتالوج داخلها", () => {
     const tracks = sectionByLabel("SYSTEM_ADMIN", "مسارات القياس", { showApprovals: true });
     const office = sectionByLabel("SYSTEM_ADMIN", "مكتب الاستراتيجية", { showApprovals: true });
+    expect(tracks?.collapsible).toBe(true);
+    expect(tracks?.defaultOpen).toBe(false);
     expect(tracks?.items.map((i) => i.href)).not.toContain("/strategy");
     expect(tracks?.items.map((i) => i.href)).not.toContain("/calendar");
+    expect(tracks?.items.some((i) => i.href === "/strategic")).toBe(true);
     expect(office?.items.map((i) => i.href)).toEqual(["/strategy", "/calendar"]);
     expect(office?.items.every((i) => i.badge === "v2")).toBe(true);
   });
@@ -76,34 +66,63 @@ describe("مسارات قائمة — لا حذف للمسارات الأساس�
   it("التنفيذي: فصل مسارات القياس عن مكتب الاستراتيجية v2", () => {
     const tracks = sectionByLabel("EXECUTIVE", "مسارات القياس");
     const office = sectionByLabel("EXECUTIVE", "مكتب الاستراتيجية");
-    expect(tracks?.items.some((i) => i.href === "/strategic")).toBe(true);
-    expect(tracks?.items.some((i) => i.badge === "v2")).toBe(false);
+    expect(tracks?.collapsible).toBe(true);
     expect(office?.items.map((i) => i.href)).toEqual(["/strategy", "/calendar"]);
-    expect(office?.items.every((i) => i.badge === "v2")).toBe(true);
+  });
+});
+
+describe("أوسمة التغذية", () => {
+  it("يسمح باستراتيجي وحوكمة معاً", () => {
+    const f = resolveFeedFlags({
+      type: "STRATEGIC",
+      feedsStrategic: true,
+      isGovernanceRequirement: true,
+    });
+    expect(f.feedsStrategic).toBe(true);
+    expect(f.isGovernanceRequirement).toBe(true);
+    expect(f.domain).toBe("STRATEGIC");
+  });
+
+  it("حوكمة فقط لا تغذي الاستراتيجية", () => {
+    const f = resolveFeedFlags({
+      type: "STRATEGIC",
+      feedsStrategic: false,
+      isGovernanceRequirement: true,
+    });
+    expect(f.feedsStrategic).toBe(false);
+    expect(f.isGovernanceRequirement).toBe(true);
+    expect(f.domain).toBe("GOVERNANCE");
+  });
+
+  it("التشغيلي لا يغذي الاستراتيجية", () => {
+    const f = resolveFeedFlags({ type: "OPERATIONAL" });
+    expect(f.feedsStrategic).toBe(false);
+    expect(f.domain).toBe("OPERATIONAL");
   });
 });
 
 describe("صلاحيات مكتب الاستراتيجية تراكمية", () => {
-  it("مدير الإدارة يرى الحوكمة والاستراتيجية", () => {
+  it("مدير الإدارة يرى الحوكمة ويكتب المؤشرات", () => {
     expect(can.viewGovernance(u("DEPT_MANAGER"))).toBe(true);
     expect(can.viewStrategyOffice(u("DEPT_MANAGER"))).toBe(true);
-    expect(can.manageStrategyCatalog(u("DEPT_MANAGER"))).toBe(true);
+    expect(can.writeKpis(u("DEPT_MANAGER"))).toBe(true);
+    expect(can.manageKpis(u("DEPT_MANAGER"))).toBe(false);
   });
 
-  it("موظف قسم الاستراتيجية يدير الكتالوج والرزنامة", () => {
+  it("موظف قسم الاستراتيجية يدير الكتالوج والرزنامة ويكتب المؤشرات", () => {
     const so = u("EMPLOYEE", { sectionCode: "4/1", sectionName: "الاستراتيجية" });
     expect(can.viewStrategyOffice(so)).toBe(true);
     expect(can.manageStrategyCatalog(so)).toBe(true);
+    expect(can.writeKpis(so)).toBe(true);
     expect(can.manageDeptCalendar(so)).toBe(true);
     expect(can.manageUsers(so)).toBe(false);
-    expect(can.finalApprove(so)).toBe(false);
   });
 
   it("موظف عادي لا يرى مسارات المكتب", () => {
     const emp = u("EMPLOYEE", { sectionCode: "4/2", sectionName: "الموارد البشرية" });
     expect(can.viewGovernance(emp)).toBe(false);
     expect(can.viewStrategyOffice(emp)).toBe(false);
-    expect(can.manageStrategyCatalog(emp)).toBe(false);
+    expect(can.writeKpis(emp)).toBe(false);
   });
 
   it("التنفيذي يحتفظ بقراءة الحوكمة ولا يُسحب منه شيء", () => {
