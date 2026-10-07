@@ -779,13 +779,38 @@ a:visited {
   border: 1px solid var(--tmkeen-surface-border);
 }
 
-/* ── Forms: احتواء العرض (preflight معطّل → content-box افتراضياً) ── */
+/* ── Forms: تسمية فوق الحقل وعرض كامل (preflight معطّل → content-box افتراضياً) ── */
+.label-field {
+  display: block;
+  width: 100%;
+  margin-block-end: var(--space-2, 0.35rem);
+}
+
 .input-field,
 select.input-field,
 textarea.input-field {
+  display: block;
+  width: 100%;
   box-sizing: border-box;
   max-width: 100%;
   min-width: 0;
+}
+
+.nav-badge-v2 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-start: auto;
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--tmkeen-primary);
+  background: color-mix(in srgb, var(--tmkeen-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tmkeen-primary) 28%, transparent);
+  flex-shrink: 0;
 }
 
 /* ── Login (هيكل README auth — الحقول داخل البطاقة) ── */

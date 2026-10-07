@@ -140,7 +140,7 @@ export default function StrategyCatalogClient({ canManage }: { canManage: boolea
       {canManage && (
         <form className="card" onSubmit={save} style={{ marginBottom: "1rem" }}>
           <h3 style={{ marginBottom: "1rem" }}>{editId ? "تعديل بند" : "إضافة مؤشر / متطلب"}</h3>
-          <div className="grid grid-4" style={{ gap: ".75rem", marginBottom: ".75rem" }}>
+          <div className="grid grid-2" style={{ gap: ".75rem", marginBottom: ".75rem" }}>
             <div>
               <label className="label-field" htmlFor="cat-code">الرمز</label>
               <input
