@@ -134,7 +134,10 @@ export default function AppShell({
                         className={`nav-drawer-link${active ? " active" : ""}`}
                       >
                         <Icon {...ICON_PROPS} className="nav-drawer-link-icon" />
-                        {item.label}
+                        <span>{item.label}</span>
+                        {item.badge === "v2" ? (
+                          <span className="nav-badge-v2" aria-label="إصدار 2">v2</span>
+                        ) : null}
                       </Link>
                     );
                   })}

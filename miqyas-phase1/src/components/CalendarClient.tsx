@@ -119,7 +119,7 @@ export default function CalendarClient({ canManage }: { canManage: boolean }) {
       {canManage && (
         <form className="card" onSubmit={save} style={{ marginBottom: "1rem" }}>
           <h3 style={{ marginBottom: "1rem" }}>{editId ? "تعديل حدث" : "إضافة حدث"}</h3>
-          <div className="grid grid-4" style={{ gap: ".75rem", marginBottom: ".75rem" }}>
+          <div className="grid grid-2" style={{ gap: ".75rem", marginBottom: ".75rem" }}>
             <div>
               <label className="label-field" htmlFor="cal-title">العنوان</label>
               <input
@@ -129,6 +129,19 @@ export default function CalendarClient({ canManage }: { canManage: boolean }) {
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
               />
+            </div>
+            <div>
+              <label className="label-field" htmlFor="cal-type">النوع</label>
+              <select
+                id="cal-type"
+                className="input-field"
+                value={form.eventType}
+                onChange={(e) => setForm({ ...form, eventType: e.target.value })}
+              >
+                {Object.entries(TYPE_LABEL).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="label-field" htmlFor="cal-start">البداية</label>
@@ -152,19 +165,6 @@ export default function CalendarClient({ canManage }: { canManage: boolean }) {
                 value={form.endsAt}
                 onChange={(e) => setForm({ ...form, endsAt: e.target.value })}
               />
-            </div>
-            <div>
-              <label className="label-field" htmlFor="cal-type">النوع</label>
-              <select
-                id="cal-type"
-                className="input-field"
-                value={form.eventType}
-                onChange={(e) => setForm({ ...form, eventType: e.target.value })}
-              >
-                {Object.entries(TYPE_LABEL).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
             </div>
           </div>
           <div style={{ marginBottom: "1rem" }}>
