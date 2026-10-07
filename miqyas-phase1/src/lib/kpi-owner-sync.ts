@@ -1,6 +1,7 @@
 import type { Frequency, MeasurementDomain, Polarity, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { roleToFillerRole, type FillerRoleValue } from "@/lib/approval-status";
+import { deriveDomainFromFlags, resolveFeedFlags } from "@/lib/kpi-flags";
 import { domainFromKpiType } from "@/lib/strategy-office";
 
 type Tx = Prisma.TransactionClient | typeof db;
@@ -21,10 +22,56 @@ export type KpiForRequirementSync = {
   active: boolean;
   domain?: MeasurementDomain;
   type?: "STRATEGIC" | "OPERATIONAL";
+  feedsStrategic?: boolean;
+  isGovernanceRequirement?: boolean;
 };
 
+async function syncGovernanceLink(
+  opts: {
+    code: string;
+    name: string;
+    requirementId: number;
+    isGovernanceRequirement: boolean;
+    ownerLabel: string | null;
+  },
+  tx: Tx,
+): Promise<void> {
+  if (opts.isGovernanceRequirement) {
+    const year = new Date().getFullYear();
+    const existing = await tx.governanceRequirement.findUnique({
+      where: { code: opts.code },
+      select: { id: true, measurementRequirementId: true },
+    });
+    if (existing) {
+      if (existing.measurementRequirementId !== opts.requirementId) {
+        await tx.governanceRequirement.update({
+          where: { id: existing.id },
+          data: { measurementRequirementId: opts.requirementId },
+        });
+      }
+      return;
+    }
+    await tx.governanceRequirement.create({
+      data: {
+        code: opts.code,
+        title: opts.name,
+        year,
+        owner: opts.ownerLabel,
+        measurementRequirementId: opts.requirementId,
+      },
+    });
+    return;
+  }
+
+  // فك الربط دون حذف سجل الحوكمة
+  await tx.governanceRequirement.updateMany({
+    where: { code: opts.code, measurementRequirementId: opts.requirementId },
+    data: { measurementRequirementId: null },
+  });
+}
+
 /**
- * ضمان/تحديث MeasurementRequirement من المؤشر وربط Kpi.requirementId.
+ * ضمان/تحديث MeasurementRequirement من المؤشر وربط Kpi.requirementId + وسم الحوكمة.
  * زمن: O(1) · مكان: O(1)
  */
 export async function ensureRequirementFromKpi(
@@ -42,8 +89,13 @@ export async function ensureRequirementFromKpi(
     if (mapped) fillerRole = mapped;
   }
 
-  const domain: MeasurementDomain =
-    kpi.domain ?? (kpi.type ? domainFromKpiType(kpi.type) : "STRATEGIC");
+  const type = kpi.type ?? (kpi.domain === "OPERATIONAL" ? "OPERATIONAL" : "STRATEGIC");
+  const resolved = resolveFeedFlags({
+    type,
+    feedsStrategic: kpi.feedsStrategic,
+    isGovernanceRequirement: kpi.isGovernanceRequirement,
+    domain: kpi.domain ?? (kpi.type ? domainFromKpiType(kpi.type) : undefined),
+  });
 
   const base = {
     name: kpi.name,
@@ -55,7 +107,9 @@ export async function ensureRequirementFromKpi(
     sectionId: kpi.sectionId,
     ownerId: kpi.ownerId,
     active: kpi.active,
-    domain,
+    domain: resolved.domain,
+    feedsStrategic: resolved.feedsStrategic,
+    isGovernanceRequirement: resolved.isGovernanceRequirement,
   };
 
   const req = await tx.measurementRequirement.upsert({
@@ -71,17 +125,30 @@ export async function ensureRequirementFromKpi(
     },
   });
 
-  if (kpi.requirementId == null || kpi.requirementId !== req.id) {
-    await tx.kpi.update({
-      where: { id: kpi.id },
-      data: { requirementId: req.id, domain },
-    });
-  } else if (kpi.domain == null) {
-    await tx.kpi.update({
-      where: { id: kpi.id },
-      data: { domain },
-    });
-  }
+  const ownerRow = kpi.ownerId
+    ? await tx.user.findUnique({ where: { id: kpi.ownerId }, select: { name: true } })
+    : null;
+
+  await syncGovernanceLink(
+    {
+      code: kpi.code,
+      name: kpi.name,
+      requirementId: req.id,
+      isGovernanceRequirement: resolved.isGovernanceRequirement,
+      ownerLabel: ownerRow?.name ?? null,
+    },
+    tx,
+  );
+
+  await tx.kpi.update({
+    where: { id: kpi.id },
+    data: {
+      requirementId: req.id,
+      domain: resolved.domain,
+      feedsStrategic: resolved.feedsStrategic,
+      isGovernanceRequirement: resolved.isGovernanceRequirement,
+    },
+  });
 }
 
 /**
@@ -94,3 +161,5 @@ export async function syncRequirementOwnerFromKpi(
 ): Promise<void> {
   await ensureRequirementFromKpi(kpi, tx);
 }
+
+export { deriveDomainFromFlags };

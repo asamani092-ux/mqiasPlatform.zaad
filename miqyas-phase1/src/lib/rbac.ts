@@ -27,8 +27,14 @@ export function isStrategyOfficeFromSession(u: SessionUser): boolean {
 export const can = {
   manageUsers: (u: SessionUser) => isAdmin(u),
   manageStructure: (u: SessionUser) => isAdmin(u),
-  /** إدارة كاملة للمؤشرات — مشرف النظام */
+  /** إدارة كاملة للمؤشرات — مشرف النظام (إعدادات/تقارير/استيراد) */
   manageKpis: (u: SessionUser) => isAdmin(u),
+  /**
+   * كتابة تعريف المؤشر في الواجهة الموحّدة — مشرف أو مكتب الاستراتيجية أو مدير إدارة
+   * (نطاق الإدارة يُفرض في الصفحة والـ API)
+   */
+  writeKpis: (u: SessionUser) =>
+    isAdmin(u) || isStrategyOfficeFromSession(u) || u.role === "DEPT_MANAGER",
   manageGovernance: (u: SessionUser) => isAdmin(u) || isStrategyOfficeFromSession(u),
   viewExecutive: (u: SessionUser) => isAdmin(u) || u.role === "EXECUTIVE",
   /** الاعتماد النهائي — مشرف النظام فقط */

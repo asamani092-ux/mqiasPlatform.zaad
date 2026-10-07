@@ -162,6 +162,10 @@ model Kpi {
   operationalGoalId Int?
   requirementId     Int? // متطلب القياس الموحّد (مصدر الشواهد/الفعلي)
   domain            MeasurementDomain @default(STRATEGIC)
+  /** يغذي المسار الاستراتيجي — مستقل عن وسم الحوكمة */
+  feedsStrategic    Boolean   @default(true)
+  /** متطلب حوكمة — يمكن أن يجتمع مع feedsStrategic */
+  isGovernanceRequirement Boolean @default(false)
   active            Boolean   @default(true)
   createdAt         DateTime  @default(now())
 
@@ -182,6 +186,8 @@ model Kpi {
   @@index([ownerId])
   @@index([active, type])
   @@index([domain])
+  @@index([feedsStrategic])
+  @@index([isGovernanceRequirement])
 }
 
 // دور من يملأ متطلب القياس (الطبقة 1)
@@ -205,6 +211,8 @@ model MeasurementRequirement {
   ownerId      Int?
   fillerRole   FillerRole        @default(EMPLOYEE)
   domain       MeasurementDomain @default(STRATEGIC)
+  feedsStrategic              Boolean @default(true)
+  isGovernanceRequirement     Boolean @default(false)
   active       Boolean           @default(true)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
@@ -221,6 +229,8 @@ model MeasurementRequirement {
   @@index([sectionId])
   @@index([fillerRole])
   @@index([domain])
+  @@index([feedsStrategic])
+  @@index([isGovernanceRequirement])
 }
 
 model MeasurementPeriod {

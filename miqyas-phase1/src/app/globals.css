@@ -376,6 +376,35 @@ a:visited {
   color: var(--tmkeen-brand-gray);
 }
 
+.nav-drawer-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.4rem 0.85rem;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--tmkeen-brand-gray);
+  cursor: pointer;
+  text-align: inherit;
+}
+
+.nav-drawer-section-toggle:hover {
+  color: var(--tmkeen-primary);
+}
+
+.nav-drawer-section-chevron {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.nav-drawer-section-chevron.is-open {
+  transform: rotate(180deg);
+}
+
 .nav-drawer-link {
   display: flex;
   align-items: center;

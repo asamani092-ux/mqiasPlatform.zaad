@@ -20,9 +20,34 @@ export default async function GovernancePage({
 
   const [stats, requirements, observations] = await Promise.all([
     governanceStats(year, period),
-    db.governanceRequirement.findMany({ where: { year }, orderBy: { id: "asc" } }),
+    db.governanceRequirement.findMany({
+      where: { year },
+      orderBy: { id: "asc" },
+      include: {
+        measurementRequirement: {
+          select: {
+            id: true,
+            ownerId: true,
+            owner: { select: { id: true, name: true } },
+          },
+        },
+      },
+    }),
     db.governanceObservation.findMany({ orderBy: { createdAt: "desc" } }),
   ]);
+
+  const serializedRequirements = requirements.map((r) => ({
+    id: r.id,
+    code: r.code,
+    title: r.title,
+    category: r.category,
+    year: r.year,
+    owner: r.owner,
+    status: r.status,
+    compliancePct: r.compliancePct,
+    measurementRequirementId: r.measurementRequirementId,
+    assignedOwnerName: r.measurementRequirement?.owner?.name ?? null,
+  }));
 
   const serializedObservations = observations.map((o) => ({
     ...o,
@@ -33,7 +58,7 @@ export default async function GovernancePage({
   return (
     <GovernanceClient
       initialStats={stats}
-      initialRequirements={requirements}
+      initialRequirements={serializedRequirements}
       initialObservations={serializedObservations}
       year={year}
       period={period}

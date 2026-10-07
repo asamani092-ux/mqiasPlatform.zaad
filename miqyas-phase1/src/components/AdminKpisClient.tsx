@@ -35,6 +35,8 @@ type Kpi = {
   recommendation: string | null;
   strategicGoalId: number | null;
   operationalGoalId: number | null;
+  feedsStrategic: boolean;
+  isGovernanceRequirement: boolean;
   active: boolean;
   department?: { id: number; name: string } | null;
   owner?: { id: number; name: string } | null;
@@ -43,10 +45,10 @@ type Kpi = {
 const emptyForm = {
   code: "",
   name: "",
-  type: "STRATEGIC" as const,
+  type: "STRATEGIC" as "STRATEGIC" | "OPERATIONAL",
   unit: "%",
-  polarity: "HIGHER_BETTER" as const,
-  frequency: "QUARTERLY" as const,
+  polarity: "HIGHER_BETTER" as "HIGHER_BETTER" | "LOWER_BETTER",
+  frequency: "QUARTERLY" as "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL",
   requiredData: "",
   departmentId: "",
   sectionId: "",
@@ -57,6 +59,8 @@ const emptyForm = {
   recommendation: "",
   strategicGoalId: "",
   operationalGoalId: "",
+  feedsStrategic: true,
+  isGovernanceRequirement: false,
 };
 
 type Tab = "kpis" | "import";
@@ -65,18 +69,30 @@ type TypeFilter = "all" | "STRATEGIC" | "OPERATIONAL";
 export default function AdminKpisClient({
   departments,
   users,
+  canImport = true,
+  scopedDepartmentId = null,
+  initialEditId = null,
 }: {
   departments: Department[];
   users: DeptUser[];
+  canImport?: boolean;
+  scopedDepartmentId?: number | null;
+  initialEditId?: number | null;
 }) {
   const [tab, setTab] = useState<Tab>("kpis");
   const [kpis, setKpis] = useState<Kpi[]>([]);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [departmentFilter, setDepartmentFilter] = useState(
+    scopedDepartmentId != null ? String(scopedDepartmentId) : "all",
+  );
   const [ownerFilter, setOwnerFilter] = useState("all");
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() =>
+    scopedDepartmentId != null
+      ? { ...emptyForm, departmentId: String(scopedDepartmentId) }
+      : emptyForm,
+  );
   const [editId, setEditId] = useState<number | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [targetYear, setTargetYear] = useState(2026);
@@ -96,13 +112,21 @@ export default function AdminKpisClient({
   function closeForm() {
     setFormOpen(false);
     setEditId(null);
-    setForm(emptyForm);
+    setForm(
+      scopedDepartmentId != null
+        ? { ...emptyForm, departmentId: String(scopedDepartmentId) }
+        : emptyForm,
+    );
     setTargets({});
   }
 
   function openCreate() {
     setEditId(null);
-    setForm(emptyForm);
+    setForm(
+      scopedDepartmentId != null
+        ? { ...emptyForm, departmentId: String(scopedDepartmentId) }
+        : emptyForm,
+    );
     setTargets({});
     setFormOpen(true);
   }
@@ -152,6 +176,13 @@ export default function AdminKpisClient({
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (initialEditId == null || kpis.length === 0) return;
+    const found = kpis.find((k) => k.id === initialEditId);
+    if (found) startEdit(found);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- فتح مرة عند وصول edit من الكتالوج
+  }, [initialEditId, kpis]);
+
   async function loadTargets(kpiId: number, freq: string) {
     const res = await fetch(`/api/kpis/${kpiId}/targets?year=${targetYear}`);
     if (res.ok) {
@@ -184,16 +215,20 @@ export default function AdminKpisClient({
       recommendation: kpi.recommendation ?? "",
       strategicGoalId: kpi.strategicGoalId ? String(kpi.strategicGoalId) : "",
       operationalGoalId: kpi.operationalGoalId ? String(kpi.operationalGoalId) : "",
+      feedsStrategic: kpi.feedsStrategic ?? kpi.type === "STRATEGIC",
+      isGovernanceRequirement: kpi.isGovernanceRequirement ?? false,
     });
     setFormOpen(true);
     void loadTargets(kpi.id, kpi.frequency);
   }
 
   function bodyFromForm() {
+    const type = form.type;
+    const feedsStrategic = type === "OPERATIONAL" ? false : form.feedsStrategic;
     return {
       code: form.code,
       name: form.name,
-      type: form.type,
+      type,
       unit: form.unit,
       polarity: form.polarity,
       frequency: form.frequency,
@@ -207,6 +242,8 @@ export default function AdminKpisClient({
       recommendation: form.recommendation || null,
       strategicGoalId: form.strategicGoalId ? parseInt(form.strategicGoalId, 10) : null,
       operationalGoalId: form.operationalGoalId ? parseInt(form.operationalGoalId, 10) : null,
+      feedsStrategic,
+      isGovernanceRequirement: form.isGovernanceRequirement,
     };
   }
 
@@ -274,7 +311,9 @@ export default function AdminKpisClient({
             ]}
           />
           <h1>إدارة المؤشرات</h1>
-          <div className="text-muted">تعريف المؤشرات والمستهدفات — مشرف النظام</div>
+          <div className="text-muted">
+            مصدر الكتابة الموحّد — أوسمة الاستراتيجية والحوكمة وإسناد المسؤول
+          </div>
           {round ? (
             <div style={{ marginTop: "var(--space-2)", display: "flex", flexWrap: "wrap", gap: "var(--space-2)", alignItems: "center" }}>
               <Chip
@@ -415,16 +454,18 @@ export default function AdminKpisClient({
         </FilterBar>
       ) : null}
 
-      <div className="tab-bar" style={{ marginBottom: "1rem" }}>
-        <button type="button" className={tab === "kpis" ? "active" : ""} onClick={() => setTab("kpis")}>
-          المؤشرات
-        </button>
-        <button type="button" className={tab === "import" ? "active" : ""} onClick={() => setTab("import")}>
-          استيراد Excel
-        </button>
-      </div>
+      {canImport ? (
+        <div className="tab-bar" style={{ marginBottom: "1rem" }}>
+          <button type="button" className={tab === "kpis" ? "active" : ""} onClick={() => setTab("kpis")}>
+            المؤشرات
+          </button>
+          <button type="button" className={tab === "import" ? "active" : ""} onClick={() => setTab("import")}>
+            استيراد Excel
+          </button>
+        </div>
+      ) : null}
 
-      {tab === "import" ? (
+      {tab === "import" && canImport ? (
         <>
           <div className="card" style={{ marginBottom: "1rem" }}>
             <h3 style={{ marginBottom: ".5rem" }}>دليل أعمدة القالب</h3>
@@ -472,7 +513,7 @@ export default function AdminKpisClient({
                       <label className="label-field">{label}</label>
                       <input
                         className="input-field"
-                        value={(form as Record<string, string>)[key]}
+                        value={String((form as Record<string, string | boolean>)[key] ?? "")}
                         onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                       />
                     </div>
@@ -528,7 +569,14 @@ export default function AdminKpisClient({
                     className="input-field"
                     style={{ width: "auto" }}
                     value={form.type}
-                    onChange={(e) => setForm({ ...form, type: e.target.value as "STRATEGIC" })}
+                    onChange={(e) => {
+                      const type = e.target.value as "STRATEGIC" | "OPERATIONAL";
+                      setForm({
+                        ...form,
+                        type,
+                        feedsStrategic: type === "OPERATIONAL" ? false : form.feedsStrategic || !form.isGovernanceRequirement,
+                      });
+                    }}
                   >
                     {Object.entries(TYPE_LABEL).map(([k, v]) => (
                       <option key={k} value={k}>
@@ -561,6 +609,60 @@ export default function AdminKpisClient({
                     ))}
                   </select>
                 </div>
+                {form.type !== "OPERATIONAL" ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "1.25rem",
+                      flexWrap: "wrap",
+                      marginBottom: ".75rem",
+                      alignItems: "center",
+                    }}
+                  >
+                    <label
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: ".4rem",
+                        cursor: "pointer",
+                        fontSize: "var(--text-sm)",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.feedsStrategic}
+                        onChange={(e) => {
+                          const feedsStrategic = e.target.checked;
+                          const isGovernanceRequirement =
+                            form.isGovernanceRequirement || !feedsStrategic;
+                          setForm({ ...form, feedsStrategic, isGovernanceRequirement });
+                        }}
+                      />
+                      يغذي المسار الاستراتيجي
+                    </label>
+                    <label
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: ".4rem",
+                        cursor: "pointer",
+                        fontSize: "var(--text-sm)",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.isGovernanceRequirement}
+                        onChange={(e) => {
+                          const isGovernanceRequirement = e.target.checked;
+                          const feedsStrategic =
+                            form.feedsStrategic || !isGovernanceRequirement;
+                          setForm({ ...form, feedsStrategic, isGovernanceRequirement });
+                        }}
+                      />
+                      متطلب حوكمة
+                    </label>
+                  </div>
+                ) : null}
                 <h4 style={{ marginBottom: ".5rem" }}>المستهدفات — {targetYear}</h4>
                 <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginBottom: ".75rem" }}>
                   {periods.map((p) => (
@@ -594,6 +696,7 @@ export default function AdminKpisClient({
                   <th>الرمز</th>
                   <th>المؤشر</th>
                   <th>النوع</th>
+                  <th>الأوسمة</th>
                   <th>الإدارة المالكة</th>
                   <th>المسؤول</th>
                   <th>إجراءات</th>
@@ -605,6 +708,14 @@ export default function AdminKpisClient({
                     <td data-label="الرمز"><code>{k.code}</code></td>
                     <td data-label="المؤشر">{k.name}</td>
                     <td data-label="النوع">{TYPE_LABEL[k.type as keyof typeof TYPE_LABEL]}</td>
+                    <td data-label="الأوسمة">
+                      <span style={{ display: "inline-flex", gap: ".35rem", flexWrap: "wrap" }}>
+                        {k.feedsStrategic ? <span className="badge-neutral">استراتيجي</span> : null}
+                        {k.isGovernanceRequirement ? (
+                          <span className="badge-neutral">حوكمة</span>
+                        ) : null}
+                      </span>
+                    </td>
                     <td data-label="الإدارة المالكة">{k.department?.name || "—"}</td>
                     <td data-label="المسؤول">{k.owner?.name || k.ownerLabel || "—"}</td>
                     <td data-label="إجراءات" style={{ whiteSpace: "normal" }}>
@@ -625,7 +736,7 @@ export default function AdminKpisClient({
                 ))}
                 {visibleKpis.length === 0 && (
                   <tr>
-                    <td colSpan={6} data-label="" className="text-muted">
+                    <td colSpan={7} data-label="" className="text-muted">
                       <EmptyState
                         title="لا نتائج"
                         body={

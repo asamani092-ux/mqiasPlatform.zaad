@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { requireManageKpis } from "@/lib/admin-auth";
+import { requireWriteKpis } from "@/lib/admin-auth";
 import { targetSchema } from "@/lib/kpi-schemas";
 import { handleApiError, jsonError } from "@/lib/api-helpers";
 
@@ -13,7 +13,7 @@ export async function GET(
 ) {
   try {
     const user = await requireUser();
-    requireManageKpis(user);
+    requireWriteKpis(user);
 
     const kpiId = parseInt(params.id, 10);
     const year = parseInt(req.nextUrl.searchParams.get("year") ?? "2026", 10);
@@ -36,7 +36,7 @@ export async function POST(
 ) {
   try {
     const user = await requireUser();
-    requireManageKpis(user);
+    requireWriteKpis(user);
 
     const kpiId = parseInt(params.id, 10);
     const body = targetSchema.parse(await req.json());

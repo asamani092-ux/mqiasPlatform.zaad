@@ -17,7 +17,13 @@ export default async function StrategicPage({
   if (!user) redirect("/login");
   if (!can.viewStrategyOffice(user)) redirect("/my");
   const { year, period } = await parseTrackParams(searchParams);
-  const rows = await getKpiRows({ user, year, period, type: "STRATEGIC" });
+  const rows = await getKpiRows({
+    user,
+    year,
+    period,
+    type: "STRATEGIC",
+    feedsStrategic: true,
+  });
   return (
     <StrategicTrackClient rows={enrichStrategicRows(rows)} year={year} period={period} />
   );

@@ -6,6 +6,10 @@ export const kpiBodySchema = z.object({
   name: z.string().min(1).max(500),
   type: z.enum(["STRATEGIC", "OPERATIONAL"]),
   domain: z.enum(["STRATEGIC", "OPERATIONAL", "GOVERNANCE"]).optional(),
+  /** يغذي المسار الاستراتيجي — مستقل عن وسم الحوكمة */
+  feedsStrategic: z.boolean().optional(),
+  /** متطلب حوكمة — يمكن أن يجتمع مع feedsStrategic */
+  isGovernanceRequirement: z.boolean().optional(),
   unit: z.string().min(1).max(100),
   polarity: z.enum(["HIGHER_BETTER", "LOWER_BETTER"]).default("HIGHER_BETTER"),
   frequency: z.enum(["QUARTERLY", "SEMI_ANNUAL", "ANNUAL"]).default("QUARTERLY"),
