@@ -112,7 +112,9 @@ export default function CalendarClient({ canManage }: { canManage: boolean }) {
       <div className="topbar">
         <div>
           <h1>رزنامة القسم</h1>
-          <div className="text-muted">أحداث ومواعيد مكتب الاستراتيجية — قابلة للتعديل حسب الصلاحية</div>
+          <div className="text-muted">
+            مكتب الاستراتيجية فوق أصل القياس — أحداث القسم قابلة للتعديل حسب الصلاحية
+          </div>
         </div>
       </div>
 

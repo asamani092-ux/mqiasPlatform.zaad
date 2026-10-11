@@ -312,7 +312,7 @@ export default function AdminKpisClient({
           />
           <h1>إدارة المؤشرات</h1>
           <div className="text-muted">
-            مصدر الكتابة الموحّد — أوسمة الاستراتيجية والحوكمة وإسناد المسؤول
+            مصدر الكتابة الموحّد للمنصة — أوسمة التغذية (م1) مدموجة هنا دون نموذج موازٍ
           </div>
           {round ? (
             <div style={{ marginTop: "var(--space-2)", display: "flex", flexWrap: "wrap", gap: "var(--space-2)", alignItems: "center" }}>
@@ -500,27 +500,30 @@ export default function AdminKpisClient({
                 onClick={(e) => e.stopPropagation()}
               >
                 <h3 style={{ marginBottom: "1rem" }}>{editId ? "تعديل مؤشر" : "مؤشر جديد"}</h3>
-                <div className="grid grid-4" style={{ gap: ".75rem", marginBottom: ".75rem" }}>
-                  {[
-                    ["code", "رمز المؤشر"],
-                    ["name", "اسم المؤشر"],
-                    ["requiredData", "البيانات المطلوبة"],
-                    ["baseline", "خط الأساس"],
-                    ["annualTarget", "المستهدف السنوي"],
-                    ["recommendation", "توصيات القسم"],
-                  ].map(([key, label]) => (
-                    <div key={key}>
-                      <label className="label-field">{label}</label>
-                      <input
-                        className="input-field"
-                        value={String((form as Record<string, string | boolean>)[key] ?? "")}
-                        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                      />
-                    </div>
-                  ))}
+                <div className="grid grid-2" style={{ gap: ".75rem", marginBottom: ".75rem" }}>
                   <div>
-                    <label className="label-field">وحدة القياس</label>
+                    <label className="label-field" htmlFor="kpi-code">رمز المؤشر</label>
+                    <input
+                      id="kpi-code"
+                      className="input-field"
+                      dir="ltr"
+                      value={form.code}
+                      onChange={(e) => setForm({ ...form, code: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="label-field" htmlFor="kpi-name">اسم المؤشر</label>
+                    <input
+                      id="kpi-name"
+                      className="input-field"
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="label-field" htmlFor="kpi-unit">وحدة القياس</label>
                     <select
+                      id="kpi-unit"
                       className="input-field"
                       value={form.unit}
                       onChange={(e) => setForm({ ...form, unit: e.target.value })}
@@ -533,8 +536,64 @@ export default function AdminKpisClient({
                     </select>
                   </div>
                   <div>
-                    <label className="label-field">الإدارة المالكة</label>
+                    <label className="label-field" htmlFor="kpi-type">النوع</label>
                     <select
+                      id="kpi-type"
+                      className="input-field"
+                      value={form.type}
+                      onChange={(e) => {
+                        const type = e.target.value as "STRATEGIC" | "OPERATIONAL";
+                        setForm({
+                          ...form,
+                          type,
+                          feedsStrategic:
+                            type === "OPERATIONAL"
+                              ? false
+                              : form.feedsStrategic || !form.isGovernanceRequirement,
+                        });
+                      }}
+                    >
+                      {Object.entries(TYPE_LABEL).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label-field" htmlFor="kpi-freq">الدورية</label>
+                    <select
+                      id="kpi-freq"
+                      className="input-field"
+                      value={form.frequency}
+                      onChange={(e) => setForm({ ...form, frequency: e.target.value as "QUARTERLY" })}
+                    >
+                      {Object.entries(FREQUENCY_LABEL).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label-field" htmlFor="kpi-polarity">القطبية</label>
+                    <select
+                      id="kpi-polarity"
+                      className="input-field"
+                      value={form.polarity}
+                      onChange={(e) => setForm({ ...form, polarity: e.target.value as "HIGHER_BETTER" })}
+                    >
+                      {Object.entries(POLARITY_LABEL_API).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label-field" htmlFor="kpi-dept">الإدارة المالكة</label>
+                    <select
+                      id="kpi-dept"
                       className="input-field"
                       value={form.departmentId}
                       onChange={(e) => setForm({ ...form, departmentId: e.target.value, ownerId: "" })}
@@ -548,8 +607,9 @@ export default function AdminKpisClient({
                     </select>
                   </div>
                   <div>
-                    <label className="label-field">الموظف المسؤول</label>
+                    <label className="label-field" htmlFor="kpi-owner">الموظف المسؤول</label>
                     <select
+                      id="kpi-owner"
                       className="input-field"
                       value={form.ownerId}
                       onChange={(e) => setForm({ ...form, ownerId: e.target.value })}
@@ -563,51 +623,44 @@ export default function AdminKpisClient({
                       ))}
                     </select>
                   </div>
+                  <div>
+                    <label className="label-field" htmlFor="kpi-baseline">خط الأساس</label>
+                    <input
+                      id="kpi-baseline"
+                      className="input-field"
+                      value={form.baseline}
+                      onChange={(e) => setForm({ ...form, baseline: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="label-field" htmlFor="kpi-annual">المستهدف السنوي</label>
+                    <input
+                      id="kpi-annual"
+                      className="input-field"
+                      value={form.annualTarget}
+                      onChange={(e) => setForm({ ...form, annualTarget: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap", marginBottom: ".75rem" }}>
-                  <select
+                <div style={{ marginBottom: ".75rem" }}>
+                  <label className="label-field" htmlFor="kpi-required">البيانات المطلوبة</label>
+                  <textarea
+                    id="kpi-required"
                     className="input-field"
-                    style={{ width: "auto" }}
-                    value={form.type}
-                    onChange={(e) => {
-                      const type = e.target.value as "STRATEGIC" | "OPERATIONAL";
-                      setForm({
-                        ...form,
-                        type,
-                        feedsStrategic: type === "OPERATIONAL" ? false : form.feedsStrategic || !form.isGovernanceRequirement,
-                      });
-                    }}
-                  >
-                    {Object.entries(TYPE_LABEL).map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {v}
-                      </option>
-                    ))}
-                  </select>
-                  <select
+                    rows={2}
+                    value={form.requiredData}
+                    onChange={(e) => setForm({ ...form, requiredData: e.target.value })}
+                  />
+                </div>
+                <div style={{ marginBottom: ".75rem" }}>
+                  <label className="label-field" htmlFor="kpi-reco">توصيات القسم</label>
+                  <textarea
+                    id="kpi-reco"
                     className="input-field"
-                    style={{ width: "auto" }}
-                    value={form.frequency}
-                    onChange={(e) => setForm({ ...form, frequency: e.target.value as "QUARTERLY" })}
-                  >
-                    {Object.entries(FREQUENCY_LABEL).map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {v}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className="input-field"
-                    style={{ width: "auto" }}
-                    value={form.polarity}
-                    onChange={(e) => setForm({ ...form, polarity: e.target.value as "HIGHER_BETTER" })}
-                  >
-                    {Object.entries(POLARITY_LABEL_API).map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {v}
-                      </option>
-                    ))}
-                  </select>
+                    rows={2}
+                    value={form.recommendation}
+                    onChange={(e) => setForm({ ...form, recommendation: e.target.value })}
+                  />
                 </div>
                 {form.type !== "OPERATIONAL" ? (
                   <div
