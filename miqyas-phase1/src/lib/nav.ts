@@ -21,13 +21,14 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import type { PhaseId } from "@/lib/phase-registry";
 
 export type NavItem = {
   href: string;
   label: string;
   Icon: LucideIcon;
-  /** وسم أدوات مكتب الاستراتيجية الجديدة فقط */
-  badge?: "v2";
+  /** وسم المرحلة للتجربة — انظر phase-registry */
+  badge?: PhaseId;
 };
 
 export type NavSection = {
@@ -49,78 +50,86 @@ const DASHBOARD_NAV: NavItem = {
   href: "/dashboard",
   label: "اللوحة الرئيسية",
   Icon: LayoutDashboard,
+  badge: "core",
 };
 
 const MY_NAV: NavItem = {
   href: "/my",
   label: "شواهد المؤشرات",
   Icon: ClipboardList,
+  badge: "core",
 };
 
 const DEPT_FOLLOW_NAV: NavItem = {
   href: "/dept-follow",
   label: "مراجعة الإدارة",
   Icon: Building2,
+  badge: "core",
 };
 
-/** أدوات v2 — قراءة الكتالوج + الرزنامة */
+/** أدوات م1 — قراءة الكتالوج + الرزنامة */
 const STRATEGY_V2_NAV: NavItem[] = [
-  { href: "/strategy", label: "كتالوج الاستراتيجية والحوكمة", Icon: Library, badge: "v2" },
-  { href: "/calendar", label: "رزنامة القسم", Icon: CalendarDays, badge: "v2" },
+  { href: "/strategy", label: "كتالوج الاستراتيجية والحوكمة", Icon: Library, badge: "m1" },
+  { href: "/calendar", label: "رزنامة القسم", Icon: CalendarDays, badge: "m1" },
 ];
 
 /** كل مسارات القياس (للمشرف/التنفيذي) */
 const TRACK_NAV_FULL: NavItem[] = [
-  { href: "/strategic", label: "المسار الاستراتيجي", Icon: Target },
-  { href: "/operational", label: "المسار التشغيلي", Icon: Settings },
-  { href: "/early-warning", label: "الإنذار المبكر", Icon: AlertTriangle },
-  { href: "/deviation", label: "بطاقات الانحراف", Icon: FileWarning },
-  { href: "/governance", label: "الحوكمة", Icon: Landmark },
-  { href: "/knowledge", label: "المعرفة المؤسسية", Icon: BookOpen },
+  { href: "/strategic", label: "المسار الاستراتيجي", Icon: Target, badge: "core" },
+  { href: "/operational", label: "المسار التشغيلي", Icon: Settings, badge: "core" },
+  { href: "/early-warning", label: "الإنذار المبكر", Icon: AlertTriangle, badge: "core" },
+  { href: "/deviation", label: "بطاقات الانحراف", Icon: FileWarning, badge: "core" },
+  { href: "/governance", label: "الحوكمة", Icon: Landmark, badge: "core" },
+  { href: "/knowledge", label: "المعرفة المؤسسية", Icon: BookOpen, badge: "core" },
 ];
 
 /** مسارات القياس المتاحة لمكتب الاستراتيجية / المدراء */
 const TRACK_NAV_OFFICE: NavItem[] = [
-  { href: "/strategic", label: "المسار الاستراتيجي", Icon: Target },
-  { href: "/governance", label: "الحوكمة", Icon: Landmark },
+  { href: "/strategic", label: "المسار الاستراتيجي", Icon: Target, badge: "core" },
+  { href: "/governance", label: "الحوكمة", Icon: Landmark, badge: "core" },
 ];
 
 const ASSIGN_NAV: NavItem = {
   href: "/admin/assign",
   label: "إسناد المسؤولين",
   Icon: UserPlus,
+  badge: "core",
 };
 
 const KPIS_NAV: NavItem = {
   href: "/admin/kpis",
   label: "إدارة المؤشرات",
   Icon: Ruler,
+  badge: "core",
 };
 
 const ADMIN_NAV: NavItem[] = [
-  { href: "/admin/users", label: "إدارة المستخدمين", Icon: Users },
+  { href: "/admin/users", label: "إدارة المستخدمين", Icon: Users, badge: "core" },
   KPIS_NAV,
   ASSIGN_NAV,
-  { href: "/admin/report", label: "منشئ العرض التقديمي", Icon: Presentation },
-  { href: "/admin/settings", label: "إعدادات النظام", Icon: Settings2 },
+  { href: "/admin/report", label: "منشئ العرض التقديمي", Icon: Presentation, badge: "core" },
+  { href: "/admin/settings", label: "إعدادات النظام", Icon: Settings2, badge: "core" },
 ];
 
 const EXECUTIVE_NAV: NavItem = {
   href: "/executive",
   label: "لوحة الإدارة التنفيذية",
   Icon: Crown,
+  badge: "core",
 };
 
 const APPROVALS_NAV: NavItem = {
   href: "/approvals",
   label: "الاعتماد النهائي",
   Icon: CheckCircle2,
+  badge: "core",
 };
 
 const UAT_NAV: NavItem = {
   href: "/uat",
   label: "تقييم الأدوات",
   Icon: ClipboardCheck,
+  badge: "uat",
 };
 
 function tracksSection(items: NavItem[]): NavSection {

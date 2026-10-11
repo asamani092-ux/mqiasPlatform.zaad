@@ -7,7 +7,9 @@ import { signOut } from "next-auth/react";
 import { ChevronDown, LogOut, Menu, X } from "lucide-react";
 import BrandMark from "@/components/BrandMark";
 import NotifBell from "@/components/NotifBell";
+import ToolPhaseBar from "@/components/ToolPhaseBar";
 import { buildNavSections } from "@/lib/nav";
+import { PHASE_LABEL, PHASE_TITLE } from "@/lib/phase-registry";
 import type { Role } from "@prisma/client";
 import { ROLE_LABEL } from "@/lib/types";
 import { ICON_PROPS } from "@/lib/icon-props";
@@ -180,8 +182,14 @@ export default function AppShell({
                             >
                               <Icon {...ICON_PROPS} className="nav-drawer-link-icon" />
                               <span>{item.label}</span>
-                              {item.badge === "v2" ? (
-                                <span className="nav-badge-v2" aria-label="إصدار 2">v2</span>
+                              {item.badge ? (
+                                <span
+                                  className={`nav-badge-phase nav-badge-phase--${item.badge}`}
+                                  aria-label={PHASE_TITLE[item.badge]}
+                                  title={PHASE_TITLE[item.badge]}
+                                >
+                                  {PHASE_LABEL[item.badge]}
+                                </span>
                               ) : null}
                             </Link>
                           );
@@ -214,7 +222,10 @@ export default function AppShell({
         </div>
       ) : null}
 
-      <main className="app-main">{children}</main>
+      <main className="app-main">
+        <ToolPhaseBar />
+        {children}
+      </main>
     </div>
   );
 }
