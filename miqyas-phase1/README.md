@@ -2,6 +2,14 @@
 
 منصة قياس الأداء المؤسسي لجمعية الزاد.
 
+## وثائق حاكمة
+
+| الوثيقة | الغرض |
+|---------|--------|
+| [docs/platform-governing-principles.md](docs/platform-governing-principles.md) | مبدأ الدمج + أوسمة المراحل + خريطة الأدوات |
+| [docs/strategy-office-roadmap.md](docs/strategy-office-roadmap.md) | خارطة مكتب الاستراتيجية والمراجعة |
+| [docs/architecture-measurement-unification.md](docs/architecture-measurement-unification.md) | طبقات القياس الموحّد |
+
 ## التقنيات
 
 - Next.js 14 (App Router) + TypeScript

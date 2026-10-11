@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildNavSections } from "@/lib/nav";
 import { can, type SessionUser } from "@/lib/rbac";
 import { resolveFeedFlags } from "@/lib/kpi-flags";
+import { resolveToolPhase } from "@/lib/phase-registry";
 
 function u(role: SessionUser["role"], extra: Partial<SessionUser> = {}): SessionUser {
   return {
@@ -27,18 +28,20 @@ describe("مسارات قائمة — لا حذف للمسارات الأساس�
     expect(hrefs).toEqual(["/my"]);
   });
 
-  it("موظف مكتب الاستراتيجية: مسارات مطوية + كتالوج v2 بدون نموذج كتابة موازٍ", () => {
+  it("موظف مكتب الاستراتيجية: مسارات مطوية + كتالوج م1 بدون نموذج كتابة موازٍ", () => {
     const sections = buildNavSections("EMPLOYEE", { strategyOffice: true });
     const tracks = sections.find((s) => s.label === "مسارات القياس");
     expect(tracks?.collapsible).toBe(true);
     expect(tracks?.defaultOpen).toBe(false);
     expect(tracks?.items.map((i) => i.href)).toEqual(["/strategic", "/governance"]);
+    expect(tracks?.items.every((i) => i.badge === "core")).toBe(true);
 
     const office = sections.find((s) => s.label === "مكتب الاستراتيجية");
     expect(office?.items.map((i) => i.href)).toContain("/strategy");
     expect(office?.items.map((i) => i.href)).toContain("/calendar");
     expect(office?.items.map((i) => i.href)).toContain("/admin/kpis");
-    expect(office?.items.find((i) => i.href === "/strategy")?.badge).toBe("v2");
+    expect(office?.items.find((i) => i.href === "/strategy")?.badge).toBe("m1");
+    expect(office?.items.find((i) => i.href === "/admin/kpis")?.badge).toBe("core");
   });
 
   it("مدير الإدارة يحتفظ بمراجعة وإسناد وإدارة المؤشرات", () => {
@@ -60,14 +63,24 @@ describe("مسارات قائمة — لا حذف للمسارات الأساس�
     expect(tracks?.items.map((i) => i.href)).not.toContain("/calendar");
     expect(tracks?.items.some((i) => i.href === "/strategic")).toBe(true);
     expect(office?.items.map((i) => i.href)).toEqual(["/strategy", "/calendar"]);
-    expect(office?.items.every((i) => i.badge === "v2")).toBe(true);
+    expect(office?.items.every((i) => i.badge === "m1")).toBe(true);
+    expect(tracks?.items.every((i) => i.badge === "core")).toBe(true);
   });
 
-  it("التنفيذي: فصل مسارات القياس عن مكتب الاستراتيجية v2", () => {
+  it("التنفيذي: فصل مسارات القياس عن مكتب الاستراتيجية م1", () => {
     const tracks = sectionByLabel("EXECUTIVE", "مسارات القياس");
     const office = sectionByLabel("EXECUTIVE", "مكتب الاستراتيجية");
     expect(tracks?.collapsible).toBe(true);
     expect(office?.items.map((i) => i.href)).toEqual(["/strategy", "/calendar"]);
+    expect(office?.items.every((i) => i.badge === "m1")).toBe(true);
+  });
+});
+
+describe("سجل مراحل الأدوات", () => {
+  it("الكتالوج م1 وإدارة المؤشرات أصل مع اندماج واضح", () => {
+    expect(resolveToolPhase("/strategy")?.phase).toBe("m1");
+    expect(resolveToolPhase("/admin/kpis")?.phase).toBe("core");
+    expect(resolveToolPhase("/calendar")?.integratesWith).toMatch(/الاستراتيجية/);
   });
 });
 

@@ -9,3 +9,5 @@
 | قسم العقد للمكوّن الذي تلمسه فقط من `package/components.md` | نسخ محلية قديمة للتصميم |
 
 المصدر: `@zaad/design-system` = مجلد `package/` في مستودع `designSystemFinal`.
+
+توسعة المنصة: اقرأ `miqyas-phase1/docs/platform-governing-principles.md` — مبدأ الدمج (لا أدوات موازية) ووسم المرحلة لكل أداة.

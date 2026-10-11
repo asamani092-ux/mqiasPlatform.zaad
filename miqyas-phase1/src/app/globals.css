@@ -825,7 +825,8 @@ textarea.input-field {
   min-width: 0;
 }
 
-.nav-badge-v2 {
+.nav-badge-v2,
+.nav-badge-phase {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -840,6 +841,54 @@ textarea.input-field {
   background: color-mix(in srgb, var(--tmkeen-primary) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--tmkeen-primary) 28%, transparent);
   flex-shrink: 0;
+}
+
+.nav-badge-phase--core {
+  color: var(--tmkeen-brand-gray);
+  background: var(--tmkeen-surface-muted);
+  border-color: var(--tmkeen-surface-border);
+}
+
+.nav-badge-phase--m1 {
+  color: var(--tmkeen-primary);
+  background: color-mix(in srgb, var(--tmkeen-primary) 12%, transparent);
+  border-color: color-mix(in srgb, var(--tmkeen-primary) 28%, transparent);
+}
+
+.nav-badge-phase--uat {
+  color: var(--tmkeen-brand-gray);
+  background: color-mix(in srgb, var(--tmkeen-secondary, #c4a35a) 18%, transparent);
+  border-color: color-mix(in srgb, var(--tmkeen-secondary, #c4a35a) 35%, transparent);
+}
+
+.tool-phase-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+  margin-block-end: 0.85rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--tmkeen-radius-lg, 0.5rem);
+  border: 1px solid var(--tmkeen-surface-border);
+  background: color-mix(in srgb, var(--tmkeen-surface-muted) 70%, transparent);
+  font-size: 0.78rem;
+  color: var(--tmkeen-brand-gray);
+}
+
+.tool-phase-bar .nav-badge-phase {
+  margin-inline-start: 0;
+}
+
+.tool-phase-bar-title {
+  font-weight: 700;
+}
+
+.tool-phase-bar-sep {
+  opacity: 0.5;
+}
+
+.tool-phase-bar-integrate {
+  line-height: 1.4;
 }
 
 /* ── Login (هيكل README auth — الحقول داخل البطاقة) ── */
