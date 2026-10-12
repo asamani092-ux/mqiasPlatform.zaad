@@ -82,6 +82,14 @@ describe("سجل مراحل الأدوات", () => {
     expect(resolveToolPhase("/admin/kpis")?.phase).toBe("core");
     expect(resolveToolPhase("/calendar")?.integratesWith).toMatch(/الاستراتيجية/);
   });
+
+  it("كل بنود تنقّل المشرف لها وسم مرحلة في السجل والقائمة", () => {
+    const sections = buildNavSections("SYSTEM_ADMIN", { showApprovals: true, showUat: true });
+    for (const item of sections.flatMap((s) => s.items)) {
+      expect(item.badge, item.href).toBeTruthy();
+      expect(resolveToolPhase(item.href)?.phase, item.href).toBe(item.badge);
+    }
+  });
 });
 
 describe("أوسمة التغذية", () => {

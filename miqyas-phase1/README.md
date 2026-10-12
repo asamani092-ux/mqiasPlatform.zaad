@@ -7,6 +7,7 @@
 | الوثيقة | الغرض |
 |---------|--------|
 | [docs/platform-governing-principles.md](docs/platform-governing-principles.md) | مبدأ الدمج + أوسمة المراحل + خريطة الأدوات |
+| [docs/m1-acceptance-checklist.md](docs/m1-acceptance-checklist.md) | قبول م1 بعد النشر |
 | [docs/strategy-office-roadmap.md](docs/strategy-office-roadmap.md) | خارطة مكتب الاستراتيجية والمراجعة |
 | [docs/architecture-measurement-unification.md](docs/architecture-measurement-unification.md) | طبقات القياس الموحّد |
 
