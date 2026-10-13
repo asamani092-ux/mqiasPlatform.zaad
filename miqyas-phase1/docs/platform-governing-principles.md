@@ -52,4 +52,4 @@
 
 ## حالة قبول م1
 
-جولة مطابقة بعد النشر: انظر [`m1-acceptance-checklist.md`](./m1-acceptance-checklist.md) — المتطلبات الجوهرية مطابقة؛ إصلاحات الواجهة/الوثائق في نفس الجولة.
+**مغلقة** على `4f721ca` — انظر [`m1-acceptance-checklist.md`](./m1-acceptance-checklist.md). الخطوة التالية: تخطيط م2 (المراجعة الداخلية) فقط.

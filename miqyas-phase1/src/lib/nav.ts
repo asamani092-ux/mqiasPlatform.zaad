@@ -68,7 +68,7 @@ const DEPT_FOLLOW_NAV: NavItem = {
 };
 
 /** أدوات م1 — قراءة الكتالوج + الرزنامة */
-const STRATEGY_V2_NAV: NavItem[] = [
+const STRATEGY_M1_NAV: NavItem[] = [
   { href: "/strategy", label: "كتالوج الاستراتيجية والحوكمة", Icon: Library, badge: "m1" },
   { href: "/calendar", label: "رزنامة القسم", Icon: CalendarDays, badge: "m1" },
 ];
@@ -152,7 +152,7 @@ export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[]
       sections.push(tracksSection(TRACK_NAV_OFFICE));
       sections.push({
         label: "مكتب الاستراتيجية",
-        items: [...STRATEGY_V2_NAV, KPIS_NAV],
+        items: [...STRATEGY_M1_NAV, KPIS_NAV],
       });
     }
     return sections;
@@ -163,7 +163,7 @@ export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[]
     sections.push(tracksSection(TRACK_NAV_OFFICE));
     sections.push({
       label: "مكتب الاستراتيجية",
-      items: strategyOffice ? [...STRATEGY_V2_NAV, KPIS_NAV] : STRATEGY_V2_NAV,
+      items: strategyOffice ? [...STRATEGY_M1_NAV, KPIS_NAV] : STRATEGY_M1_NAV,
     });
     return sections;
   }
@@ -174,7 +174,7 @@ export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[]
       items: [MY_NAV, DEPT_FOLLOW_NAV, ASSIGN_NAV, KPIS_NAV],
     });
     sections.push(tracksSection(TRACK_NAV_OFFICE));
-    sections.push({ label: "مكتب الاستراتيجية", items: STRATEGY_V2_NAV });
+    sections.push({ label: "مكتب الاستراتيجية", items: STRATEGY_M1_NAV });
     return sections;
   }
 
@@ -182,7 +182,7 @@ export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[]
     sections.push({ items: [EXECUTIVE_NAV] });
     sections.push({ label: "الرئيسية", items: [DASHBOARD_NAV] });
     sections.push(tracksSection(TRACK_NAV_FULL));
-    sections.push({ label: "مكتب الاستراتيجية", items: STRATEGY_V2_NAV });
+    sections.push({ label: "مكتب الاستراتيجية", items: STRATEGY_M1_NAV });
     return sections;
   }
 
@@ -190,7 +190,7 @@ export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[]
   sections.push({ items: [EXECUTIVE_NAV] });
   sections.push({ label: "الرئيسية", items: [DASHBOARD_NAV, MY_NAV] });
   sections.push(tracksSection(TRACK_NAV_FULL));
-  sections.push({ label: "مكتب الاستراتيجية", items: STRATEGY_V2_NAV });
+  sections.push({ label: "مكتب الاستراتيجية", items: STRATEGY_M1_NAV });
   if (showApprovals) sections.push({ items: [APPROVALS_NAV] });
   sections.push({ label: "إدارة النظام", items: ADMIN_NAV });
   if (showUat) sections.push({ label: "بيئة التجربة", items: [UAT_NAV] });
