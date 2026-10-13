@@ -18,7 +18,19 @@ RUN set -eux; \
 
 COPY package.json package-lock.json ./
 # تجاهل postinstall (prisma generate) — المخطط غير منسوخ بعد
-RUN npm ci --ignore-scripts
+# إعادة محاولة عند انقطاع الشبكة المؤقت (ECONNRESET) أثناء Coolify/Docker
+RUN set -eux; \
+  npm config set fetch-retries 5; \
+  npm config set fetch-retry-mintimeout 20000; \
+  npm config set fetch-retry-maxtimeout 120000; \
+  npm config set fetch-timeout 300000; \
+  ok=0; \
+  for i in 1 2 3 4 5; do \
+    if npm ci --ignore-scripts; then ok=1; break; fi; \
+    echo "npm ci failed (attempt $$i), retrying in $$((i * 8))s..."; \
+    sleep $$((i * 8)); \
+  done; \
+  test "$$ok" = "1"
 
 COPY . .
 # قيمة شكلية للبناء فقط — Prisma 7 يقرأ DATABASE_URL من prisma.config.ts عند generate
@@ -31,8 +43,18 @@ FROM node:22-bookworm-slim AS prisma-cli
 WORKDIR /prisma-cli
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-RUN npm install --ignore-scripts --no-save prisma@7.8.0 dotenv@17.4.2 \
-  && ./node_modules/.bin/prisma version
+RUN set -eux; \
+  npm config set fetch-retries 5; \
+  npm config set fetch-retry-mintimeout 20000; \
+  npm config set fetch-retry-maxtimeout 120000; \
+  ok=0; \
+  for i in 1 2 3 4 5; do \
+    if npm install --ignore-scripts --no-save prisma@7.8.0 dotenv@17.4.2; then ok=1; break; fi; \
+    echo "npm install prisma-cli failed (attempt $$i), retrying..."; \
+    sleep $$((i * 8)); \
+  done; \
+  test "$$ok" = "1"; \
+  ./node_modules/.bin/prisma version
 
 # ===== 2) صورة التشغيل النهائية (خفيفة) =====
 FROM node:22-bookworm-slim AS runner
