@@ -67,8 +67,8 @@ const DEPT_FOLLOW_NAV: NavItem = {
   badge: "core",
 };
 
-/** أدوات م1 — قراءة الكتالوج + الرزنامة */
-const STRATEGY_M1_NAV: NavItem[] = [
+/** أدوات م1 (الاسم الداخلي v2 يُبقى حتى انتهاء التطوير بالكامل) */
+const STRATEGY_V2_NAV: NavItem[] = [
   { href: "/strategy", label: "كتالوج الاستراتيجية والحوكمة", Icon: Library, badge: "m1" },
   { href: "/calendar", label: "رزنامة القسم", Icon: CalendarDays, badge: "m1" },
 ];
