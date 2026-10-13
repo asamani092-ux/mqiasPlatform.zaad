@@ -21,8 +21,8 @@ echo "==> npm run build"
 npm run build
 
 echo "==> مجلد الشواهد"
-mkdir -p storage/evidence
-chmod 750 storage storage/evidence 2>/dev/null || true
+mkdir -p storage/evidence storage/audit
+chmod 750 storage storage/evidence storage/audit 2>/dev/null || true
 
 echo "==> PM2 reload"
 set -a

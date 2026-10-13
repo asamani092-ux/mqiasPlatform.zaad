@@ -92,7 +92,7 @@ npx prisma migrate deploy
 # اضبط ADMIN_EMAIL و ADMIN_PASSWORD في .env أولاً
 npm run seed
 npm run build
-mkdir -p storage/evidence && chmod 750 storage storage/evidence
+mkdir -p storage/evidence storage/audit && chmod 750 storage storage/evidence storage/audit
 cp -r .next/static .next/standalone/.next/static
 cp -r public .next/standalone/public
 ln -sfn "$(pwd)/storage" .next/standalone/storage

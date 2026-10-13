@@ -21,6 +21,22 @@ export default withAuth(
 
     if (!role) return NextResponse.redirect(new URL("/login", req.url));
 
+    // المراجع الداخلي (م2): وحدة /audit فقط — بلا مسارات القياس/الإدارة
+    if (role === "INTERNAL_AUDITOR") {
+      if (path === "/" || path === "" || path.startsWith("/dashboard") || path.startsWith("/my")) {
+        return NextResponse.redirect(new URL("/audit", req.url));
+      }
+      if (
+        path.startsWith("/audit") ||
+        path.startsWith("/api/audit") ||
+        path.startsWith("/api/notifications") ||
+        path.startsWith("/api/auth")
+      ) {
+        return NextResponse.next();
+      }
+      return NextResponse.redirect(new URL("/audit", req.url));
+    }
+
     if (ENTRY_ROLES.includes(role)) {
       if (path.startsWith("/approvals") || path.startsWith("/api/approvals")) {
         return NextResponse.redirect(myUrl);
@@ -55,7 +71,8 @@ export default withAuth(
         path.startsWith("/admin") ||
         path.startsWith("/uat") ||
         path.startsWith("/strategy") ||
-        path.startsWith("/calendar")
+        path.startsWith("/calendar") ||
+        path.startsWith("/audit")
       ) {
         return NextResponse.redirect(myUrl);
       }

@@ -13,11 +13,12 @@ datasource db {
 
 // ── المستخدمون والصلاحيات ────────────────────────────────────────
 enum Role {
-  SYSTEM_ADMIN // مشرف النظام (مكتب الأداء / إدارة المشاريع)
-  EXECUTIVE    // الإدارة العليا
-  DEPT_MANAGER // مدير إدارة
-  SECTION_HEAD // رئيس قسم
-  EMPLOYEE     // موظف
+  SYSTEM_ADMIN     // مشرف النظام (مكتب الأداء / إدارة المشاريع)
+  EXECUTIVE        // الإدارة العليا
+  DEPT_MANAGER     // مدير إدارة
+  SECTION_HEAD     // رئيس قسم
+  EMPLOYEE         // موظف
+  INTERNAL_AUDITOR // مراجع داخلي (م2)
 }
 
 enum UserStatus {
@@ -56,6 +57,12 @@ model User {
   loginAttempts   LoginAttempt[]
   calendarEventsCreated CalendarEvent[] @relation("CalendarCreatedBy")
   calendarEventsUpdated CalendarEvent[] @relation("CalendarUpdatedBy")
+  auditYearPlansCreated AuditYearPlan[] @relation("AuditPlanCreatedBy")
+  auditEngagementsCreated AuditEngagement[] @relation("AuditEngagementCreatedBy")
+  auditFindingsCreated AuditFinding[] @relation("AuditFindingCreatedBy")
+  auditCorrectiveActions AuditCorrectiveAction[] @relation("AuditActionResponsible")
+  auditWorkingPapersUploaded AuditWorkingPaper[] @relation("AuditPaperUploadedBy")
+  auditReportsCreated AuditReport[] @relation("AuditReportCreatedBy")
 }
 
 // ── الهيكل التنظيمي ─────────────────────────────────────────────
@@ -72,6 +79,8 @@ model Department {
   knowledgeAssets  KnowledgeAsset[]
   requirements     MeasurementRequirement[]
   calendarEvents   CalendarEvent[]
+  auditEngagements AuditEngagement[]
+  auditFindings    AuditFinding[]
 }
 
 model Section {
@@ -87,6 +96,7 @@ model Section {
   kpis             Kpi[]
   requirements     MeasurementRequirement[]
   calendarEvents   CalendarEvent[]
+  auditEngagements AuditEngagement[]
 
   @@unique([departmentId, sectionNo])
 }
@@ -641,4 +651,164 @@ model PasswordResetToken {
   createdAt DateTime  @default(now())
 
   @@index([email])
+}
+
+// ── المراجعة الداخلية (م2) ───────────────────────────────────────
+enum AuditPlanStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+enum AuditEngagementStatus {
+  PLANNED
+  IN_PROGRESS
+  REPORTING
+  CLOSED
+}
+
+enum AuditFindingStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+enum AuditFindingSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AuditReportStatus {
+  DRAFT
+  ISSUED
+}
+
+enum AuditDocVisibility {
+  INTERNAL_ONLY
+  TEAM_AND_ADMIN
+}
+
+model AuditYearPlan {
+  id          Int             @id @default(autoincrement())
+  year        Int             @unique
+  title       String
+  status      AuditPlanStatus @default(DRAFT)
+  notes       String?
+  createdById Int
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  createdBy   User              @relation("AuditPlanCreatedBy", fields: [createdById], references: [id])
+  engagements AuditEngagement[]
+}
+
+model AuditEngagement {
+  id           Int                    @id @default(autoincrement())
+  planId       Int
+  title        String
+  objective    String?
+  departmentId Int?
+  sectionId    Int?
+  status       AuditEngagementStatus  @default(PLANNED)
+  startsAt     DateTime?
+  endsAt       DateTime?
+  createdById  Int
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  plan          AuditYearPlan       @relation(fields: [planId], references: [id], onDelete: Cascade)
+  department    Department?         @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  section       Section?            @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  createdBy     User                @relation("AuditEngagementCreatedBy", fields: [createdById], references: [id])
+  findings      AuditFinding[]
+  workingPapers AuditWorkingPaper[]
+  reports       AuditReport[]
+
+  @@index([planId])
+  @@index([departmentId])
+  @@index([status])
+}
+
+model AuditFinding {
+  id           Int                  @id @default(autoincrement())
+  engagementId Int
+  title        String
+  description  String?
+  severity     AuditFindingSeverity @default(MEDIUM)
+  status       AuditFindingStatus   @default(OPEN)
+  departmentId Int?
+  riskNote     String?
+  createdById  Int
+  closedAt     DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  engagement AuditEngagement         @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  department Department?             @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  createdBy  User                    @relation("AuditFindingCreatedBy", fields: [createdById], references: [id])
+  actions    AuditCorrectiveAction[]
+
+  @@index([engagementId])
+  @@index([status])
+  @@index([severity])
+}
+
+model AuditCorrectiveAction {
+  id              Int          @id @default(autoincrement())
+  findingId       Int
+  description     String
+  responsibleId   Int?
+  responsibleName String?
+  dueDate         DateTime
+  status          ActionStatus @default(PENDING)
+  completedAt     DateTime?
+  createdAt       DateTime     @default(now())
+
+  finding     AuditFinding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  responsible User?        @relation("AuditActionResponsible", fields: [responsibleId], references: [id])
+
+  @@index([findingId])
+  @@index([status])
+}
+
+model AuditWorkingPaper {
+  id           Int                @id @default(autoincrement())
+  engagementId Int
+  title        String
+  fileName     String
+  storedName   String
+  mimeType     String
+  sizeBytes    Int
+  visibility   AuditDocVisibility @default(INTERNAL_ONLY)
+  uploadedById Int
+  createdAt    DateTime           @default(now())
+
+  engagement AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  uploadedBy User            @relation("AuditPaperUploadedBy", fields: [uploadedById], references: [id])
+
+  @@index([engagementId])
+}
+
+model AuditReport {
+  id           Int               @id @default(autoincrement())
+  engagementId Int
+  title        String
+  summary      String?
+  status       AuditReportStatus @default(DRAFT)
+  fileName     String?
+  storedName   String?
+  mimeType     String?
+  sizeBytes    Int?
+  issuedAt     DateTime?
+  createdById  Int
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  engagement AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  createdBy  User            @relation("AuditReportCreatedBy", fields: [createdById], references: [id])
+
+  @@index([engagementId])
+  @@index([status])
 }

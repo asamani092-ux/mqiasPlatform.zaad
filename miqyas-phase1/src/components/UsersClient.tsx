@@ -55,6 +55,7 @@ const ROLE_BADGE: Record<string, string> = {
   DEPT_MANAGER: "badge-primary",
   SECTION_HEAD: "badge-neutral",
   EMPLOYEE: "badge-neutral",
+  INTERNAL_AUDITOR: "badge-warning",
 };
 
 function roleScopeHint(role: string): string {
@@ -65,6 +66,8 @@ function roleScopeHint(role: string): string {
       return "رئيس القسم: يجب اختيار قسم (تُستمد الإدارة تلقائيًا)";
     case "EMPLOYEE":
       return "الموظف: يجب اختيار قسم (تُستمد الإدارة تلقائيًا)";
+    case "INTERNAL_AUDITOR":
+      return "المراجع الداخلي: الصلاحية من الدور؛ الإدارة/القسم اختياريان للتنظيم فقط";
     case "EXECUTIVE":
     case "SYSTEM_ADMIN":
       return "لا يتطلب نطاق إدارة أو قسم";
@@ -288,8 +291,16 @@ export default function UsersClient({ departments }: { departments: Department[]
     setForm: React.Dispatch<React.SetStateAction<T>>,
     sections: Section[],
   ) {
-    const needsDept = form.role === "DEPT_MANAGER" || form.role === "SECTION_HEAD" || form.role === "EMPLOYEE";
-    const needsSection = form.role === "SECTION_HEAD" || form.role === "EMPLOYEE";
+    const needsDept =
+      form.role === "DEPT_MANAGER" ||
+      form.role === "SECTION_HEAD" ||
+      form.role === "EMPLOYEE" ||
+      form.role === "INTERNAL_AUDITOR";
+    const needsSection =
+      form.role === "SECTION_HEAD" ||
+      form.role === "EMPLOYEE" ||
+      form.role === "INTERNAL_AUDITOR";
+    const optionalOrg = form.role === "INTERNAL_AUDITOR";
 
     if (!needsDept && !needsSection) return null;
 
@@ -297,7 +308,7 @@ export default function UsersClient({ departments }: { departments: Department[]
       <>
         {needsDept && (
           <div style={{ marginBottom: "1rem" }}>
-            <label className="label-field">الإدارة</label>
+            <label className="label-field">الإدارة{optionalOrg ? " (اختياري)" : ""}</label>
             <select
               className="input-field"
               value={form.departmentId}
@@ -305,7 +316,7 @@ export default function UsersClient({ departments }: { departments: Department[]
                 setForm({ ...form, departmentId: e.target.value, sectionId: "" })
               }
             >
-              <option value="">— اختر إدارة —</option>
+              <option value="">{optionalOrg ? "— بدون إدارة —" : "— اختر إدارة —"}</option>
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
@@ -314,7 +325,7 @@ export default function UsersClient({ departments }: { departments: Department[]
         )}
         {needsSection && (
           <div style={{ marginBottom: "1rem" }}>
-            <label className="label-field">القسم</label>
+            <label className="label-field">القسم{optionalOrg ? " (اختياري)" : ""}</label>
             <select
               className="input-field"
               value={form.sectionId}
@@ -327,7 +338,7 @@ export default function UsersClient({ departments }: { departments: Department[]
                 });
               }}
             >
-              <option value="">— اختر قسم —</option>
+              <option value="">{optionalOrg ? "— بدون قسم —" : "— اختر قسم —"}</option>
               {sections.map((s) => (
                 <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
               ))}
