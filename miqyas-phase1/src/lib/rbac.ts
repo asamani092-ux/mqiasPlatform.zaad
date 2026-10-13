@@ -18,6 +18,11 @@ function isAdmin(u: SessionUser) {
   return u.role === "SYSTEM_ADMIN";
 }
 
+/** فريق المراجعة الداخلية (م2) — الدور الصريح أو مشرف النظام */
+export function isAuditTeam(u: SessionUser) {
+  return isAdmin(u) || u.role === "INTERNAL_AUDITOR";
+}
+
 /** عضو مكتب الاستراتيجية من بيانات الجلسة فقط (بدون I/O) */
 export function isStrategyOfficeFromSession(u: SessionUser): boolean {
   if (isAdmin(u)) return true;
@@ -85,6 +90,15 @@ export const can = {
   followDepartment: (u: SessionUser) => isAdmin(u) || u.role === "DEPT_MANAGER",
   /** إسناد المتطلبات — مشرف أو مدير إدارة */
   assignRequirements: (u: SessionUser) => isAdmin(u) || u.role === "DEPT_MANAGER",
+  /** ملخص المراجعة والتقارير الصادرة */
+  viewAuditOffice: (u: SessionUser) =>
+    isAuditTeam(u) || u.role === "EXECUTIVE",
+  manageAuditPlan: (u: SessionUser) => isAuditTeam(u),
+  manageAuditEngagements: (u: SessionUser) => isAuditTeam(u),
+  manageAuditFindings: (u: SessionUser) => isAuditTeam(u),
+  /** أوراق العمل السرية — مشرف أو مراجع فقط (التنفيذي لا) */
+  manageAuditPapers: (u: SessionUser) => isAuditTeam(u),
+  manageAuditReports: (u: SessionUser) => isAuditTeam(u),
 };
 
 /** نطاق مؤشرات KPI للمسارات التحليلية */
@@ -99,6 +113,8 @@ export function scopeFilter(u: SessionUser): Record<string, unknown> {
       return u.sectionId != null ? { sectionId: u.sectionId } : { sectionId: -1 };
     case "EMPLOYEE":
       return { ownerId: parseInt(u.id, 10) };
+    case "INTERNAL_AUDITOR":
+      return { ownerId: -1 };
     default:
       return { ownerId: -1 };
   }

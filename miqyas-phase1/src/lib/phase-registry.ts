@@ -184,6 +184,54 @@ const TOOLS: { prefix: string; meta: ToolPhaseMeta }[] = [
     },
   },
   {
+    prefix: "/audit/plan",
+    meta: {
+      phase: "m2",
+      name: "الخطة السنوية للمراجعة",
+      integratesWith: "وحدة المراجعة الداخلية تحت /audit",
+    },
+  },
+  {
+    prefix: "/audit/engagements",
+    meta: {
+      phase: "m2",
+      name: "مهام وبرامج المراجعة",
+      integratesWith: "الخطة السنوية للمراجعة",
+    },
+  },
+  {
+    prefix: "/audit/findings",
+    meta: {
+      phase: "m2",
+      name: "الملاحظات والمخاطر",
+      integratesWith: "مهام المراجعة والإجراءات التصحيحية",
+    },
+  },
+  {
+    prefix: "/audit/papers",
+    meta: {
+      phase: "m2",
+      name: "أوراق العمل",
+      integratesWith: "سرية INTERNAL_ONLY — فريق المراجعة فقط",
+    },
+  },
+  {
+    prefix: "/audit/reports",
+    meta: {
+      phase: "m2",
+      name: "تقارير المراجعة الصادرة",
+      integratesWith: "عرض بدون كشف أوراق العمل",
+    },
+  },
+  {
+    prefix: "/audit",
+    meta: {
+      phase: "m2",
+      name: "ملخص المراجعة الداخلية",
+      integratesWith: "مؤشرات إغلاق وملاحظات مفتوحة فوق أصل القياس",
+    },
+  },
+  {
     prefix: "/uat",
     meta: {
       phase: "uat",

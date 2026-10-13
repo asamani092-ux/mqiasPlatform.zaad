@@ -74,6 +74,23 @@ export async function resolveRoleScope(
     case "EXECUTIVE":
     case "SYSTEM_ADMIN":
       return { departmentId: null, sectionId: null };
+    case "INTERNAL_AUDITOR": {
+      // نطاق تنظيمي اختياري — الصلاحية من الدور لا من القسم
+      if (sectionId != null) {
+        const section = await db.section.findUnique({
+          where: { id: sectionId },
+          select: { id: true, departmentId: true },
+        });
+        if (!section) throw { status: 400 as const, message: "القسم المحدد غير موجود" };
+        return { departmentId: section.departmentId, sectionId };
+      }
+      if (departmentId != null) {
+        const dept = await db.department.findUnique({ where: { id: departmentId }, select: { id: true } });
+        if (!dept) throw { status: 400 as const, message: "الإدارة المحددة غير موجودة" };
+        return { departmentId, sectionId: null };
+      }
+      return { departmentId: null, sectionId: null };
+    }
     default:
       throw { status: 400 as const, message: "دور غير صالح" };
   }

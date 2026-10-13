@@ -8,14 +8,19 @@ import {
   ClipboardCheck,
   ClipboardList,
   Crown,
+  FileStack,
+  FileText,
   FileWarning,
+  FolderKanban,
   Landmark,
   LayoutDashboard,
   Library,
+  ListTodo,
   Presentation,
   Ruler,
   Settings,
   Settings2,
+  Shield,
   Target,
   UserPlus,
   Users,
@@ -132,6 +137,29 @@ const UAT_NAV: NavItem = {
   badge: "uat",
 };
 
+/** أدوات م2 — المراجعة الداخلية */
+const AUDIT_NAV_CORE: NavItem[] = [
+  { href: "/audit", label: "ملخص المراجعة", Icon: Shield, badge: "m2" },
+  { href: "/audit/plan", label: "الخطة السنوية", Icon: FolderKanban, badge: "m2" },
+  { href: "/audit/engagements", label: "المهام والبرامج", Icon: ListTodo, badge: "m2" },
+  { href: "/audit/findings", label: "الملاحظات والمخاطر", Icon: FileWarning, badge: "m2" },
+  { href: "/audit/reports", label: "التقارير الصادرة", Icon: FileText, badge: "m2" },
+];
+
+const AUDIT_PAPERS_NAV: NavItem = {
+  href: "/audit/papers",
+  label: "أوراق العمل",
+  Icon: FileStack,
+  badge: "m2",
+};
+
+function auditSection(includePapers: boolean): NavSection {
+  return {
+    label: "المراجعة الداخلية",
+    items: includePapers ? [...AUDIT_NAV_CORE, AUDIT_PAPERS_NAV] : AUDIT_NAV_CORE,
+  };
+}
+
 function tracksSection(items: NavItem[]): NavSection {
   return {
     label: "مسارات القياس",
@@ -145,6 +173,11 @@ function tracksSection(items: NavItem[]): NavSection {
 export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[] {
   const { showApprovals = false, showUat = false, strategyOffice = false } = flags;
   const sections: NavSection[] = [];
+
+  if (role === "INTERNAL_AUDITOR") {
+    sections.push(auditSection(true));
+    return sections;
+  }
 
   if (role === "EMPLOYEE") {
     sections.push({ label: "الرئيسية", items: [MY_NAV] });
@@ -183,6 +216,7 @@ export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[]
     sections.push({ label: "الرئيسية", items: [DASHBOARD_NAV] });
     sections.push(tracksSection(TRACK_NAV_FULL));
     sections.push({ label: "مكتب الاستراتيجية", items: STRATEGY_V2_NAV });
+    sections.push(auditSection(false));
     return sections;
   }
 
@@ -191,6 +225,7 @@ export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[]
   sections.push({ label: "الرئيسية", items: [DASHBOARD_NAV, MY_NAV] });
   sections.push(tracksSection(TRACK_NAV_FULL));
   sections.push({ label: "مكتب الاستراتيجية", items: STRATEGY_V2_NAV });
+  sections.push(auditSection(true));
   if (showApprovals) sections.push({ items: [APPROVALS_NAV] });
   sections.push({ label: "إدارة النظام", items: ADMIN_NAV });
   if (showUat) sections.push({ label: "بيئة التجربة", items: [UAT_NAV] });

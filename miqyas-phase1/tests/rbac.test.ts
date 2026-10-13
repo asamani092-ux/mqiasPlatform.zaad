@@ -16,11 +16,24 @@ function u(role: SessionUser["role"], extra: Partial<SessionUser> = {}): Session
 describe("rbac.can", () => {
   it("الاعتماد النهائي وإدارة النظام لمشرف النظام فقط", () => {
     expect(can.finalApprove(u("SYSTEM_ADMIN"))).toBe(true);
-    for (const role of ["EXECUTIVE", "DEPT_MANAGER", "SECTION_HEAD", "EMPLOYEE"] as const) {
+    for (const role of [
+      "EXECUTIVE",
+      "DEPT_MANAGER",
+      "SECTION_HEAD",
+      "EMPLOYEE",
+      "INTERNAL_AUDITOR",
+    ] as const) {
       expect(can.finalApprove(u(role))).toBe(false);
       expect(can.manageUsers(u(role))).toBe(false);
       expect(can.manageKpis(u(role))).toBe(false);
     }
+  });
+
+  it("م2: أوراق العمل للمراجع/المشرف — التنفيذي مرفوض", () => {
+    expect(can.manageAuditPapers(u("SYSTEM_ADMIN"))).toBe(true);
+    expect(can.manageAuditPapers(u("INTERNAL_AUDITOR"))).toBe(true);
+    expect(can.manageAuditPapers(u("EXECUTIVE"))).toBe(false);
+    expect(can.viewAuditOffice(u("EXECUTIVE"))).toBe(true);
   });
 
   it("مراجعة الإدارة والإسناد: مشرف أو مدير إدارة", () => {
