@@ -21,7 +21,7 @@ echo "==> npm run build"
 npm run build
 
 echo "==> مجلد الشواهد"
-mkdir -p storage/evidence storage/audit
+mkdir -p storage/evidence storage/audit storage/committee
 chmod 750 storage storage/evidence storage/audit 2>/dev/null || true
 
 echo "==> PM2 reload"
