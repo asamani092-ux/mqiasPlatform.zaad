@@ -861,6 +861,12 @@ textarea.input-field {
   border-color: color-mix(in srgb, #1f4e5f 28%, transparent);
 }
 
+.nav-badge-phase--m3 {
+  color: #5c3d1e;
+  background: color-mix(in srgb, #5c3d1e 12%, transparent);
+  border-color: color-mix(in srgb, #5c3d1e 28%, transparent);
+}
+
 .nav-badge-phase--uat {
   color: var(--tmkeen-brand-gray);
   background: color-mix(in srgb, var(--tmkeen-secondary, #c4a35a) 18%, transparent);

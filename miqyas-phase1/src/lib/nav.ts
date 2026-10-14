@@ -12,10 +12,13 @@ import {
   FileText,
   FileWarning,
   FolderKanban,
+  Gavel,
+  Inbox,
   Landmark,
   LayoutDashboard,
   Library,
   ListTodo,
+  NotebookPen,
   Presentation,
   Ruler,
   Settings,
@@ -160,6 +163,18 @@ function auditSection(includePapers: boolean): NavSection {
   };
 }
 
+const COMMITTEE_NAV: NavItem[] = [
+  { href: "/committee", label: "لوحة اللجنة", Icon: LayoutDashboard, badge: "m3" },
+  { href: "/committee/meetings", label: "اجتماعات اللجنة", Icon: CalendarDays, badge: "m3" },
+  { href: "/committee/minutes", label: "المحاضر", Icon: NotebookPen, badge: "m3" },
+  { href: "/committee/decisions", label: "القرارات والتوصيات", Icon: Gavel, badge: "m3" },
+  { href: "/committee/inbox", label: "التقارير والرفع الخارجي", Icon: Inbox, badge: "m3" },
+];
+
+function committeeSection(): NavSection {
+  return { label: "لجنة المراجعة", items: COMMITTEE_NAV };
+}
+
 function tracksSection(items: NavItem[]): NavSection {
   return {
     label: "مسارات القياس",
@@ -176,6 +191,12 @@ export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[]
 
   if (role === "INTERNAL_AUDITOR") {
     sections.push(auditSection(true));
+    sections.push(committeeSection());
+    return sections;
+  }
+
+  if (role === "AUDIT_COMMITTEE") {
+    sections.push(committeeSection());
     return sections;
   }
 
@@ -217,6 +238,7 @@ export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[]
     sections.push(tracksSection(TRACK_NAV_FULL));
     sections.push({ label: "مكتب الاستراتيجية", items: STRATEGY_V2_NAV });
     sections.push(auditSection(false));
+    sections.push(committeeSection());
     return sections;
   }
 
@@ -226,6 +248,7 @@ export function buildNavSections(role: Role, flags: NavFlags = {}): NavSection[]
   sections.push(tracksSection(TRACK_NAV_FULL));
   sections.push({ label: "مكتب الاستراتيجية", items: STRATEGY_V2_NAV });
   sections.push(auditSection(true));
+  sections.push(committeeSection());
   if (showApprovals) sections.push({ items: [APPROVALS_NAV] });
   sections.push({ label: "إدارة النظام", items: ADMIN_NAV });
   if (showUat) sections.push({ label: "بيئة التجربة", items: [UAT_NAV] });

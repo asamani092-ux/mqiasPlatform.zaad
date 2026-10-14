@@ -22,6 +22,7 @@ describe("rbac.can", () => {
       "SECTION_HEAD",
       "EMPLOYEE",
       "INTERNAL_AUDITOR",
+      "AUDIT_COMMITTEE",
     ] as const) {
       expect(can.finalApprove(u(role))).toBe(false);
       expect(can.manageUsers(u(role))).toBe(false);

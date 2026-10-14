@@ -21,7 +21,7 @@ export default withAuth(
 
     if (!role) return NextResponse.redirect(new URL("/login", req.url));
 
-    // المراجع الداخلي (م2): وحدة /audit فقط — بلا مسارات القياس/الإدارة
+    // المراجع الداخلي (م2): /audit + قراءة لجنة /committee
     if (role === "INTERNAL_AUDITOR") {
       if (path === "/" || path === "" || path.startsWith("/dashboard") || path.startsWith("/my")) {
         return NextResponse.redirect(new URL("/audit", req.url));
@@ -29,12 +29,30 @@ export default withAuth(
       if (
         path.startsWith("/audit") ||
         path.startsWith("/api/audit") ||
+        path.startsWith("/committee") ||
+        path.startsWith("/api/committee") ||
         path.startsWith("/api/notifications") ||
         path.startsWith("/api/auth")
       ) {
         return NextResponse.next();
       }
       return NextResponse.redirect(new URL("/audit", req.url));
+    }
+
+    // لجنة المراجعة (م3): /committee فقط — بلا أوراق عمل المراجعة
+    if (role === "AUDIT_COMMITTEE") {
+      if (path === "/" || path === "" || path.startsWith("/dashboard") || path.startsWith("/my") || path.startsWith("/audit")) {
+        return NextResponse.redirect(new URL("/committee", req.url));
+      }
+      if (
+        path.startsWith("/committee") ||
+        path.startsWith("/api/committee") ||
+        path.startsWith("/api/notifications") ||
+        path.startsWith("/api/auth")
+      ) {
+        return NextResponse.next();
+      }
+      return NextResponse.redirect(new URL("/committee", req.url));
     }
 
     if (ENTRY_ROLES.includes(role)) {
@@ -72,7 +90,8 @@ export default withAuth(
         path.startsWith("/uat") ||
         path.startsWith("/strategy") ||
         path.startsWith("/calendar") ||
-        path.startsWith("/audit")
+        path.startsWith("/audit") ||
+        path.startsWith("/committee")
       ) {
         return NextResponse.redirect(myUrl);
       }

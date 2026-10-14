@@ -23,6 +23,11 @@ export function isAuditTeam(u: SessionUser) {
   return isAdmin(u) || u.role === "INTERNAL_AUDITOR";
 }
 
+/** لجنة المراجعة (م3) — الدور الصريح أو مشرف النظام */
+export function isCommittee(u: SessionUser) {
+  return isAdmin(u) || u.role === "AUDIT_COMMITTEE";
+}
+
 /** عضو مكتب الاستراتيجية من بيانات الجلسة فقط (بدون I/O) */
 export function isStrategyOfficeFromSession(u: SessionUser): boolean {
   if (isAdmin(u)) return true;
@@ -96,9 +101,14 @@ export const can = {
   manageAuditPlan: (u: SessionUser) => isAuditTeam(u),
   manageAuditEngagements: (u: SessionUser) => isAuditTeam(u),
   manageAuditFindings: (u: SessionUser) => isAuditTeam(u),
-  /** أوراق العمل السرية — مشرف أو مراجع فقط (التنفيذي لا) */
+  /** أوراق العمل السرية — مشرف أو مراجع فقط (اللجنة والتنفيذي لا) */
   manageAuditPapers: (u: SessionUser) => isAuditTeam(u),
   manageAuditReports: (u: SessionUser) => isAuditTeam(u),
+  /** لوحة اللجنة ومحاضرها — لجنة + مشرف + مراجع + تنفيذي (قراءة) */
+  viewCommittee: (u: SessionUser) =>
+    isCommittee(u) || isAuditTeam(u) || u.role === "EXECUTIVE",
+  /** كتابة الاجتماعات والمحاضر والقرارات والرفع الداخلي */
+  manageCommittee: (u: SessionUser) => isCommittee(u),
 };
 
 /** نطاق مؤشرات KPI للمسارات التحليلية */
@@ -114,6 +124,7 @@ export function scopeFilter(u: SessionUser): Record<string, unknown> {
     case "EMPLOYEE":
       return { ownerId: parseInt(u.id, 10) };
     case "INTERNAL_AUDITOR":
+    case "AUDIT_COMMITTEE":
       return { ownerId: -1 };
     default:
       return { ownerId: -1 };

@@ -22,9 +22,9 @@ describe("م2 — دور المراجع والتنقّل", () => {
     expect(ROLE_LABEL.INTERNAL_AUDITOR).toBe("مراجع داخلي");
   });
 
-  it("المراجع: قسم المراجعة فقط مع أوراق العمل", () => {
+  it("المراجع: المراجعة مع أوراق العمل ثم قراءة اللجنة", () => {
     const sections = buildNavSections("INTERNAL_AUDITOR");
-    expect(sections).toHaveLength(1);
+    expect(sections.map((s) => s.label)).toEqual(["المراجعة الداخلية", "لجنة المراجعة"]);
     expect(sections[0]?.label).toBe("المراجعة الداخلية");
     const hrefs = sections[0]!.items.map((i) => i.href);
     expect(hrefs).toEqual([
