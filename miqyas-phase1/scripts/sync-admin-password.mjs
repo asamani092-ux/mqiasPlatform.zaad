@@ -7,7 +7,7 @@ import pg from "pg";
 
 const url = process.env.DATABASE_URL;
 const email = (process.env.ADMIN_EMAIL || "admin@zad.org.sa").trim().toLowerCase();
-const pass = process.env.ADMIN_PASSWORD;
+const pass = process.env.ADMIN_PASSWORD?.trim();
 
 if (!url) {
   console.error("DATABASE_URL غير معرّف");
@@ -22,8 +22,19 @@ const hash = await bcrypt.hash(pass, 12);
 const pool = new pg.Pool({ connectionString: url });
 
 try {
-  const existing = await pool.query(`SELECT id FROM "User" WHERE email = $1`, [email]);
-  if (existing.rowCount === 0) {
+  const byEmail = await pool.query(
+    `SELECT id, email FROM "User" WHERE lower(email) = $1 ORDER BY id ASC LIMIT 1`,
+    [email],
+  );
+  let target = byEmail.rows[0];
+  if (!target) {
+    const admins = await pool.query(
+      `SELECT id, email FROM "User" WHERE role = 'SYSTEM_ADMIN' ORDER BY id ASC`,
+    );
+    if (admins.rowCount === 1) target = admins.rows[0];
+  }
+
+  if (!target) {
     await pool.query(
       `INSERT INTO "User" (name, email, "passwordHash", role, status, "createdAt")
        VALUES ($1, $2, $3, 'SYSTEM_ADMIN', 'ACTIVE', NOW())`,
@@ -32,12 +43,15 @@ try {
     console.log(JSON.stringify({ ok: true, created: true, email }));
   } else {
     await pool.query(
-      `UPDATE "User" SET "passwordHash" = $1, status = 'ACTIVE' WHERE email = $2`,
-      [hash, email],
+      `UPDATE "User" SET "passwordHash" = $1, status = 'ACTIVE', role = 'SYSTEM_ADMIN' WHERE id = $2`,
+      [hash, target.id],
     );
-    console.log(JSON.stringify({ ok: true, updated: true, email }));
+    console.log(JSON.stringify({ ok: true, updated: true, email: target.email }));
   }
-  await pool.query(`DELETE FROM "LoginAttempt" WHERE email = $1`, [email]);
+  await pool.query(`DELETE FROM "LoginAttempt" WHERE lower(email) = $1 OR lower(email) = lower($2)`, [
+    email,
+    target?.email ?? email,
+  ]);
 } finally {
   await pool.end();
 }
