@@ -33,46 +33,40 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials, req) {
         const email = credentials?.email?.trim().toLowerCase();
-        const password = credentials?.password;
+        const password = credentials?.password?.trim();
         const rememberMe = credentials?.rememberMe === "true";
         const ip = extractClientIp(req);
 
         if (!email || !password) return null;
 
-        // قفل مؤقت: 5 محاولات فاشلة خلال 15 دقيقة
-        const LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
-        const LOCKOUT_MAX_FAILURES = 5;
-        const recentFailures = await db.loginAttempt.count({
-          where: {
-            email,
-            success: false,
-            createdAt: { gte: new Date(Date.now() - LOCKOUT_WINDOW_MS) },
-          },
+        const user = await db.user.findFirst({
+          where: { email: { equals: email, mode: "insensitive" } },
         });
-        if (recentFailures >= LOCKOUT_MAX_FAILURES) {
-          await db.loginAttempt.create({
-            data: { email, success: false, ip },
-          });
-          return null;
-        }
-
-        const user = await db.user.findUnique({ where: { email } });
         let success = false;
 
         if (user && user.status === "ACTIVE") {
           success = await bcrypt.compare(password, user.passwordHash);
         }
 
+        if (!success || !user) {
+          await db.loginAttempt.create({
+            data: { email, success: false, userId: user?.id, ip },
+          });
+          return null;
+        }
+
+        await db.loginAttempt.deleteMany({
+          where: { email: { equals: email, mode: "insensitive" }, success: false },
+        });
+
         await db.loginAttempt.create({
           data: {
-            email,
-            success,
-            userId: user?.id,
+            email: user.email,
+            success: true,
+            userId: user.id,
             ip,
           },
         });
-
-        if (!success || !user) return null;
 
         await db.user.update({
           where: { id: user.id },

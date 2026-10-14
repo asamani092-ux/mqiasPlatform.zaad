@@ -16,11 +16,22 @@ export async function POST(req: NextRequest) {
   if (!authorized(req)) return jsonError("غير مصرح", 401);
 
   const email = (process.env.ADMIN_EMAIL || "admin@zad.org.sa").trim().toLowerCase();
-  const pass = process.env.ADMIN_PASSWORD;
+  const pass = process.env.ADMIN_PASSWORD?.trim();
   if (!pass) return jsonError("ADMIN_PASSWORD غير معرّف في البيئة", 400);
 
   const passwordHash = await bcrypt.hash(pass, 12);
-  const existing = await db.user.findUnique({ where: { email }, select: { id: true } });
+  let existing = await db.user.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+    select: { id: true, email: true },
+  });
+  if (!existing) {
+    const admins = await db.user.findMany({
+      where: { role: "SYSTEM_ADMIN" },
+      select: { id: true, email: true },
+      orderBy: { id: "asc" },
+    });
+    if (admins.length === 1) existing = admins[0];
+  }
 
   if (!existing) {
     await db.user.create({
@@ -35,11 +46,13 @@ export async function POST(req: NextRequest) {
   } else {
     await db.user.update({
       where: { id: existing.id },
-      data: { passwordHash, status: "ACTIVE" },
+      data: { passwordHash, status: "ACTIVE", role: "SYSTEM_ADMIN" },
     });
   }
 
-  await db.loginAttempt.deleteMany({ where: { email } });
+  await db.loginAttempt.deleteMany({
+    where: { email: { equals: existing?.email ?? email, mode: "insensitive" } },
+  });
 
-  return NextResponse.json({ ok: true, email, created: !existing });
+  return NextResponse.json({ ok: true, email: existing?.email ?? email, created: !existing });
 }
