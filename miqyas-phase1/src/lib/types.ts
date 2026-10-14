@@ -70,6 +70,7 @@ export const ROLE_LABEL: Record<string, string> = {
   SECTION_HEAD: "رئيس القسم",
   EMPLOYEE: "موظف",
   INTERNAL_AUDITOR: "مراجع داخلي",
+  AUDIT_COMMITTEE: "عضو لجنة المراجعة",
 };
 
 export const DOMAIN_LABEL: Record<string, string> = {
@@ -85,6 +86,7 @@ export const ROLE_VALUES = [
   "SECTION_HEAD",
   "EMPLOYEE",
   "INTERNAL_AUDITOR",
+  "AUDIT_COMMITTEE",
 ] as const;
 
 export type AppRole = (typeof ROLE_VALUES)[number];

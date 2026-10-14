@@ -56,6 +56,7 @@ const ROLE_BADGE: Record<string, string> = {
   SECTION_HEAD: "badge-neutral",
   EMPLOYEE: "badge-neutral",
   INTERNAL_AUDITOR: "badge-warning",
+  AUDIT_COMMITTEE: "badge-primary",
 };
 
 function roleScopeHint(role: string): string {
@@ -68,6 +69,8 @@ function roleScopeHint(role: string): string {
       return "الموظف: يجب اختيار قسم (تُستمد الإدارة تلقائيًا)";
     case "INTERNAL_AUDITOR":
       return "المراجع الداخلي: الصلاحية من الدور؛ الإدارة/القسم اختياريان للتنظيم فقط";
+    case "AUDIT_COMMITTEE":
+      return "عضو لجنة المراجعة: الصلاحية من الدور؛ الإدارة/القسم اختياريان";
     case "EXECUTIVE":
     case "SYSTEM_ADMIN":
       return "لا يتطلب نطاق إدارة أو قسم";
@@ -295,12 +298,14 @@ export default function UsersClient({ departments }: { departments: Department[]
       form.role === "DEPT_MANAGER" ||
       form.role === "SECTION_HEAD" ||
       form.role === "EMPLOYEE" ||
-      form.role === "INTERNAL_AUDITOR";
+      form.role === "INTERNAL_AUDITOR" ||
+      form.role === "AUDIT_COMMITTEE";
     const needsSection =
       form.role === "SECTION_HEAD" ||
       form.role === "EMPLOYEE" ||
-      form.role === "INTERNAL_AUDITOR";
-    const optionalOrg = form.role === "INTERNAL_AUDITOR";
+      form.role === "INTERNAL_AUDITOR" ||
+      form.role === "AUDIT_COMMITTEE";
+    const optionalOrg = form.role === "INTERNAL_AUDITOR" || form.role === "AUDIT_COMMITTEE";
 
     if (!needsDept && !needsSection) return null;
 

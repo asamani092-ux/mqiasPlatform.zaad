@@ -74,6 +74,7 @@ export async function resolveRoleScope(
     case "EXECUTIVE":
     case "SYSTEM_ADMIN":
       return { departmentId: null, sectionId: null };
+    case "AUDIT_COMMITTEE":
     case "INTERNAL_AUDITOR": {
       // نطاق تنظيمي اختياري — الصلاحية من الدور لا من القسم
       if (sectionId != null) {

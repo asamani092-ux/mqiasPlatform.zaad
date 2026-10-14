@@ -232,6 +232,46 @@ const TOOLS: { prefix: string; meta: ToolPhaseMeta }[] = [
     },
   },
   {
+    prefix: "/committee/meetings",
+    meta: {
+      phase: "m3",
+      name: "اجتماعات لجنة المراجعة",
+      integratesWith: "جدول اللجنة فوق تقارير المراجعة الصادرة",
+    },
+  },
+  {
+    prefix: "/committee/minutes",
+    meta: {
+      phase: "m3",
+      name: "محاضر اللجنة",
+      integratesWith: "اجتماعات اللجنة — بلا أوراق عمل المراجعة",
+    },
+  },
+  {
+    prefix: "/committee/decisions",
+    meta: {
+      phase: "m3",
+      name: "قرارات وتوصيات اللجنة",
+      integratesWith: "متابعة تنفيذ توصيات اللجنة",
+    },
+  },
+  {
+    prefix: "/committee/inbox",
+    meta: {
+      phase: "m3",
+      name: "تقارير ورفع المراجع الخارجي",
+      integratesWith: "تقارير م2 الصادرة + ملفات يرفعها مستخدم داخلي",
+    },
+  },
+  {
+    prefix: "/committee",
+    meta: {
+      phase: "m3",
+      name: "لوحة لجنة المراجعة",
+      integratesWith: "ملخص ملاحظات وتقارير وقرارات دون كشف أوراق العمل",
+    },
+  },
+  {
     prefix: "/uat",
     meta: {
       phase: "uat",

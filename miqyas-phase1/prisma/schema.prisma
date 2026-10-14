@@ -19,6 +19,7 @@ enum Role {
   SECTION_HEAD     // رئيس قسم
   EMPLOYEE         // موظف
   INTERNAL_AUDITOR // مراجع داخلي (م2)
+  AUDIT_COMMITTEE  // عضو لجنة المراجعة (م3)
 }
 
 enum UserStatus {
@@ -63,6 +64,10 @@ model User {
   auditCorrectiveActions AuditCorrectiveAction[] @relation("AuditActionResponsible")
   auditWorkingPapersUploaded AuditWorkingPaper[] @relation("AuditPaperUploadedBy")
   auditReportsCreated AuditReport[] @relation("AuditReportCreatedBy")
+  committeeMeetingsCreated CommitteeMeeting[] @relation("CommitteeMeetingCreatedBy")
+  committeeMinutesCreated CommitteeMinute[] @relation("CommitteeMinuteCreatedBy")
+  committeeDecisionsCreated CommitteeDecision[] @relation("CommitteeDecisionCreatedBy")
+  externalAuditUploads ExternalAuditUpload[] @relation("ExternalAuditUploadedBy")
 }
 
 // ── الهيكل التنظيمي ─────────────────────────────────────────────
@@ -808,7 +813,102 @@ model AuditReport {
 
   engagement AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
   createdBy  User            @relation("AuditReportCreatedBy", fields: [createdById], references: [id])
+  externalUploads ExternalAuditUpload[]
 
   @@index([engagementId])
+  @@index([status])
+}
+
+// ── لجنة المراجعة (م3) ──────────────────────────────────────────
+enum CommitteeMeetingStatus {
+  SCHEDULED
+  HELD
+  CANCELLED
+}
+
+enum CommitteeDecisionStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+}
+
+enum ExternalUploadStatus {
+  PENDING_REVIEW
+  ACKNOWLEDGED
+}
+
+model CommitteeMeeting {
+  id          Int                     @id @default(autoincrement())
+  title       String
+  scheduledAt DateTime
+  location    String?
+  agenda      String?
+  status      CommitteeMeetingStatus  @default(SCHEDULED)
+  createdById Int
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  createdBy User                   @relation("CommitteeMeetingCreatedBy", fields: [createdById], references: [id])
+  minutes   CommitteeMinute[]
+  decisions CommitteeDecision[]
+  uploads   ExternalAuditUpload[]
+
+  @@index([scheduledAt])
+  @@index([status])
+}
+
+model CommitteeMinute {
+  id          Int      @id @default(autoincrement())
+  meetingId   Int
+  body        String
+  createdById Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  meeting   CommitteeMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  createdBy User             @relation("CommitteeMinuteCreatedBy", fields: [createdById], references: [id])
+
+  @@index([meetingId])
+}
+
+model CommitteeDecision {
+  id             Int                     @id @default(autoincrement())
+  meetingId      Int?
+  title          String
+  recommendation String?
+  ownerName      String?
+  dueDate        DateTime?
+  status         CommitteeDecisionStatus @default(OPEN)
+  createdById    Int
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  meeting   CommitteeMeeting? @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  createdBy User              @relation("CommitteeDecisionCreatedBy", fields: [createdById], references: [id])
+
+  @@index([meetingId])
+  @@index([status])
+}
+
+model ExternalAuditUpload {
+  id           Int                  @id @default(autoincrement())
+  title        String
+  notes        String?
+  fileName     String
+  storedName   String
+  mimeType     String
+  sizeBytes    Int
+  status       ExternalUploadStatus @default(PENDING_REVIEW)
+  meetingId    Int?
+  reportId     Int?
+  uploadedById Int
+  createdAt    DateTime             @default(now())
+
+  meeting    CommitteeMeeting? @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  report     AuditReport?      @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  uploadedBy User              @relation("ExternalAuditUploadedBy", fields: [uploadedById], references: [id])
+
+  @@index([meetingId])
+  @@index([reportId])
   @@index([status])
 }
