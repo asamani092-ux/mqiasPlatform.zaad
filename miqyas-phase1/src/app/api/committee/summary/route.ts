@@ -11,7 +11,8 @@ export async function GET() {
     const user = await requireUser();
     if (!can.viewCommittee(user)) return jsonError("غير مصرح", 403);
 
-    const [findingsOpen, findingsHigh, findingsClosed, findingsTotal, actionsOpen, actionsDone, plansActive, reportsIssued, reportsDraft, decisionsOpen, decisionsDone, uploadsPending] =
+    const now = new Date();
+    const [findingsOpen, findingsHigh, findingsClosed, findingsTotal, findingsLate, actionsOpen, actionsDone, plansActive, reportsIssued, reportsDraft, decisionsOpen, decisionsDone, uploadsPending] =
       await Promise.all([
         db.auditFinding.count({ where: { status: { in: ["OPEN", "IN_PROGRESS"] } } }),
         db.auditFinding.count({
@@ -19,6 +20,16 @@ export async function GET() {
         }),
         db.auditFinding.count({ where: { status: "CLOSED" } }),
         db.auditFinding.count(),
+        db.auditFinding.count({
+          where: {
+            status: { in: ["OPEN", "IN_PROGRESS"] },
+            actions: {
+              some: {
+                OR: [{ status: "LATE" }, { status: { not: "DONE" }, dueDate: { lt: now } }],
+              },
+            },
+          },
+        }),
         db.auditCorrectiveAction.count({ where: { status: { in: ["PENDING", "IN_PROGRESS", "LATE"] } } }),
         db.auditCorrectiveAction.count({ where: { status: "DONE" } }),
         db.auditYearPlan.count({ where: { status: "ACTIVE" } }),
@@ -47,6 +58,7 @@ export async function GET() {
         findingsOpen,
         findingsHigh,
         findingsClosed,
+        findingsLate,
         closurePct,
         actionPct,
         planPct,

@@ -891,6 +891,11 @@ textarea.input-field {
   margin-inline-start: 0;
 }
 
+.tool-phase-bar-howto {
+  flex-basis: 100%;
+  color: var(--tmkeen-text, inherit);
+}
+
 .tool-phase-bar-title {
   font-weight: 700;
 }

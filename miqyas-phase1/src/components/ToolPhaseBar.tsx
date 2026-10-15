@@ -23,6 +23,7 @@ export default function ToolPhaseBar() {
         ·
       </span>
       <span className="tool-phase-bar-integrate">{meta.integratesWith}</span>
+      <span className="tool-phase-bar-howto">{meta.howTo}</span>
     </div>
   );
 }
