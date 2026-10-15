@@ -9,6 +9,7 @@ type Summary = {
   findingsOpen: number;
   findingsHigh: number;
   findingsClosed: number;
+  findingsLate: number;
   closurePct: number;
   actionPct: number;
   planPct: number;
@@ -43,9 +44,10 @@ export default function CommitteeBoardClient() {
         { label: "ملاحظات مفتوحة", value: summary.findingsOpen },
         { label: "ملاحظات مغلقة", value: summary.findingsClosed },
         { label: "عالية/حرجة", value: summary.findingsHigh },
+        { label: "ملاحظات متأخرة", value: summary.findingsLate },
         { label: "نسبة إغلاق الملاحظات", value: `${summary.closurePct}%` },
         { label: "نسبة تنفيذ الإجراءات", value: `${summary.actionPct}%` },
-        { label: "نسبة تغطية الخطة بالتقارير", value: `${summary.planPct}%` },
+        { label: "تقارير صادرة لكل خطة نشطة", value: `${summary.planPct}%` },
         { label: "تقارير صادرة", value: summary.reportsIssued },
         { label: "تقارير بانتظار الإصدار", value: summary.reportsPending },
         { label: "توصيات مفتوحة", value: summary.decisionsOpen },
